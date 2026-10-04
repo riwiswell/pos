@@ -2,9 +2,9 @@ import { supabase } from "@/integrations/supabase/client";
 type TableName="alarms"|"health_metrics"|"shopping_items"|"learning_items"|"relationships"|"work_items"|"spiritual_entries"|"ai_insights"|"gamification_profiles"|"shopping_lists";
 const db=supabase as any;
 export const personalDomainsService={
- async personalInsights(){const [health,goals,learning,relations,work,alarms]=await Promise.all([
+ async personalInsights(){const optional=async(q:any)=>{const r=await q;return r.error&&["42P01","PGRST205"].includes(r.error.code)?{data:[],error:null}:r};const [health,goals,learning,relations,work,alarms]=await Promise.all([
   db.from("health_metrics").select("metric_date,weight_kg,sleep_hours,exercise_minutes,water_liters").order("metric_date",{ascending:false}).limit(14),
-  db.from("life_goals").select("title,progress,status,target_date").eq("status","active").limit(20),
+  optional(db.from("life_goals").select("title,progress,status,target_date").eq("status","active") .limit(20)),
   db.from("learning_items").select("title,kind,progress,status").eq("status","active").limit(20),
   db.from("relationships").select("name,last_contact_on,next_contact_on,relationship_type").limit(20),
   db.from("work_items").select("title,status,target_date,kind").neq("status","done").limit(20),
