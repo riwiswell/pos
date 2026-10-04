@@ -64,6 +64,16 @@ export const HELP: Record<string, HelpEntry> = {
     title: "Saldo anterior",
     description: "Lo que venía de antes de este período: pendiente (debes) o a favor (pagaste de más).",
   },
+  "life.alarms": { title: "Alarmas", description: "Recordatorios con fecha, hora y repetición. La notificación se activa con permiso del navegador." },
+  "life.shopping": { title: "Lista de mercado", description: "Registra compras pendientes rápidamente. Marcar un artículo no borra su historial." },
+  "health.metrics": { title: "Métricas de salud", description: "Guarda mediciones por la fecha global. Puedes registrar peso, estatura, cintura, sueño, ejercicio y agua." },
+  "health.bmi": { title: "IMC", description: "Se calcula automáticamente como peso en kg dividido por estatura en metros al cuadrado." },
+  "learning": { title: "Aprendizaje", description: "Agrupa cursos, libros, idiomas, ajedrez, videos y certificaciones sin crear dominios separados." },
+  "relationships": { title: "Relaciones", description: "Registra personas importantes y señales de seguimiento para cuidar relaciones, no para sustituir una agenda de contactos." },
+  "work": { title: "Trabajo", description: "Centraliza tareas, proyectos, tiempo, clientes, objetivos e ideas de trabajo." },
+  "spirituality": { title: "Espiritualidad", description: "Espacio opcional y neutral para oración, meditación, lecturas, gratitud o reflexiones." },
+  "ai.personal": { title: "IA Personal", description: "Analiza datos que ya existen en Personal OS. No inventa registros ni depende de un chatbot para funcionar." },
+  "gamification": { title: "Gamificación", description: "XP y niveles para reforzar constancia y equilibrio, sin castigar los días difíciles." },
   // Configuración
   "settings.help": {
     title: "Ayudas contextuales",
