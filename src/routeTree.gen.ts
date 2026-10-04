@@ -159,6 +159,8 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/planeador'
     | '/salud'
+    | '/alarmas'
+    | '/modulos'
   id:
     | '__root__'
     | '/'
@@ -269,6 +271,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedModulosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/alarmas': {
+      id: '/_authenticated/alarmas'
+      path: '/alarmas'
+      fullPath: '/alarmas'
+      preLoaderRoute: typeof AuthenticatedAlarmasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/modulos': {
+      id: '/_authenticated/modulos'
+      path: '/modulos'
+      fullPath: '/modulos'
+      preLoaderRoute: typeof AuthenticatedModulosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/salud': {
       id: '/_authenticated/salud'
       path: '/salud'
@@ -280,6 +296,8 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAlarmasRoute: typeof AuthenticatedAlarmasRoute
+  AuthenticatedModulosRoute: typeof AuthenticatedModulosRoute
   AuthenticatedDiarioRoute: typeof AuthenticatedDiarioRoute
   AuthenticatedFinanzasRoute: typeof AuthenticatedFinanzasRoute
   AuthenticatedHabitosRoute: typeof AuthenticatedHabitosRoute
@@ -292,6 +310,8 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAlarmasRoute: AuthenticatedAlarmasRoute,
+  AuthenticatedModulosRoute: AuthenticatedModulosRoute,
   AuthenticatedDiarioRoute: AuthenticatedDiarioRoute,
   AuthenticatedFinanzasRoute: AuthenticatedFinanzasRoute,
   AuthenticatedHabitosRoute: AuthenticatedHabitosRoute,
