@@ -1,4 +1,4 @@
-import { BookOpen, CalendarCheck, HeartPulse, Home, Repeat, User, Wallet } from "lucide-react";
+import { AlarmClock, BookOpen, CalendarCheck, HeartPulse, Home, Layers3, Repeat, User, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface NavItem {
@@ -18,5 +18,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/salud", label: "Salud", icon: HeartPulse },
   { to: "/finanzas", label: "Finanzas", icon: Wallet },
   { to: "/diario", label: "Diario", icon: BookOpen },
+  { to: "/alarmas", label: "Alarmas", icon: AlarmClock },
+  { to: "/modulos", label: "Módulos", icon: Layers3 },
   { to: "/perfil", label: "Perfil", icon: User },
 ];
