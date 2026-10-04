@@ -1,10 +1,9 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "pos",
-  "compatibility_date": "2026-10-04",
-  "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
-  "observability": {
-    "enabled": true
-  }
+  "$schema":"./node_modules/wrangler/config-schema.json",
+  "name":"pos",
+  "compatibility_date":"2026-10-04",
+  "compatibility_flags":["nodejs_compat"],
+  "main":"src/server.ts",
+  "triggers":{"crons":["* * * * *"]},
+  "observability":{"enabled":true}
 }
