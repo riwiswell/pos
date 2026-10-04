@@ -6,7 +6,7 @@ export const personalDomainsService={
   db.from("health_metrics").select("metric_date,weight_kg,sleep_hours,exercise_minutes,water_liters").order("metric_date",{ascending:false}).limit(14),
   optional(db.from("life_goals").select("title,progress,status,target_date").eq("status","active") .limit(20)),
   db.from("learning_items").select("title,kind,progress,status").eq("status","active").limit(20),
-  db.from("relationships").select("name,last_contact_on,next_contact_on,relationship_type").limit(20),
+  optional(db.from("relationships").select("name,last_contact_on,next_contact_on,relationship_type").limit(20)),
   db.from("work_items").select("title,status,target_date,kind").neq("status","done").limit(20),
   db.from("alarms").select("title,alarm_at,enabled").eq("enabled",true).limit(20)
  ]);const errors=[health,goals,learning,relations,work,alarms].filter(x=>x.error);if(errors.length)throw errors[0].error;
