@@ -23,6 +23,7 @@ interface Props {
   onEdit: () => void;
   onDelete: () => void;
   onMove: (direction: -1 | 1) => void;
+  deleteLabel?: string;
 }
 
 export function HabitRow({
@@ -35,6 +36,7 @@ export function HabitRow({
   onEdit,
   onDelete,
   onMove,
+  deleteLabel = "Eliminar",
 }: Props) {
   const value = log?.value ?? 0;
   const completed = habit.type === "check" ? (log?.completed ?? false) : value > 0;
@@ -183,7 +185,7 @@ export function HabitRow({
             onSelect={onDelete}
             className="text-destructive focus:text-destructive"
           >
-            Eliminar
+            {deleteLabel}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
