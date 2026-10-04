@@ -188,45 +188,48 @@ create index if not exists learning_notes_item_idx on public.learning_notes(lear
 create index if not exists work_sessions_user_date_idx on public.work_sessions(user_id,session_date);
 create index if not exists finance_external_snapshots_source_period_idx on public.finance_external_snapshots(source_id,period_start,period_end);
 
-create or replace function public.refresh_relationship_notification_jobs(p_user_id uuid,p_relationship_id uuid)
-returns void language plpgsql as $$
+create or replace function public.refresh_relationship_notification_trigger()
+returns trigger language plpgsql as $$
 declare r record; y integer; b date;
 begin
- select * into r from public.relationships where id=p_relationship_id and user_id=p_user_id;
- if not found then return; end if;
- delete from public.notification_jobs where user_id=p_user_id and source_type='relationship' and source_id=p_relationship_id and status='pending';
+ select * into r from public.relationships where id=new.id and user_id=new.user_id;
+ if not found then return new; end if;
+ delete from public.notification_jobs where user_id=new.user_id and source_type='relationship' and source_id=new.id and status='pending';
  y:=extract(year from current_date)::integer;
  if r.birthday is not null then
    b:=make_date(y,extract(month from r.birthday)::integer,extract(day from r.birthday)::integer);
    if b-7<current_date then b:=make_date(y+1,extract(month from r.birthday)::integer,extract(day from r.birthday)::integer); end if;
    insert into public.notification_jobs(user_id,source_type,source_id,fire_at,title,body,payload)
-   values(p_user_id,'relationship',p_relationship_id,(b-7)::timestamptz,'Cumpleaños de '||r.name,'Cumpleaños de '||r.name||' en una semana.',jsonb_build_object('kind','birthday','event_on',b));
+   values(new.user_id,'relationship',new.id,(b-7)::timestamptz,'Cumpleaños de '||r.name,'Cumpleaños de '||r.name||' en una semana.',jsonb_build_object('kind','birthday','event_on',b));
  end if;
  if r.anniversary is not null then
    b:=make_date(y,extract(month from r.anniversary)::integer,extract(day from r.anniversary)::integer);
    if b-7<current_date then b:=make_date(y+1,extract(month from r.anniversary)::integer,extract(day from r.anniversary)::integer); end if;
    insert into public.notification_jobs(user_id,source_type,source_id,fire_at,title,body,payload)
-   values(p_user_id,'relationship',p_relationship_id,(b-7)::timestamptz,'Aniversario de '||r.name,'Aniversario de '||r.name||' en una semana.',jsonb_build_object('kind','anniversary','event_on',b));
+   values(new.user_id,'relationship',new.id,(b-7)::timestamptz,'Aniversario de '||r.name,'Aniversario de '||r.name||' en una semana.',jsonb_build_object('kind','anniversary','event_on',b));
  end if;
+ return new;
 end $$;
 
-create or replace function public.refresh_medical_notification_jobs(p_user_id uuid,p_appointment_id uuid)
-returns void language plpgsql as $$
+create or replace function public.refresh_medical_notification_trigger()
+returns trigger language plpgsql as $$
 declare a record; mins integer; fire timestamptz;
 begin
- select * into a from public.medical_appointments where id=p_appointment_id and user_id=p_user_id;
- if not found then return; end if;
- delete from public.notification_jobs where user_id=p_user_id and source_type='medical_appointment' and source_id=p_appointment_id and status='pending';
- if not a.alarm_enabled then return; end if;
+ select * into a from public.medical_appointments where id=new.id and user_id=new.user_id;
+ if not found then return new; end if;
+ delete from public.notification_jobs where user_id=new.user_id and source_type='medical_appointment' and source_id=new.id and status='pending';
+ if not a.alarm_enabled then return new; end if;
  foreach mins in array a.reminder_minutes loop
    fire:=a.appointment_at-make_interval(mins=>mins);
    if fire>now() then
      insert into public.notification_jobs(user_id,source_type,source_id,fire_at,title,body,payload)
-     values(p_user_id,'medical_appointment',p_appointment_id,fire,'Cita médica: '||a.title,coalesce(a.notes,'Recordatorio de tu cita médica.'),jsonb_build_object('appointment_id',p_appointment_id));
+     values(new.user_id,'medical_appointment',new.id,fire,'Cita médica: '||a.title,coalesce(a.notes,'Recordatorio de tu cita médica.'),jsonb_build_object('appointment_id',new.id));
    end if;
  end loop;
+ return new;
 end $$;
+
 drop trigger if exists relationships_refresh_notifications on public.relationships;
-create trigger relationships_refresh_notifications after insert or update of birthday,anniversary,name on public.relationships for each row execute function public.refresh_relationship_notification_jobs(new.user_id,new.id);
+create trigger relationships_refresh_notifications after insert or update of birthday,anniversary,name on public.relationships for each row execute function public.refresh_relationship_notification_trigger();
 drop trigger if exists medical_refresh_notifications on public.medical_appointments;
-create trigger medical_refresh_notifications after insert or update on public.medical_appointments for each row execute function public.refresh_medical_notification_jobs(new.user_id,new.id);
+create trigger medical_refresh_notifications after insert or update on public.medical_appointments for each row execute function public.refresh_medical_notification_trigger();
