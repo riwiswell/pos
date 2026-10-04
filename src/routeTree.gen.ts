@@ -20,6 +20,8 @@ import { Route as AuthenticatedInicioRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedPlaneadorRouteImport } from './routes/_authenticated/planeador'
 import { Route as AuthenticatedSaludRouteImport } from './routes/_authenticated/salud'
+import { Route as AuthenticatedAlarmasRouteImport } from './routes/_authenticated/alarmas'
+import { Route as AuthenticatedModulosRouteImport } from './routes/_authenticated/modulos'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +72,16 @@ const AuthenticatedPlaneadorRoute = AuthenticatedPlaneadorRouteImport.update({
   path: '/planeador',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAlarmasRoute = AuthenticatedAlarmasRouteImport.update({
+  id: '/alarmas',
+  path: '/alarmas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedModulosRoute = AuthenticatedModulosRouteImport.update({
+  id: '/modulos',
+  path: '/modulos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSaludRoute = AuthenticatedSaludRouteImport.update({
   id: '/salud',
   path: '/salud',
@@ -87,6 +99,8 @@ export interface FileRoutesByFullPath {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/planeador': typeof AuthenticatedPlaneadorRoute
   '/salud': typeof AuthenticatedSaludRoute
+  '/alarmas': typeof AuthenticatedAlarmasRoute
+  '/modulos': typeof AuthenticatedModulosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -99,6 +113,8 @@ export interface FileRoutesByTo {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/planeador': typeof AuthenticatedPlaneadorRoute
   '/salud': typeof AuthenticatedSaludRoute
+  '/alarmas': typeof AuthenticatedAlarmasRoute
+  '/modulos': typeof AuthenticatedModulosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -113,6 +129,8 @@ export interface FileRoutesById {
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/planeador': typeof AuthenticatedPlaneadorRoute
   '/_authenticated/salud': typeof AuthenticatedSaludRoute
+  '/_authenticated/alarmas': typeof AuthenticatedAlarmasRoute
+  '/_authenticated/modulos': typeof AuthenticatedModulosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,6 +145,8 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/planeador'
     | '/salud'
+    | '/alarmas'
+    | '/modulos'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -152,6 +172,8 @@ export interface FileRouteTypes {
     | '/_authenticated/perfil'
     | '/_authenticated/planeador'
     | '/_authenticated/salud'
+    | '/_authenticated/alarmas'
+    | '/_authenticated/modulos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -233,6 +255,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlaneadorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/alarmas': {
+      id: '/_authenticated/alarmas'
+      path: '/alarmas'
+      fullPath: '/alarmas'
+      preLoaderRoute: typeof AuthenticatedAlarmasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/modulos': {
+      id: '/_authenticated/modulos'
+      path: '/modulos'
+      fullPath: '/modulos'
+      preLoaderRoute: typeof AuthenticatedModulosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/salud': {
       id: '/_authenticated/salud'
       path: '/salud'
@@ -251,6 +287,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedPlaneadorRoute: typeof AuthenticatedPlaneadorRoute
   AuthenticatedSaludRoute: typeof AuthenticatedSaludRoute
+  AuthenticatedAlarmasRoute: typeof AuthenticatedAlarmasRoute
+  AuthenticatedModulosRoute: typeof AuthenticatedModulosRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -261,6 +299,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedPlaneadorRoute: AuthenticatedPlaneadorRoute,
   AuthenticatedSaludRoute: AuthenticatedSaludRoute,
+  AuthenticatedAlarmasRoute: AuthenticatedAlarmasRoute,
+  AuthenticatedModulosRoute: AuthenticatedModulosRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
