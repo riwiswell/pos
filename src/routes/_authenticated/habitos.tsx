@@ -66,7 +66,7 @@ function HabitsPage() {
   >(null);
 
   const categories = categoriesQuery.data ?? [];
-  const habits = habitsQuery.data ?? [];
+  const habits = (habitsQuery.data ?? []).filter((habit) => habit.kind === "habit");
   const logs = logsQuery.data ?? [];
 
   const logByHabit = useMemo(() => {
