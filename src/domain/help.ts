@@ -73,6 +73,7 @@ export const HELP: Record<string, HelpEntry> = {
   "life.alarms": { title: "Alarmas", description: "Recordatorios con fecha, hora y repetición. La notificación se activa con permiso del navegador." },
   "life.shopping": { title: "Lista de mercado", description: "Registra compras pendientes rápidamente. Marcar un artículo no borra su historial." },
   "health.metrics": { title: "Métricas de salud", description: "Guarda mediciones por la fecha global. Puedes registrar peso, estatura, cintura, sueño, ejercicio y agua." },
+  "health.body-measures": { title: "Medidas del cuerpo", description: "Registra perímetros corporales por fecha para observar evolución: cuello, hombros, pecho, cintura, brazos, cadera, muslos y pantorrillas." },
   "health.bmi": { title: "IMC", description: "Se calcula automáticamente como peso en kg dividido por estatura en metros al cuadrado." },
   "learning": { title: "Aprendizaje", description: "Agrupa cursos, libros, idiomas, ajedrez, videos y certificaciones sin crear dominios separados." },
   "relationships": { title: "Relaciones", description: "Registra personas importantes y señales de seguimiento para cuidar relaciones, no para sustituir una agenda de contactos." },
