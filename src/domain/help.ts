@@ -75,13 +75,17 @@ export const HELP: Record<string, HelpEntry> = {
   "health.metrics": { title: "Métricas de salud", description: "Guarda mediciones por la fecha global. Puedes registrar peso, estatura, cintura, sueño, ejercicio y agua." },
   "health.body-measures": { title: "Medidas del cuerpo", description: "Registra perímetros corporales por fecha para observar evolución: cuello, hombros, pecho, cintura, brazos, cadera, muslos y pantorrillas." },
   "health.bmi": { title: "IMC", description: "Se calcula automáticamente como peso en kg dividido por estatura en metros al cuadrado." },
+  "health.cycle": { title: "Ciclo menstrual", description: "Registra el inicio de cada periodo y Personal OS calcula la próxima fecha según el ciclo registrado. Puede ser tu ciclo o el de otra persona que tú registres." },
+  "health.nutrition": { title: "Nutrición", description: "Registra comidas y valores nutricionales. No sustituye asesoría profesional." },
   "learning": { title: "Aprendizaje", description: "Agrupa cursos, libros, idiomas, ajedrez, videos y certificaciones sin crear dominios separados." },
+  "learning.books": { title: "Libros", description: "Guarda páginas totales, página actual, restantes, porcentaje, resumen general y notas por sección." },
   "relationships": { title: "Relaciones", description: "Registra personas importantes y señales de seguimiento para cuidar relaciones, no para sustituir una agenda de contactos." },
   "work": { title: "Trabajo", description: "Centraliza tareas, proyectos, tiempo, clientes, objetivos e ideas de trabajo." },
   "spirituality": { title: "Espiritualidad", description: "Espacio opcional y neutral para oración, meditación, lecturas, gratitud o reflexiones." },
   "ai.personal": { title: "IA Personal", description: "Analiza datos que ya existen en Personal OS. No inventa registros ni depende de un chatbot para funcionar." },
   "gamification": { title: "Gamificación", description: "XP y niveles para reforzar constancia y equilibrio, sin castigar los días difíciles." },
   // Configuración
+  "life.goals": { title: "Metas", description: "Objetivos con progreso, fecha, área y notas conectados al Life Graph." },
   "settings.help": {
     title: "Ayudas contextuales",
     description: "Muestra u oculta los iconos ⓘ de explicación en todo Personal OS.",
