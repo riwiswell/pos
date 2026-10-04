@@ -1,0 +1,1 @@
+import { createFileRoute } from "@tanstack/react-router"; import { RelationshipsPage } from "@/components/common/PersonalDomainPages"; export const Route=createFileRoute("/_authenticated/relaciones")({component:RelationshipsPage});

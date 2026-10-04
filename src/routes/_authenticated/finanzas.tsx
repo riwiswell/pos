@@ -39,6 +39,7 @@ import { formatMoney } from "@/lib/money";
 import { getIcon } from "@/lib/finance-icons";
 import { cn } from "@/lib/utils";
 import { HelpTip } from "@/components/common/HelpTip";
+import { FinanceAdvancedPanel } from "@/components/finance/FinanceAdvancedPanel";
 import { categoryAppliesTo } from "@/domain/finance";
 import type { FinanceAccount, FinanceTransaction } from "@/domain/finance";
 
@@ -402,6 +403,8 @@ function FinancePage() {
         </section>
       )}
 
+
+      <FinanceAdvancedPanel />
 
       {loading ? (
         <LoadingState />

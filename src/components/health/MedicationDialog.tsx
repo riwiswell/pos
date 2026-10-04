@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/common/RichTextEditor";
 import { cn } from "@/lib/utils";
 import { todayISO } from "@/lib/date";
 import { HelpTip } from "@/components/common/HelpTip";
@@ -192,7 +192,7 @@ export function MedicationDialog({ open, onOpenChange, medication, pending, onSu
 
           <div className="space-y-1.5">
             <Label htmlFor="med-notes">Notas (opcional)</Label>
-            <Textarea id="med-notes" rows={2} value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value || null)} />
+            <RichTextEditor value={form.notes ?? ""} onChange={(value) => set("notes", value || null)} placeholder="Notas del medicamento…" />
           </div>
 
           <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2">

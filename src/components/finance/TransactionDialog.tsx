@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/common/RichTextEditor";
 import { AmountInput } from "@/components/finance/AmountInput";
 import { CategoryDialog } from "@/components/finance/CategoryDialog";
 import { AccountDialog } from "@/components/finance/AccountDialog";
@@ -400,14 +400,7 @@ export function TransactionDialog({
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Nota <span className="normal-case tracking-normal">(opcional)</span>
               </Label>
-              <Textarea
-                rows={2}
-                value={form.note ?? ""}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, note: event.target.value || null }))
-                }
-                placeholder="¿En qué fue?"
-              />
+              <RichTextEditor value={form.note ?? ""} onChange={(value) => setForm((prev) => ({ ...prev, note: value || null }))} placeholder="¿En qué fue?" />
             </div>
 
             {/* El diezmo nunca se infiere del nombre de la categoría: se marca aquí. */}

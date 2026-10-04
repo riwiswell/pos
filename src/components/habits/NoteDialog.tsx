@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/common/RichTextEditor";
 
 interface Props {
   open: boolean;
@@ -31,12 +31,7 @@ export function NoteDialog({ open, onOpenChange, habitName, initialNote, onSave 
         <DialogHeader>
           <DialogTitle>Nota — {habitName}</DialogTitle>
         </DialogHeader>
-        <Textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={4}
-          placeholder="Escribe una nota para este día"
-        />
+        <RichTextEditor value={note} onChange={setNote} placeholder="Escribe una nota para este día" />
         <DialogFooter className="gap-2 sm:justify-between">
           <Button
             type="button"

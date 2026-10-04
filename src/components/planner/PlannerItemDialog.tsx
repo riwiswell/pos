@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/common/RichTextEditor";
 import { cn } from "@/lib/utils";
 import { PRIORITY_LABEL, shortTime } from "@/domain/planner";
 import type {
@@ -241,12 +241,7 @@ function ItemForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="planner-description">Descripción (opcional)</Label>
-        <Textarea
-          id="planner-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          rows={3}
-        />
+        <RichTextEditor value={description} onChange={setDescription} placeholder="Descripción…" />
       </div>
 
       <DialogFooter>

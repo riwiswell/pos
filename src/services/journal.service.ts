@@ -43,7 +43,7 @@ export const journalService = {
     const user_id = await currentUserId();
     const { data, error } = await supabase
       .from("journal_entries")
-      .insert({ ...clean(input), user_id })
+      .insert({ ...clean(input), user_id } as any)
       .select()
       .single();
     if (error) throw error;
@@ -51,7 +51,7 @@ export const journalService = {
   },
 
   async updateEntry(id: string, input: JournalEntryInput) {
-    const { error } = await supabase.from("journal_entries").update(clean(input)).eq("id", id);
+    const { error } = await supabase.from("journal_entries").update(clean(input) as any).eq("id", id);
     if (error) throw error;
   },
 

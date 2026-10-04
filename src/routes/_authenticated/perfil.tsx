@@ -1,293 +1,302 @@
 import { useEffect, useRef, useState } from "react";
-import { HelpTip } from "@/components/common/HelpTip";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, Upload } from "lucide-react";
-
+import { ChevronDown, ChevronUp, Download, GripVertical, Loader2, RefreshCw, RotateCcw, Save, Upload } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LoadingState } from "@/components/common/States";
+import { Switch } from "@/components/ui/switch";
+import { HelpTip } from "@/components/common/HelpTip";
+import { NAV_ITEMS } from "@/components/shell/nav-items";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useProfileMediaUrl, useProfileMutations } from "@/hooks/use-profile";
-import { useTheme } from "@/hooks/use-theme";
-import { cn } from "@/lib/utils";
-import { Switch } from "@/components/ui/switch";
 import { useHelpEnabled, useSetHelpEnabled } from "@/hooks/use-help";
+import { requestNotificationPermission } from "@/hooks/use-medication-reminders";
+import { lifeGraphService } from "@/services/life-graph.service";
+import { useTheme } from "@/hooks/use-theme";
 
-export const Route = createFileRoute("/_authenticated/perfil")({
-  head: () => ({
-    meta: [
-      { title: "Perfil — Personal OS" },
-      {
-        name: "description",
-        content: "Personaliza tu nombre, tu foto y el fondo de Personal OS.",
-      },
-      { property: "og:title", content: "Perfil — Personal OS" },
-      {
-        property: "og:description",
-        content: "Personaliza tu nombre, tu foto y el fondo de Personal OS.",
-      },
-    ],
-  }),
-  component: ProfilePage,
-});
+export const Route = createFileRoute("/_authenticated/perfil")({ component: ProfilePage });
 
-/** Discrete but clearly distinguishable backgrounds — no two near-identical tones. */
-const BACKGROUND_COLORS = [
-  "#0a0a0c", // grafito
-  "#242730", // gris oscuro
-  "#0f1f3d", // azul noche
-  "#3a4759", // azul grisáceo
-  "#2f4034", // verde oscuro
-  "#5c6f5f", // verde gris
-  "#3b2338", // morado oscuro
-  "#4a2230", // burdeos
-  "#8c6f4e", // arena tostada
-  "#c9b48f", // beige cálido
-  "#e8dcc4", // crema
-  "#d6d3cb", // gris cálido
+const DEFAULT_ORDER = NAV_ITEMS.map((x) => x.key);
+const FEATURE_LABELS = [
+  ["spirituality.fasting", "Espiritualidad → Ayuno"],
+  ["health.cycle", "Salud → Registro menstrual"],
+  ["health.nutrition", "Salud → Nutrición"],
+  ["health.appointments", "Salud → Citas médicas"],
+  ["learning.books", "Aprendizaje → Libros"],
 ] as const;
+const WIDGETS = [
+  ["daily", "Resumen del día"],
+  ["goals", "Metas"],
+  ["ai", "Señales de IA"],
+  ["finance", "Finanzas"],
+  ["health", "Salud"],
+  ["learning", "Aprendizaje"],
+] as const;
+const BACKUP_TABLES = [
+  "profiles","habits","habit_logs","habit_categories","planner_items","planner_categories",
+  "finance_accounts","finance_categories","finance_transactions","finance_settings","journal_entries","alarms",
+  "health_metrics","medications","medication_doses","shopping_lists","shopping_items","life_goals","routines",
+  "routine_logs","checklists","checklist_items","bucket_list","menstrual_profiles","menstrual_records",
+  "medical_appointments","nutrition_logs","learning_items","learning_notes","learning_sessions","language_profiles",
+  "relationships","relationship_interactions","work_items","work_sessions","spiritual_entries",
+  "gamification_achievements","gamification_challenges","life_events","notification_jobs","ai_runs",
+  "finance_budgets","finance_debts","finance_savings_goals","finance_investments","finance_external_sources",
+  "finance_external_snapshots","life_links",
+];
 
 function ProfilePage() {
   const { user } = useAuth();
   const profileQuery = useProfile();
   const { save, uploadMedia } = useProfileMutations();
+  const help = useHelpEnabled();
+  const setHelp = useSetHelpEnabled();
   const { theme, setTheme } = useTheme();
 
-  const [displayName, setDisplayName] = useState("");
+  const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [background, setBackground] = useState<string | null>(null);
-  const avatarRef = useRef<HTMLInputElement>(null);
-  const bgRef = useRef<HTMLInputElement>(null);
+  const [order, setOrder] = useState<string[]>(DEFAULT_ORDER);
+  const [hidden, setHidden] = useState<string[]>([]);
+  const [features, setFeatures] = useState<Record<string, boolean>>({});
+  const [widgets, setWidgets] = useState<string[]>(["daily", "goals", "ai", "finance"]);
+  const [privacy, setPrivacy] = useState<boolean>(true);
+  const [relationshipNotifications, setRelationshipNotifications] = useState<boolean>(true);
+  const [importing, setImporting] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const avatarInput = useRef<HTMLInputElement | null>(null);
+  const backgroundInput = useRef<HTMLInputElement | null>(null);
+  const importInput = useRef<HTMLInputElement | null>(null);
+  const p = profileQuery.data;
 
   useEffect(() => {
-    const profile = profileQuery.data;
-    if (!profile) return;
-    setDisplayName(profile.display_name ?? profile.full_name ?? "");
-    setAvatar(profile.avatar_url);
-    setBackground(profile.background_url);
-  }, [profileQuery.data]);
+    if (!p) return;
+    setName(p.display_name || p.full_name || "");
+    setAvatar(p.avatar_url);
+    setBackground(p.background_url);
+    setOrder(Array.isArray(p.module_order) && p.module_order.length ? p.module_order : DEFAULT_ORDER);
+    setHidden(Array.isArray(p.hidden_modules) ? p.hidden_modules : []);
+    setFeatures(p.hidden_features || {});
+    setWidgets(Array.isArray(p.dashboard_widgets) && p.dashboard_widgets.length ? p.dashboard_widgets : ["daily","goals","ai","finance"]);
+    setPrivacy(p.notification_preferences?.privacy?.allow_external_ai !== false);
+    setRelationshipNotifications(p.notification_preferences?.relationships !== false);
+  }, [p]);
 
   const avatarUrl = useProfileMediaUrl(avatar).data;
-  const backgroundUrl = useProfileMediaUrl(
-    background && !background.startsWith("#") ? background : null,
-  ).data;
+  const backgroundUrl = useProfileMediaUrl(background && !background.startsWith("#") ? background : null).data;
 
-  const initials = (displayName || user?.email || "?").slice(0, 2).toUpperCase();
-
-  /** Uploads and persists right away: the image must survive a reload without "Guardar". */
   const pick = async (file: File | undefined, kind: "avatar" | "background") => {
     if (!file) return;
-    const path = await uploadMedia.mutateAsync({ file, kind });
-    if (kind === "avatar") setAvatar(path);
-    else setBackground(path);
-    await save.mutateAsync(kind === "avatar" ? { avatar_url: path } : { background_url: path });
+    setBusy(true);
+    try {
+      const path = await uploadMedia.mutateAsync({ file, kind });
+      if (kind === "avatar") setAvatar(path);
+      else setBackground(path);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  if (profileQuery.isLoading) return <LoadingState />;
+  const move = (index: number, delta: number) => {
+    setOrder((current) => {
+      const next = [...current];
+      const target = index + delta;
+      if (target < 0 || target >= next.length) return current;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const saveAll = async () => {
+    await save.mutateAsync({
+      display_name: name.trim() || null,
+      full_name: name.trim() || null,
+      avatar_url: avatar,
+      background_url: background,
+      module_order: order,
+      hidden_modules: hidden,
+      hidden_features: features,
+      dashboard_widgets: widgets,
+      notification_preferences: {
+        ...(p?.notification_preferences || {}),
+        privacy: { allow_external_ai: privacy },
+        relationships: relationshipNotifications,
+      },
+    });
+  };
+
+  const exportBackup = async () => {
+    const entries = await Promise.all(
+      BACKUP_TABLES.map(async (table) => [table, await lifeGraphService.list(table as any)]),
+    );
+    const payload = {
+      format: "personal-os-backup-v1",
+      exported_at: new Date().toISOString(),
+      user_id: user?.id,
+      data: Object.fromEntries(entries),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "personal-os-backup.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importBackup = async (file: File | undefined) => {
+    if (!file) return;
+    setImporting(true);
+    try {
+      const payload = JSON.parse(await file.text());
+      if (payload.user_id && payload.user_id !== user?.id) {
+        throw new Error("Este respaldo pertenece a otro usuario.");
+      }
+      await lifeGraphService.importBackup(payload.data || {}, BACKUP_TABLES);
+      await profileQuery.refetch();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "No se pudo importar el respaldo");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  if (profileQuery.isLoading) return <Loader2 className="h-5 w-5 animate-spin" />;
 
   return (
-    <div className="space-y-5 pb-16">
-      <div>
-        <div className="flex items-center gap-2"><h1 className="text-xl font-semibold">Perfil</h1><HelpTip helpKey="profile"/></div>
+    <div className="space-y-5 pb-24">
+      <header>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold">Perfil y configuración</h1>
+          <HelpTip helpKey="profile" />
+        </div>
         <p className="text-sm text-muted-foreground">
-          Tu nombre, tu foto y el fondo de Personal OS.
+          Identidad, apariencia, orden del sistema, funciones, notificaciones, privacidad y respaldo.
         </p>
-      </div>
+      </header>
 
       <section className="glass space-y-4 rounded-2xl p-4">
+        <h2 className="font-semibold">Identidad y apariencia</h2>
         <div className="flex items-center gap-4">
-          <Avatar className="h-16 w-16 border border-border">
-            {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName || "Foto de perfil"} />}
-            <AvatarFallback className="text-sm">{initials}</AvatarFallback>
+          <Avatar className="h-16 w-16">
+            <AvatarImage src={avatarUrl || undefined} />
+            <AvatarFallback>{(name || "PS").slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1"
-              disabled={uploadMedia.isPending}
-              onClick={() => avatarRef.current?.click()}
-            >
-              {uploadMedia.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              Cambiar foto
-            </Button>
-            {avatar && (
-              <Button variant="ghost" size="sm" onClick={() => setAvatar(null)}>
-                Quitar
-              </Button>
-            )}
-            <input
-              ref={avatarRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(event) => void pick(event.target.files?.[0], "avatar")}
-            />
-          </div>
+          <Button variant="outline" size="sm" disabled={busy} onClick={() => avatarInput.current?.click()}>
+            <Upload className="mr-1 h-4 w-4" /> Foto
+          </Button>
+          <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0], "avatar")} />
         </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="display-name">Nombre para el saludo</Label>
-          <Input
-            id="display-name"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            placeholder="Ricardo"
-            className="h-11"
-          />
-          <p className="text-xs text-muted-foreground">
-            Así te saludará Personal OS en Inicio.
-          </p>
+        <div className="space-y-1.5">
+          <Label>Nombre</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant={theme === "dark" ? "default" : "outline"} onClick={() => setTheme("dark")}>Oscuro</Button>
+          <Button size="sm" variant={theme === "light" ? "default" : "outline"} onClick={() => setTheme("light")}>Claro</Button>
+          <Button variant="outline" size="sm" disabled={busy} onClick={() => backgroundInput.current?.click()}>
+            <Upload className="mr-1 h-4 w-4" /> Fondo
+          </Button>
+          <input ref={backgroundInput} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0], "background")} />
+          {backgroundUrl && <span className="self-center text-xs text-muted-foreground">Fondo cargado</span>}
+        </div>
+        <div className="flex items-center justify-between rounded-xl border p-3">
+          <span className="text-sm font-medium">Ayudas contextuales</span>
+          <Switch checked={help} onCheckedChange={(value) => setHelp.mutate(value)} />
         </div>
       </section>
 
       <section className="glass space-y-3 rounded-2xl p-4">
-        <div>
-          <h2 className="text-sm font-semibold">Apariencia</h2>
-          <p className="text-xs text-muted-foreground">
-            Elige cómo se ve Personal OS. Se guarda al instante.
-          </p>
+        <h2 className="font-semibold">Sidebar: orden y visibilidad</h2>
+        <p className="text-xs text-muted-foreground">La personalización se guarda por usuario.</p>
+        {order.map((key, index) => {
+          const item = NAV_ITEMS.find((x) => x.key === key);
+          if (!item) return null;
+          const visible = !hidden.includes(key);
+          return (
+            <div key={key} className={cn("flex items-center gap-2 rounded-xl border p-2", !visible && "opacity-50")}>
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1 text-sm">{item.label}</span>
+              <Switch checked={visible} onCheckedChange={(value) => setHidden((current) => value ? current.filter((x) => x !== key) : [...current, key])} />
+              <Button size="icon" variant="ghost" disabled={index === 0} onClick={() => move(index, -1)}><ChevronUp className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" disabled={index === order.length - 1} onClick={() => move(index, 1)}><ChevronDown className="h-4 w-4" /></Button>
+            </div>
+          );
+        })}
+        <Button variant="outline" onClick={() => { setOrder(DEFAULT_ORDER); setHidden([]); }}>
+          <RotateCcw className="mr-1 h-4 w-4" /> Restablecer
+        </Button>
+      </section>
+
+      <section className="glass space-y-3 rounded-2xl p-4">
+        <h2 className="font-semibold">Funciones opcionales</h2>
+        {FEATURE_LABELS.map(([key, label]) => (
+          <div key={key} className="flex items-center justify-between rounded-xl border p-3">
+            <span className="text-sm">{label}</span>
+            <Switch checked={features[key] !== true} onCheckedChange={(value) => setFeatures((current) => ({ ...current, [key]: !value }))} />
+          </div>
+        ))}
+      </section>
+
+      <section className="glass space-y-3 rounded-2xl p-4">
+        <h2 className="font-semibold">Inicio y widgets</h2>
+        {WIDGETS.map(([key, label]) => (
+          <div key={key} className="flex items-center justify-between rounded-xl border p-3">
+            <span className="text-sm">{label}</span>
+            <Switch checked={widgets.includes(key)} onCheckedChange={(value) => setWidgets((current) => value ? (current.includes(key) ? current : [...current, key]) : current.filter((x) => x !== key))} />
+          </div>
+        ))}
+      </section>
+
+      <section className="glass space-y-3 rounded-2xl p-4">
+        <h2 className="font-semibold">Notificaciones y privacidad</h2>
+        <div className="flex items-center justify-between rounded-xl border p-3">
+          <span className="text-sm">Cumpleaños, aniversarios y citas médicas</span>
+          <Switch checked={relationshipNotifications} onCheckedChange={setRelationshipNotifications} />
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          {(
-            [
-              { value: "dark", label: "Oscuro", hint: "Noche, bajo brillo", bg: "#161a22", fg: "#f2f4f8" },
-              { value: "light", label: "Claro", hint: "Papel cálido, día", bg: "#f7f4ee", fg: "#2b2f3a" },
-            ] as const
-          ).map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setTheme(option.value)}
-              aria-pressed={theme === option.value}
-              className={cn(
-                "flex items-center gap-3 rounded-xl border p-3 text-left transition-colors",
-                theme === option.value
-                  ? "border-primary bg-primary/10"
-                  : "border-border hover:bg-accent",
-              )}
-            >
-              <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-xs font-bold"
-                style={{ backgroundColor: option.bg, color: option.fg }}
-              >
-                Aa
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-medium">{option.label}</span>
-                <span className="block truncate text-xs text-muted-foreground">{option.hint}</span>
-              </span>
-            </button>
-          ))}
+        <div className="flex items-center justify-between rounded-xl border p-3">
+          <span className="text-sm">Permitir análisis externo de datos</span>
+          <Switch checked={privacy} onCheckedChange={setPrivacy} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Los avisos locales requieren permiso del navegador. Los avisos cuando Personal OS está cerrado requieren las credenciales VAPID del servidor.
+        </p>
+        <Button variant="outline" onClick={() => void requestNotificationPermission()}>
+          <RefreshCw className="mr-1 h-4 w-4" /> Activar notificaciones en segundo plano
+        </Button>
+      </section>
+
+      <section className="glass space-y-3 rounded-2xl p-4">
+        <h2 className="font-semibold">WíswellArt → Finanzas</h2>
+        <p className="text-sm text-muted-foreground">
+          La integración recibe exactamente dos métricas por período: ingresos y egresos. Se guardan como snapshot externo y no contaminan el libro mayor personal.
+        </p>
+        <div className="rounded-xl border p-3 font-mono text-xs break-all">
+          POST /api/integrations/wiswellart<br />
+          x-pos-integration-secret<br />
+          {"{period_start, period_end, income, expense}"}
         </div>
       </section>
 
-      <HelpSettingsSection />
-
-
-      <section className="glass space-y-4 rounded-2xl p-4">
-        <div>
-          <h2 className="text-sm font-semibold">Fondo</h2>
-          <p className="text-xs text-muted-foreground">
-            Usa el fondo actual, elige un color o sube una imagen.
-          </p>
-        </div>
-
-
+      <section className="glass space-y-3 rounded-2xl p-4">
+        <h2 className="font-semibold">Exportar / importar / backup</h2>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setBackground(null)}
-            className={cn(
-              "rounded-xl border px-3 py-2 text-xs font-medium",
-              background === null
-                ? "border-primary bg-primary/10"
-                : "border-border text-muted-foreground",
-            )}
-          >
-            Fondo actual
-          </button>
-          {BACKGROUND_COLORS.map((color) => (
-            <button
-              key={color}
-              type="button"
-              aria-label={`Fondo ${color}`}
-              onClick={() => setBackground(color)}
-              className={cn(
-                "h-10 w-10 rounded-xl border-2",
-                background === color ? "border-primary" : "border-border",
-              )}
-              style={{ backgroundColor: color }}
-            />
-          ))}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-10 gap-1"
-            disabled={uploadMedia.isPending}
-            onClick={() => bgRef.current?.click()}
-          >
-            <Upload className="h-4 w-4" /> Imagen
+          <Button onClick={() => void exportBackup()}><Download className="mr-1 h-4 w-4" /> Exportar JSON</Button>
+          <Button variant="outline" disabled={importing} onClick={() => importInput.current?.click()}>
+            {importing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Upload className="mr-1 h-4 w-4" />} Importar JSON
           </Button>
-          <input
-            ref={bgRef}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(event) => void pick(event.target.files?.[0], "background")}
-          />
+          <input ref={importInput} type="file" accept="application/json" hidden onChange={(e) => void importBackup(e.target.files?.[0])} />
         </div>
-
-        {backgroundUrl && (
-          <img
-            src={backgroundUrl}
-            alt="Vista previa del fondo elegido"
-            className="h-28 w-full rounded-xl object-cover"
-          />
-        )}
+        <p className="text-xs text-muted-foreground">La importación valida el usuario del respaldo y actualiza por ID sin borrar datos.</p>
       </section>
 
-      <div className="flex gap-2">
-        <Button
-          className="flex-1"
-          disabled={save.isPending}
-          onClick={() =>
-            save.mutate({
-              display_name: displayName.trim() || null,
-              full_name: displayName.trim() || profileQuery.data?.full_name || null,
-              avatar_url: avatar,
-              background_url: background,
-            })
-          }
-        >
-          {save.isPending ? "Guardando..." : "Guardar cambios"}
+      <div className="flex justify-end">
+        <Button onClick={() => void saveAll()} disabled={save.isPending}>
+          <Save className="mr-1 h-4 w-4" /> {save.isPending ? "Guardando…" : "Guardar configuración"}
         </Button>
       </div>
     </div>
-  );
-}
-
-function HelpSettingsSection() {
-  const enabled = useHelpEnabled();
-  const setEnabled = useSetHelpEnabled();
-  return (
-    <section className="glass space-y-3 rounded-2xl p-4" aria-label="Configuración">
-      <div>
-        <h2 className="text-sm font-semibold">Configuración</h2>
-        <p className="text-xs text-muted-foreground">Ajustes que aplican a todo Personal OS.</p>
-      </div>
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2">
-        <Label htmlFor="help-enabled" className="flex items-center gap-1.5">
-          Ayudas contextuales <span className="text-xs font-normal text-muted-foreground">({enabled ? "Activadas" : "Desactivadas"})</span>
-        </Label>
-        <Switch id="help-enabled" checked={enabled} disabled={setEnabled.isPending} onCheckedChange={(v) => setEnabled.mutate(v)} />
-      </div>
-    </section>
   );
 }
