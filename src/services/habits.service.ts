@@ -65,13 +65,14 @@ export const habitsService = {
     );
   },
 
-  async listHabits(): Promise<Habit[]> {
-    const { data, error } = await supabase
+  async listHabits(includeInactive = false): Promise<Habit[]> {
+    let query = supabase
       .from("habits")
       .select("*")
-      .eq("active", true)
       .order("position", { ascending: true })
       .order("created_at", { ascending: true });
+    if (!includeInactive) query = query.eq("active", true);
+    const { data, error } = await query;
     if (error) throw error;
     return (data ?? []) as Habit[];
   },
