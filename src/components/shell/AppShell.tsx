@@ -201,7 +201,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main
         className={cn(
-          "mx-auto w-full max-w-3xl px-4 pb-28 pt-4 md:pb-10 md:pt-8",
+          "mx-auto w-full max-w-7xl px-4 pb-28 pt-4 md:pb-10 md:pt-8",
           collapsed ? "md:pl-[88px]" : "md:pl-[272px]",
         )}
       >
