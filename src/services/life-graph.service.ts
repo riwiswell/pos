@@ -39,7 +39,7 @@ export const lifeGraphService={
   if(!out.length)out.push("Todavía no hay suficiente información cruzada para una señal prioritaria."); return {insights:out,snapshot:s};
  },
  async saveAiRun(kind:string,prompt:string,response:string,snapshot:unknown){return this.create("ai_runs",{kind,prompt,response,snapshot})},
- async importBackup(data:Record<string,unknown>,tables:string[]){const own=await uid();for(const table of tables){if(!Array.isArray(data[table])||!(data[table] as unknown[]).length)continue;const rows=(data[table] as Record<string,unknown>[]).map(r=>({...r,user_id:own}));const{error}=await db.from(table).upsert(rows,{onConflict:"id"});if(error)throw new Error("Importación falló en "+table+": "+error.message)}},
+ async importBackup(data:Record<string,unknown>,tables:string[]){const own=await uid();for(const table of tables){if(!Array.isArray(data[table])||!(data[table] as unknown[]).length)continue;const rows=(data[table] as Record<string,unknown>[]).map(r=>table==="profiles"?r:{...r,user_id:own});const{error}=await db.from(table).upsert(rows,{onConflict:"id"});if(error)throw new Error("Importación falló en "+table+": "+error.message)}},
  async calculateNextPeriod(profileId:string,startDate:string,cycleDays:number){return {profile_id:profileId,start_date:startDate,cycle_length_days:cycleDays,next_period_on:addCalendarDays(startDate,cycleDays)}}
 };
 function addCalendarDays(iso:string,days:number){const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)}
