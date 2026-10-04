@@ -55,20 +55,20 @@ function ProfilePage() {
   const { theme, setTheme } = useTheme();
 
   const [name, setName] = useState("");
-  const [avatar, setAvatar] = useState(null);
-  const [background, setBackground] = useState(null);
-  const [order, setOrder] = useState(DEFAULT_ORDER);
-  const [hidden, setHidden] = useState([]);
-  const [features, setFeatures] = useState({});
-  const [widgets, setWidgets] = useState(["daily", "goals", "ai", "finance"]);
-  const [privacy, setPrivacy] = useState(true);
-  const [relationshipNotifications, setRelationshipNotifications] = useState(true);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [background, setBackground] = useState<string | null>(null);
+  const [order, setOrder] = useState<string[]>(DEFAULT_ORDER);
+  const [hidden, setHidden] = useState<string[]>([]);
+  const [features, setFeatures] = useState<Record<string, boolean>>({});
+  const [widgets, setWidgets] = useState<string[]>(["daily", "goals", "ai", "finance"]);
+  const [privacy, setPrivacy] = useState<boolean>(true);
+  const [relationshipNotifications, setRelationshipNotifications] = useState<boolean>(true);
   const [importing, setImporting] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const avatarInput = useRef(null);
-  const backgroundInput = useRef(null);
-  const importInput = useRef(null);
+  const avatarInput = useRef<HTMLInputElement | null>(null);
+  const backgroundInput = useRef<HTMLInputElement | null>(null);
+  const importInput = useRef<HTMLInputElement | null>(null);
   const p = profileQuery.data;
 
   useEffect(() => {
@@ -87,7 +87,7 @@ function ProfilePage() {
   const avatarUrl = useProfileMediaUrl(avatar).data;
   const backgroundUrl = useProfileMediaUrl(background && !background.startsWith("#") ? background : null).data;
 
-  const pick = async (file, kind) => {
+  const pick = async (file: File | undefined, kind: "avatar" | "background") => {
     if (!file) return;
     setBusy(true);
     try {
@@ -99,7 +99,7 @@ function ProfilePage() {
     }
   };
 
-  const move = (index, delta) => {
+  const move = (index: number, delta: number) => {
     setOrder((current) => {
       const next = [...current];
       const target = index + delta;
@@ -129,7 +129,7 @@ function ProfilePage() {
 
   const exportBackup = async () => {
     const entries = await Promise.all(
-      BACKUP_TABLES.map(async (table) => [table, await lifeGraphService.list(table)]),
+      BACKUP_TABLES.map(async (table) => [table, await lifeGraphService.list(table as any)]),
     );
     const payload = {
       format: "personal-os-backup-v1",
@@ -146,7 +146,7 @@ function ProfilePage() {
     URL.revokeObjectURL(url);
   };
 
-  const importBackup = async (file) => {
+  const importBackup = async (file: File | undefined) => {
     if (!file) return;
     setImporting(true);
     try {
