@@ -86,6 +86,7 @@ create table if not exists public.learning_notes(
  page_from integer, page_to integer, created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 alter table public.learning_sessions add column if not exists activity_type text not null default 'study';
+alter table public.spiritual_entries add column if not exists prophecy text;
 alter table public.learning_sessions add column if not exists skill text;
 alter table public.learning_sessions add column if not exists words_learned integer not null default 0;
 alter table public.learning_sessions add column if not exists resource_url text;
@@ -171,7 +172,7 @@ begin
    execute format('grant select,insert,update,delete on table public.%I to authenticated',t);
    execute format('drop policy if exists %I_all_own on public.%I',t,t);
    execute format('create policy %I_all_own on public.%I for all to authenticated using ((select auth.uid())=user_id) with check ((select auth.uid())=user_id)',t,t);
-   if t <> 'life_events' and t <> 'notification_jobs' then
+   if t <> 'life_events' and t <> 'notification_jobs' and t <> 'work_sessions' and t <> 'gamification_achievements' then
      execute format('drop trigger if exists %I_updated_at on public.%I',t,t);
      execute format('create trigger %I_updated_at before update on public.%I for each row execute function public.set_updated_at()',t,t);
    end if;
