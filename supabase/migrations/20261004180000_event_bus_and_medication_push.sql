@@ -1,6 +1,8 @@
 -- Persistent notification rules and life-event emission.
 -- Append-only migration.
 
+alter table public.learning_sessions add column if not exists updated_at timestamptz not null default now();
+
 create or replace function public.emit_life_event()
 returns trigger language plpgsql as $$
 declare payload jsonb; key text;
