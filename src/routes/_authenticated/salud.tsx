@@ -11,7 +11,7 @@ import { MedicationDialog } from "@/components/health/MedicationDialog";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useDoseHistory, useDoses, useMedicationMutations, useMedications, useTakenCounts } from "@/hooks/use-medications";
 import { getPermission, requestNotificationPermission, type NotifPermission } from "@/hooks/use-medication-reminders";
-import { addDaysISO, formatDayLabel, todayISO } from "@/lib/date";
+import { addDaysISO, formatDayLabel } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import {
   DOSE_STATUS_LABEL,
