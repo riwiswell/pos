@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
-import { HelpTip } from "@/components/common/HelpTip";
+import { useMemo,useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Search } from "lucide-react";
-
+import { BookOpenText,Brain,ChevronRight,Clock3,Filter,FolderKanban,Lightbulb,Plus,Search,Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import { HelpTip } from "@/components/common/HelpTip";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -11,165 +11,40 @@ import { Switch } from "@/components/ui/switch";
 import { JournalEntryDialog } from "@/components/journal/JournalEntryDialog";
 import { ShoppingLists } from "@/components/journal/ShoppingLists";
 import { useGlobalDate } from "@/hooks/use-global-date";
-import { useJournalEntries, useJournalMutations } from "@/hooks/use-journal";
-import { formatDayLabel, offsetFromToday } from "@/lib/date";
-import {
-  JOURNAL_META,
-  JOURNAL_TYPES,
-  compareEntries,
-  entryMatches,
-  entrySnippet,
-  type JournalEntry,
-  type JournalType,
-} from "@/domain/journal";
+import { useJournalEntries,useJournalMutations } from "@/hooks/use-journal";
+import { lifeGraphService } from "@/services/life-graph.service";
+import { formatDayLabel,offsetFromToday } from "@/lib/date";
+import { JOURNAL_META,JOURNAL_TYPES,compareEntries,entryMatches,entrySnippet,type JournalEntry,type JournalType } from "@/domain/journal";
 
-export const Route = createFileRoute("/_authenticated/diario")({
-  head: () => ({
-    meta: [
-      { title: "Diario — Personal OS" },
-      { name: "description", content: "Tu diario personal: sueños, pensamientos, gratitud, ideas, recuerdos y listas de compras." },
-      { property: "og:title", content: "Diario — Personal OS" },
-      { property: "og:description", content: "Captura tu día: sueños, pensamientos, gratitud, ideas y recuerdos." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: DiarioPage,
-});
-
-type Filter = "all" | JournalType | "shopping";
-
-function dateLabel(e: JournalEntry) {
-  const off = offsetFromToday(e.entry_date);
-  const day = off === 0 ? "Hoy" : off === -1 ? "Ayer" : formatDayLabel(e.entry_date);
-  return e.entry_time ? `${day} · ${e.entry_time.slice(0, 5)}` : day;
+export const Route=createFileRoute("/_authenticated/diario")({head:()=>({meta:[{title:"Diario — Personal OS"},{name:"description",content:"Diario personal con captura libre, ideas, sueños, reflexiones, recuerdos y proyectos conectados al Life Graph."}]}),component:DiarioPage});
+type Filter="all"|JournalType|"shopping";
+const TYPE_INTENT:Record<JournalType,string>={
+ diary:"Cuenta lo que está pasando.",
+ dream:"Guarda el sueño y sus detalles.",
+ thought:"Captura algo que apareció en tu mente.",
+ reflection:"Desarrolla una reflexión.",
+ gratitude:"Registra aquello por lo que agradeces.",
+ idea:"Desarrolla una idea, proyecto o posible producto.",
+ memory:"Conserva un recuerdo con su fecha y fotos."
+};
+function dateLabel(e:JournalEntry){const off=offsetFromToday(e.entry_date);const day=off===0?"Hoy":off===-1?"Ayer":formatDayLabel(e.entry_date);return e.entry_time?day+" · "+e.entry_time.slice(0,5):day}
+function DiarioPage(){
+ const{date}=useGlobalDate();const entriesQ=useJournalEntries();const{remove}=useJournalMutations();const[filter,setFilter]=useState<Filter>("all"),[query,setQuery]=useState(""),[onlyDate,setOnlyDate]=useState(false),[dialogOpen,setDialogOpen]=useState(false),[editing,setEditing]=useState<JournalEntry|null>(null),[initialType,setInitialType]=useState<JournalType|null>(null),[toDelete,setToDelete]=useState<JournalEntry|null>(null),[promoting,setPromoting]=useState<string|null>(null);
+ const entries=useMemo(()=>{const all=(entriesQ.data??[]).filter(e=>filter==="all"||e.type===filter).filter(e=>!onlyDate||e.entry_date===date).filter(e=>entryMatches(e,query)).sort(compareEntries);return all},[entriesQ.data,filter,onlyDate,date,query]);
+ const openNew=(type:JournalType|null=null)=>{setEditing(null);setInitialType(type);setDialogOpen(true)};
+ const promote=async(entry:JournalEntry)=>{if(entry.type!=="idea"||entry.linked_work_item_id)return;setPromoting(entry.id);try{const project=await lifeGraphService.promoteJournalIdeaToProject(entry.id);toast.success("Idea convertida en proyecto de Trabajo");setEditing(null);setDialogOpen(false);window.location.assign("/trabajo?project="+project.id)}catch(error){toast.error(error instanceof Error?error.message:"No se pudo crear el proyecto")}finally{setPromoting(null)}};
+ const chips=[{key:"all" as Filter,label:"Todo" },...JOURNAL_TYPES.map(t=>({key:t as Filter,label:JOURNAL_META[t].emoji+" "+JOURNAL_META[t].plural})),{key:"shopping" as Filter,label:"🛒 Compras"}];
+ return <div className="space-y-5 pb-24">
+  <GlobalDateHeader/>
+  <header className="space-y-2"><div className="flex items-center gap-2"><h1 className="text-2xl font-semibold">Diario</h1><HelpTip helpKey="journal"/></div><p className="max-w-2xl text-sm text-muted-foreground">Tu espacio de captura. Aquí puedes escribir algo de diez segundos o desarrollar una idea durante una hora sin pelearte con un formulario.</p></header>
+  {filter!=="shopping"&&<section className="glass overflow-hidden rounded-3xl border border-border"><div className="grid gap-0 lg:grid-cols-[1.25fr_1fr]"><div className="space-y-4 border-b border-border p-5 lg:border-b-0 lg:border-r"><div className="flex items-center gap-2"><Sparkles className="h-5 w-5"/><h2 className="text-lg font-semibold">¿Qué quieres sacar de tu cabeza?</h2></div><button type="button" onClick={()=>openNew(null)} className="w-full rounded-2xl border border-border bg-background p-4 text-left hover:border-primary hover:bg-primary/5"><p className="text-base font-medium">Nueva captura</p><p className="mt-1 text-sm text-muted-foreground">Elige pensamiento, idea, sueño, reflexión, gratitud o recuerdo.</p><div className="mt-3 flex items-center justify-between text-xs text-muted-foreground"><span>Editor enriquecido y espacio amplio</span><ChevronRight className="h-4 w-4"/></div></button><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{([["thought","💭","Pensamiento"],["idea","💡","Idea"],["dream","🌙","Sueño"],["reflection","🪞","Reflexión"],["gratitude","🙏","Gratitud"],["memory","📸","Recuerdo"],["diary","📔","Diario"]] as const).map(([type,emoji,label])=><button key={type} type="button" onClick={()=>openNew(type)} className="rounded-2xl border border-border p-3 text-left hover:border-primary hover:bg-primary/5"><span className="text-lg">{emoji}</span><p className="mt-1 text-xs font-medium">{label}</p><p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">{TYPE_INTENT[type]}</p></button>)}</div></div><div className="space-y-4 p-5"><div className="flex items-center gap-2"><Lightbulb className="h-5 w-5"/><h2 className="text-lg font-semibold">Ideas que pueden crecer</h2></div><p className="text-sm text-muted-foreground">Una idea no tiene que caber en un campo pequeño. Escríbela completa, y cuando tenga forma puedes convertirla en un proyecto de Trabajo manteniendo el vínculo.</p><div className="rounded-2xl border border-primary/20 bg-primary/5 p-4"><div className="flex items-start gap-3"><FolderKanban className="mt-0.5 h-5 w-5"/><div><p className="text-sm font-medium">Idea → Proyecto → tareas → checklist → tiempo</p><p className="mt-1 text-xs text-muted-foreground">El Life Graph conserva el origen y conecta todo sin copiar el contenido.</p></div></div></div><Button variant="outline" onClick={()=>openNew("idea")}><Lightbulb className="mr-2 h-4 w-4"/>Desarrollar una idea</Button></div></div></section>}
+  {filter==="shopping"?<ShoppingLists/>:<><div className="space-y-2"><div className="flex flex-col gap-2 sm:flex-row sm:items-center"><div className="relative flex-1"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"/><Input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar en todo tu Diario…" className="pl-8"/></div><div className="flex items-center gap-2 text-sm"><Switch checked={onlyDate} onCheckedChange={setOnlyDate}/><span>Solo {date}</span></div></div><div className="flex gap-1.5 overflow-x-auto pb-1"><Filter className="mt-2 h-4 w-4 shrink-0 text-muted-foreground"/>{chips.map(c=><button key={c.key} type="button" onClick={()=>setFilter(c.key)} className={"shrink-0 rounded-full border px-3 py-1.5 text-xs "+(filter===c.key?"border-primary bg-primary text-primary-foreground":"border-border hover:bg-accent")}>{c.label}</button>)}</div></div>
+  {entriesQ.isLoading?<p className="text-sm text-muted-foreground">Cargando Diario…</p>:entries.length===0?<div className="glass rounded-3xl border border-dashed p-10 text-center"><BookOpenText className="mx-auto h-10 w-10 text-muted-foreground"/><p className="mt-3 font-medium">{query||onlyDate||filter!=="all"?"No hay entradas con estos filtros.":"Aquí todavía no has escrito nada."}</p><p className="mt-1 text-sm text-muted-foreground">Una captura de treinta segundos también cuenta.</p><Button className="mt-4" onClick={()=>openNew(null)}><Plus className="mr-1 h-4 w-4"/>Escribir</Button></div>:<div className="space-y-4">{entries.map(e=><EntryCard key={e.id} entry={e} promoting={promoting===e.id} onOpen={()=>{setEditing(e);setInitialType(null);setDialogOpen(true)}} onPromote={()=>void promote(e)}/>)}</div>}</>}
+  <Button onClick={()=>openNew(null)} className="fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full shadow-lg sm:hidden" aria-label="Nueva captura"><Plus className="h-6 w-6"/></Button>
+  <JournalEntryDialog open={dialogOpen} onOpenChange={setDialogOpen} entry={editing} defaultDate={date} initialType={initialType} onDelete={e=>setToDelete(e)}/>
+  <ConfirmDialog open={Boolean(toDelete)} onOpenChange={o=>!o&&setToDelete(null)} title="¿Eliminar entrada?" description="Esta acción no se puede deshacer." confirmLabel="Eliminar" onConfirm={()=>{if(toDelete)remove.mutate(toDelete.id,{onSuccess:()=>setDialogOpen(false)});setToDelete(null)}}/>
+ </div>
 }
-
-function DiarioPage() {
-  const { date } = useGlobalDate();
-  const entriesQ = useJournalEntries();
-  const { remove } = useJournalMutations();
-  const [filter, setFilter] = useState<Filter>("all");
-  const [query, setQuery] = useState("");
-  const [onlyDate, setOnlyDate] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<JournalEntry | null>(null);
-  const [toDelete, setToDelete] = useState<JournalEntry | null>(null);
-
-  const entries = useMemo(
-    () =>
-      (entriesQ.data ?? [])
-        .filter((e) => filter === "all" || e.type === filter)
-        .filter((e) => !onlyDate || e.entry_date === date)
-        .filter((e) => entryMatches(e, query))
-        .sort(compareEntries),
-    [entriesQ.data, filter, onlyDate, date, query],
-  );
-
-  const chips: { key: Filter; label: string }[] = [
-    { key: "all", label: "Todo" },
-    ...JOURNAL_TYPES.map((t) => ({ key: t as Filter, label: `${JOURNAL_META[t].emoji} ${JOURNAL_META[t].plural}` })),
-    { key: "shopping", label: "🛒 Compras" },
-  ];
-
-  return (
-    <div className="space-y-4 pb-20">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <div className="flex items-center gap-2"><h1 className="text-xl font-semibold">Diario</h1><HelpTip helpKey="journal"/></div>
-          <p className="text-sm text-muted-foreground">Tu espacio para capturar la vida cotidiana</p>
-        </div>
-        {filter !== "shopping" && (
-          <Button onClick={() => { setEditing(null); setDialogOpen(true); }} className="hidden sm:inline-flex">
-            <Plus className="mr-1 h-4 w-4" /> Nueva entrada
-          </Button>
-        )}
-      </div>
-
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
-        {chips.map((c) => (
-          <button
-            key={c.key}
-            type="button"
-            onClick={() => setFilter(c.key)}
-            className={`shrink-0 rounded-full border px-3 py-1 text-sm ${filter === c.key ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-
-      {filter === "shopping" ? (
-        <ShoppingLists />
-      ) : (
-        <>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar en el Diario" className="pl-8" />
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <Switch checked={onlyDate} onCheckedChange={setOnlyDate} /> Solo la fecha seleccionada
-            </label>
-          </div>
-          {onlyDate && <GlobalDateHeader />}
-
-          {entriesQ.isLoading ? (
-            <p className="text-sm text-muted-foreground">Cargando…</p>
-          ) : entries.length === 0 ? (
-            <div className="glass rounded-2xl p-6 text-center text-sm text-muted-foreground">
-              {query || onlyDate || filter !== "all" ? "No hay entradas con estos filtros." : "Tu Diario está vacío. Escribe tu primera entrada."}
-            </div>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {entries.map((e) => {
-                const meta = JOURNAL_META[e.type];
-                return (
-                  <button
-                    key={e.id}
-                    type="button"
-                    onClick={() => { setEditing(e); setDialogOpen(true); }}
-                    className="glass rounded-2xl border-l-4 p-4 text-left transition hover:ring-2 hover:ring-primary"
-                    style={{ borderLeftColor: meta.color }}
-                  >
-                    <p className="text-xs font-medium text-muted-foreground">{meta.emoji} {meta.label}{e.mood ? ` · ${e.mood}` : ""}{e.photos.length ? ` · 📷 ${e.photos.length}` : ""}</p>
-                    {e.title && <p className="mt-1 font-semibold">{e.title}</p>}
-                    <p className="mt-1 line-clamp-3 text-sm">{entrySnippet(e)}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">{dateLabel(e)}</p>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <Button
-            onClick={() => { setEditing(null); setDialogOpen(true); }}
-            className="fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full shadow-lg sm:hidden"
-            aria-label="Nueva entrada"
-          >
-            <Plus className="h-6 w-6" />
-          </Button>
-        </>
-      )}
-
-      <JournalEntryDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        entry={editing}
-        defaultDate={date}
-        onDelete={(e) => setToDelete(e)}
-      />
-      <ConfirmDialog
-        open={!!toDelete}
-        onOpenChange={(o) => !o && setToDelete(null)}
-        title="¿Eliminar entrada?"
-        description="Esta acción no se puede deshacer."
-        confirmLabel="Eliminar"
-        onConfirm={() => {
-          if (toDelete) remove.mutate(toDelete.id, { onSuccess: () => setDialogOpen(false) });
-          setToDelete(null);
-        }}
-      />
-    </div>
-  );
+function EntryCard({entry,promoting,onOpen,onPromote}:{entry:JournalEntry;promoting:boolean;onOpen:()=>void;onPromote:()=>void}){
+ const meta=JOURNAL_META[entry.type];return <article className="glass group rounded-3xl border border-border p-4 transition hover:border-primary/40"><button type="button" onClick={onOpen} className="w-full text-left"><div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-muted text-xl">{meta.emoji}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{meta.label}</span><span className="text-xs text-muted-foreground">· {dateLabel(entry)}</span>{entry.linked_work_item_id&&<span className="text-xs text-primary">· Proyecto conectado</span>}</div>{entry.title&&<h3 className="mt-1 text-base font-semibold">{entry.title}</h3>}<p className="mt-2 line-clamp-5 text-sm leading-6 text-muted-foreground">{entrySnippet(entry,260)}</p></div></div></button>{entry.type==="idea"&&<div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">{entry.linked_work_item_id?<span className="text-xs text-muted-foreground"><FolderKanban className="mr-1 inline h-3.5 w-3.5"/>Ya está conectada a Trabajo</span>:<Button size="sm" variant="outline" onClick={onPromote} disabled={promoting}><FolderKanban className="mr-1 h-3.5 w-3.5"/>{promoting?"Creando proyecto…":"Convertir en proyecto"}</Button>}{entry.photos.length>0&&<span className="text-xs text-muted-foreground">📷 {entry.photos.length}</span>}</div>}</article>
 }
