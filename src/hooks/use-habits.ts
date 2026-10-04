@@ -6,7 +6,7 @@ import type { HabitCategoryInput, HabitInput } from "@/domain/types";
 
 export const habitKeys = {
   categories: ["habit_categories"] as const,
-  habits: ["habits"] as const,
+  habits: (includeInactive: boolean) => ["habits", includeInactive ? "all" : "active"] as const,
   logs: (date: string) => ["habit_logs", date] as const,
   recent: ["habit_logs", "recent"] as const,
   range: (start: string, end: string) => ["habit_logs", "range", start, end] as const,
@@ -21,8 +21,11 @@ export function useCategories() {
   return useQuery({ queryKey: habitKeys.categories, queryFn: habitsService.listCategories });
 }
 
-export function useHabits() {
-  return useQuery({ queryKey: habitKeys.habits, queryFn: habitsService.listHabits });
+export function useHabits(includeInactive = false) {
+  return useQuery({
+    queryKey: habitKeys.habits(includeInactive),
+    queryFn: () => habitsService.listHabits(includeInactive),
+  });
 }
 
 export function useLogs(date: string) {
