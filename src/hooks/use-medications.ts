@@ -75,7 +75,7 @@ export function useMedicationMutations() {
     onError,
   });
   const remove = useMutation({
-    mutationFn: (id: string) => medicationsService.remove(id),
+    mutationFn: (id: string) => medicationsService.discontinue(id),
     onSuccess: () => {
       refresh();
       toast.success("Medicamento eliminado");
