@@ -55,7 +55,11 @@ export function ActivityView() {
       const key = activity.category_id ?? UNCATEGORIZED;
       byCategory.set(key, [...(byCategory.get(key) ?? []), activity]);
     }
-    const ordered = categories.map((category) => ({
+    const ordered: {
+      key: string;
+      category: HabitCategory | null;
+      items: Habit[];
+    }[] = categories.map((category) => ({
       key: category.id,
       category,
       items: byCategory.get(category.id) ?? [],
