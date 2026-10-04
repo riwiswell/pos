@@ -271,20 +271,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedModulosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/alarmas': {
-      id: '/_authenticated/alarmas'
-      path: '/alarmas'
-      fullPath: '/alarmas'
-      preLoaderRoute: typeof AuthenticatedAlarmasRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/modulos': {
-      id: '/_authenticated/modulos'
-      path: '/modulos'
-      fullPath: '/modulos'
-      preLoaderRoute: typeof AuthenticatedModulosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/salud': {
       id: '/_authenticated/salud'
       path: '/salud'
@@ -305,8 +291,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedPlaneadorRoute: typeof AuthenticatedPlaneadorRoute
   AuthenticatedSaludRoute: typeof AuthenticatedSaludRoute
-  AuthenticatedAlarmasRoute: typeof AuthenticatedAlarmasRoute
-  AuthenticatedModulosRoute: typeof AuthenticatedModulosRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -319,8 +303,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedPlaneadorRoute: AuthenticatedPlaneadorRoute,
   AuthenticatedSaludRoute: AuthenticatedSaludRoute,
-  AuthenticatedAlarmasRoute: AuthenticatedAlarmasRoute,
-  AuthenticatedModulosRoute: AuthenticatedModulosRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
