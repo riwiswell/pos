@@ -6,9 +6,9 @@ export type LGTable =
  "menstrual_profiles"|"menstrual_records"|"medical_appointments"|"nutrition_logs"|
  "learning_items"|"learning_notes"|"learning_sessions"|"language_profiles"|
  "relationships"|"relationship_interactions"|"life_links"|"work_items"|"work_sessions"|
- "spiritual_entries"|"finance_budgets"|"finance_debts"|"finance_savings_goals"|"finance_investments"|
+ "spiritual_entries"|"spiritual_goals"|"finance_budgets"|"finance_debts"|"finance_savings_goals"|"finance_investments"|
  "finance_external_sources"|"finance_external_snapshots"|"life_events"|"notification_jobs"|
- "ai_runs"|"gamification_achievements"|"gamification_challenges";
+ "ai_runs"|"gamification_profiles"|"gamification_xp_events"|"gamification_achievements"|"gamification_challenges";
 async function uid(){const{data,error}=await supabase.auth.getUser();if(error||!data.user)throw error??new Error("No hay sesión activa");return data.user.id}
 export const lifeGraphService={
  async list(table:LGTable,order="created_at",ascending=false){const{data,error}=await db.from(table).select("*").order(order,{ascending});if(error)throw error;return data??[]},
