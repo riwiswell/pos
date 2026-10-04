@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/common/RichTextEditor";
 import { PhotoStrip } from "@/components/finance/PhotoStrip";
 import { HelpTip } from "@/components/common/HelpTip";
 import { financeService } from "@/services/finance.service";
@@ -162,12 +162,7 @@ export function JournalEntryDialog({ open, onOpenChange, entry, defaultDate, onD
                 {meta?.contentLabel}
                 {type === "memory" && <HelpTip helpKey="journal.memory" text="La fecha es la del recuerdo, no la del día en que lo escribes." />}
               </Label>
-              <Textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder={meta?.placeholder}
-                rows={meta?.quick ? 3 : 7}
-              />
+              <RichTextEditor value={content} onChange={setContent} placeholder={meta?.placeholder} />
             </div>
 
             {type === "dream" && (
@@ -189,7 +184,7 @@ export function JournalEntryDialog({ open, onOpenChange, entry, defaultDate, onD
                 </div>
                 <div className="space-y-1">
                   <Label>Notas (opcional)</Label>
-                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+                  <RichTextEditor value={notes} onChange={setNotes} placeholder="Notas del sueño…" />
                 </div>
               </>
             )}
