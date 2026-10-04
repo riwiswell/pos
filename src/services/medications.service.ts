@@ -57,7 +57,7 @@ export const medicationsService = {
       .delete()
       .eq("medication_id", id)
       .gte("dose_date", iso)
-      .eq("status", "pending");
+      .in("status", ["pending", "snoozed"]);
   },
 
   /**
