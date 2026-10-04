@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { HelpTip } from "@/components/common/HelpTip";
 import { createFileRoute } from "@tanstack/react-router";
 import { MoreHorizontal, Plus } from "lucide-react";
 
@@ -135,7 +136,7 @@ function HabitsPage() {
 
         <TabsContent value="registro" className="space-y-5">
       <div className="sticky top-14 z-20 -mx-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background/90 px-4 py-2 backdrop-blur md:top-0 md:-mx-2 md:px-2">
-        <h1 className="text-xl font-semibold">Hábitos</h1>
+        <div className="flex items-center gap-2"><h1 className="text-xl font-semibold">Hábitos</h1><HelpTip helpKey="habits"/></div>
         <div className="flex flex-1 gap-2 sm:flex-none">
           <Button
             size="sm"
