@@ -178,7 +178,7 @@ export function HabitRow({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={onEdit}>Editar hábito</DropdownMenuItem>
+          <DropdownMenuItem onSelect={onEdit}>{habit.kind === "activity" ? "Editar actividad" : "Editar hábito"}</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onMove(-1)}>Subir</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onMove(1)}>Bajar</DropdownMenuItem>
           <DropdownMenuItem
