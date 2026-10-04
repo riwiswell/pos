@@ -28,6 +28,8 @@ export interface JournalEntry {
   items: string[];
   /** Storage paths (reuses the existing private photo bucket). */
   photos: string[];
+  linked_work_item_id: string | null;
+  capture_stage: "captured" | "developing" | "promoted";
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +44,8 @@ export interface JournalEntryInput {
   notes: string | null;
   items: string[];
   photos: string[];
+  linked_work_item_id?: string | null;
+  capture_stage?: "captured" | "developing" | "promoted";
 }
 
 export interface ShoppingList {
@@ -138,7 +142,7 @@ export const JOURNAL_META: Record<JournalType, JournalTypeMeta> = {
     color: "#fde047",
     quick: true,
     contentLabel: "Idea",
-    placeholder: "Captura la idea antes de que se escape…",
+    placeholder: "Desarrolla la idea aquí. Puedes escribir tanto como necesites; cuando esté madura, conviértela en un proyecto de Trabajo.",
   },
   memory: {
     label: "Recuerdo",
@@ -162,12 +166,14 @@ export function entryMatches(entry: JournalEntry, query: string): boolean {
     .some((v) => (v as string).toLowerCase().includes(q));
 }
 
-export function entrySnippet(entry: JournalEntry, max = 140): string {
+function plainText(value: string | null | undefined) { return (value ?? "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim(); }
+
+export function entrySnippet(entry: JournalEntry, max = 180): string {
   const base =
     entry.type === "gratitude" && entry.items.length > 0
       ? entry.items.map((i) => `+ ${i}`).join("  ")
       : entry.content;
-  const clean = base.replace(/\s+/g, " ").trim();
+  const clean = plainText(base);
   return clean.length > max ? `${clean.slice(0, max)}…` : clean;
 }
 
