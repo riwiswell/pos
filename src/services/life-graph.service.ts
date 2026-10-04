@@ -5,7 +5,7 @@ export type LGTable =
  "life_goals"|"routines"|"routine_logs"|"checklists"|"checklist_items"|"bucket_list"|
  "menstrual_profiles"|"menstrual_records"|"medical_appointments"|"nutrition_logs"|
  "learning_items"|"learning_notes"|"learning_sessions"|"language_profiles"|
- "relationships"|"relationship_interactions"|"work_items"|"work_sessions"|
+ "relationships"|"relationship_interactions"|"life_links"|"work_items"|"work_sessions"|
  "spiritual_entries"|"finance_budgets"|"finance_debts"|"finance_savings_goals"|"finance_investments"|
  "finance_external_sources"|"finance_external_snapshots"|"life_events"|"notification_jobs"|
  "ai_runs"|"gamification_achievements"|"gamification_challenges";
@@ -15,6 +15,8 @@ export const lifeGraphService={
  async create(table:LGTable,input:Record<string,unknown>){const user_id=await uid();const{data,error}=await db.from(table).insert({...input,user_id}).select("*").single();if(error)throw error;return data},
  async update(table:LGTable,id:string,input:Record<string,unknown>){const{data,error}=await db.from(table).update(input).eq("id",id).select("*").single();if(error)throw error;return data},
  async remove(table:LGTable,id:string){const{error}=await db.from(table).delete().eq("id",id);if(error)throw error},
+ async link(fromType:string,fromId:string,toType:string,toId:string,relation:string,metadata:Record<string,unknown>={}){return this.create("life_links",{from_type:fromType,from_id:fromId,to_type:toType,to_id:toId,relation,metadata})},
+ async promoteJournalIdeaToProject(entryId:string){const user_id=await uid();const {data:entry,error:readError}=await db.from("journal_entries").select("id,title,content,type,entry_date").eq("id",entryId).single();if(readError)throw readError;if(entry.type!=="idea")throw new Error("Solo las ideas pueden convertirse en proyectos.");const title=(entry.title||"Idea sin título").trim();const {data:project,error}=await db.from("work_items").insert({user_id,title,kind:"project",status:"open",source_journal_entry_id:entry.id,notes:entry.content,target_date:null}).select("*").single();if(error)throw error;const {error:updateError}=await db.from("journal_entries").update({linked_work_item_id:project.id,capture_stage:"promoted"}).eq("id",entry.id);if(updateError)throw updateError;await this.link("journal_entry",entry.id,"work_item",project.id,"became_project",{entry_date:entry.entry_date});return project},
  async personalSnapshot(){
   const uidValue=await uid();
   const names=["life_goals","health_metrics","learning_items","language_profiles","relationships","relationship_interactions","work_items","finance_transactions","finance_budgets","finance_debts","finance_savings_goals","menstrual_records","medical_appointments","notification_jobs"];
