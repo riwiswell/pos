@@ -167,7 +167,6 @@ export const medicationsService = {
     } else if (status === "pending") {
       patch.snoozed_until = null;
     }
-    patch.taken_time_source = takenAt ? "manual" : "recorded";
     const { error } = await supabase.from("medication_doses").update(patch).eq("id", id);
     if (error) throw error;
   },
