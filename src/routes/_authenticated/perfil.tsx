@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { HelpTip } from "@/components/common/HelpTip";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, Upload } from "lucide-react";
 
@@ -89,7 +90,7 @@ function ProfilePage() {
   return (
     <div className="space-y-5 pb-16">
       <div>
-        <h1 className="text-xl font-semibold">Perfil</h1>
+        <div className="flex items-center gap-2"><h1 className="text-xl font-semibold">Perfil</h1><HelpTip helpKey="profile"/></div>
         <p className="text-sm text-muted-foreground">
           Tu nombre, tu foto y el fondo de Personal OS.
         </p>
