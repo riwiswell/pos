@@ -152,7 +152,12 @@ function HealthPage() {
                 </div>
               </section>
               {next && byId.get(next.medication_id) && (
-                <NextDoseCard dose={next} med={byId.get(next.medication_id)!} onAction={setStatus} />
+                <NextDoseCard
+                  dose={next}
+                  med={byId.get(next.medication_id)!}
+                  onAction={setStatus}
+                  onWater={(id, glasses) => m.setWater.mutate({ id, glasses })}
+                />
               )}
               {rest.length > 0 && (
                 <section className="space-y-2">
@@ -174,7 +179,7 @@ function HealthPage() {
         meds.length === 0 ? (
           <EmptyState icon={<Pill className="h-6 w-6" />} title="Sin medicamentos" actionLabel="+ Agregar medicamento" onAction={() => setDialog({ open: true, med: null })} />
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             {meds.map((med) => (
               <article key={med.id} className={cn("glass rounded-2xl p-4", !med.active && "opacity-60")}>
                 <div className="flex items-start justify-between gap-2">
@@ -184,7 +189,7 @@ function HealthPage() {
                   </div>
                   <div className="flex shrink-0">
                     <Button size="icon" variant="ghost" aria-label={`Editar ${med.name}`} onClick={() => setDialog({ open: true, med })}><Pencil className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" aria-label={`Eliminar ${med.name}`} onClick={() => setConfirm(med)}><Trash2 className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" aria-label={`Suspender ${med.name}`} onClick={() => setConfirm(med)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
@@ -208,7 +213,7 @@ function HealthPage() {
         )
       )}
 
-      {tab === "historial" && <HistoryView byId={byId} />}
+      {tab === "historial" && <HistoryView byId={byId} anchorDate={date} />}
 
       <MedicationDialog
         open={dialog.open}
@@ -223,8 +228,8 @@ function HealthPage() {
       <ConfirmDialog
         open={Boolean(confirm)}
         onOpenChange={(o) => !o && setConfirm(null)}
-        title={`¿Eliminar ${confirm?.name ?? ""}?`}
-        description="Se borrarán también sus tomas registradas."
+        title={`¿Suspender ${confirm?.name ?? ""}?`}
+        description="El medicamento quedará suspendido y conservará intactas todas sus tomas e historial. No se borrarán registros."
         onConfirm={() => {
           if (confirm) m.remove.mutate(confirm.id);
           setConfirm(null);
@@ -251,7 +256,17 @@ function NotificationBanner({ perm, onRequest }: { perm: NotifPermission; onRequ
   );
 }
 
-function NextDoseCard({ dose, med, onAction }: { dose: MedicationDose; med: Medication; onAction: (id: string, s: DoseStatus) => void }) {
+function NextDoseCard({
+  dose,
+  med,
+  onAction,
+  onWater,
+}: {
+  dose: MedicationDose;
+  med: Medication;
+  onAction: (id: string, s: DoseStatus) => void;
+  onWater: (id: string, glasses: number) => void;
+}) {
   const due = effectiveDueAt(dose);
   return (
     <section className="glass rounded-3xl border border-primary/30 p-5 md:p-6" aria-label="Próxima toma" data-help="medication-next">
@@ -263,6 +278,22 @@ function NextDoseCard({ dose, med, onAction }: { dose: MedicationDose; med: Medi
       {doseLabel(med) && <p className="text-lg text-muted-foreground">{doseLabel(med)}</p>}
       <p className="mt-2 text-3xl font-bold tabular-nums md:text-4xl">{formatTime12(due)}</p>
       {dose.status === "snoozed" && <p className="text-xs text-muted-foreground">Programada a las {formatTime12(new Date(dose.scheduled_at))}</p>}
+      {dose.status === "taken" && (
+        <label className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <Droplet className="h-4 w-4" /> Agua:
+          <select
+            aria-label={`Agua con ${med.name}`}
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+            value={String(Number(dose.water_glasses ?? 0))}
+            onChange={(e) => onWater(dose.id, Number(e.target.value))}
+          >
+            {WATER_OPTIONS.map((w) => (
+              <option key={w} value={String(w)}>{formatGlasses(w)}</option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-md">
         <Button className="col-span-3 gap-1 sm:col-span-1" onClick={() => onAction(dose.id, "taken")}><Check className="h-4 w-4" /> Tomada</Button>
         <Button variant="outline" className="gap-1 col-span-3 sm:col-span-1 max-sm:col-span-1 max-sm:col-start-1" onClick={() => onAction(dose.id, "snoozed")}><Clock className="h-4 w-4" /> Posponer</Button>
@@ -309,8 +340,8 @@ function DoseRow({ dose, med, onAction, onWater }: { dose: MedicationDose; med: 
   );
 }
 
-function HistoryView({ byId }: { byId: Map<string, Medication> }) {
-  const to = todayISO();
+function HistoryView({ byId, anchorDate }: { byId: Map<string, Medication>; anchorDate: string }) {
+  const to = anchorDate;
   const [days, setDays] = useState(7);
   const from = addDaysISO(to, -(days - 1));
   const q = useDoseHistory(from, to);
