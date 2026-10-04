@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790827268824,
+      "tag": "0000_create_medications",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790905082875,
+      "tag": "0001_meds_inventory_water_help",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790993556594,
+      "tag": "0002_create_journal",
+      "breakpoints": true
+    }
+  ]
+}
