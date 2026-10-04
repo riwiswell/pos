@@ -83,8 +83,8 @@ export function useMedicationMutations() {
     onError,
   });
   const setStatus = useMutation({
-    mutationFn: (v: { id: string; status: DoseStatus; water?: number }) =>
-      medicationsService.setStatus(v.id, v.status, v.status === "taken" ? (v.water ?? lastWater()) : undefined),
+    mutationFn: (v: { id: string; status: DoseStatus; water?: number; takenAt?: string }) =>
+      medicationsService.setStatus(v.id, v.status, v.status === "taken" ? (v.water ?? lastWater()) : undefined, v.takenAt),
     onSuccess: refresh,
     onError,
   });
