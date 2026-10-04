@@ -8,6 +8,7 @@ import { ErrorState, LoadingState } from "@/components/common/States";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
 import { MedicationDialog } from "@/components/health/MedicationDialog";
+import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useDoseHistory, useDoses, useMedicationMutations, useMedications, useTakenCounts } from "@/hooks/use-medications";
 import { getPermission, requestNotificationPermission, type NotifPermission } from "@/hooks/use-medication-reminders";
@@ -61,7 +62,7 @@ function HealthPage() {
   const dosesQ = useDoses(date);
   const m = useMedicationMutations();
   const takenQ = useTakenCounts();
-  const [tab, setTab] = useState<"hoy" | "meds" | "historial">("hoy");
+  const [tab, setTab] = useState<"hoy" | "meds" | "historial" | "metricas">("hoy");
   const [dialog, setDialog] = useState<{ open: boolean; med: Medication | null }>({ open: false, med: null });
   const [confirm, setConfirm] = useState<Medication | null>(null);
   const [perm, setPerm] = useState<NotifPermission>("default");
@@ -214,6 +215,8 @@ function HealthPage() {
       )}
 
       {tab === "historial" && <HistoryView byId={byId} anchorDate={date} />}
+
+      {tab === "metricas" && <HealthMetricsPanel />}
 
       <MedicationDialog
         open={dialog.open}
