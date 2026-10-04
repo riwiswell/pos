@@ -14,6 +14,9 @@ create table if not exists public.life_goals(
  target_date date, notes text, goal_type text, parent_goal_id uuid references public.life_goals(id) on delete set null,
  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
+alter table public.life_goals add column if not exists goal_type text;
+alter table public.life_goals add column if not exists parent_goal_id uuid references public.life_goals(id) on delete set null;
+
 create table if not exists public.routines(
  id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade,
  title text not null, frequency_rule text not null default 'daily', active boolean not null default true, notes text,
