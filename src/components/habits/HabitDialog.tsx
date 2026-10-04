@@ -26,6 +26,7 @@ interface Props {
   defaultCategoryId: string | null;
   habit: Habit | null;
   onSubmit: (input: HabitInput) => void;
+  mode?: "habit" | "activity";
 }
 
 const NO_CATEGORY = "__none__";
@@ -37,6 +38,7 @@ export function HabitDialog({
   defaultCategoryId,
   habit,
   onSubmit,
+  mode = "habit",
 }: Props) {
   const [name, setName] = useState("");
   const [type, setType] = useState<HabitType>("check");
@@ -51,7 +53,7 @@ export function HabitDialog({
     if (!open) return;
     setName(habit?.name ?? "");
     setType(habit?.type ?? "check");
-    setKind(habit?.kind ?? "habit");
+    setKind(habit?.kind ?? mode);
     setCategoryId(habit?.category_id ?? defaultCategoryId ?? NO_CATEGORY);
     setTarget(habit?.target != null ? String(habit.target) : "");
     setUnit(habit?.unit ?? "");
@@ -65,7 +67,7 @@ export function HabitDialog({
     onSubmit({
       name: name.trim(),
       type,
-      kind,
+      kind: mode === "activity" ? "activity" : kind,
       category_id: categoryId === NO_CATEGORY ? null : categoryId,
       target: type === "counter" && Number.isFinite(parsedTarget) && parsedTarget > 0 ? parsedTarget : null,
       unit: type === "counter" && unit.trim() ? unit.trim() : null,
@@ -77,7 +79,11 @@ export function HabitDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{habit ? "Editar hábito" : "Nuevo hábito"}</DialogTitle>
+          <DialogTitle>
+            {habit
+              ? habit.kind === "activity" ? "Editar actividad" : "Editar hábito"
+              : mode === "activity" ? "Nueva actividad" : "Nuevo hábito"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1.5">
@@ -92,6 +98,7 @@ export function HabitDialog({
             />
           </div>
 
+          {mode === "habit" && (
           <div className="space-y-1.5">
             <Label>¿Qué es?</Label>
             <div className="grid grid-cols-2 gap-2">
@@ -115,6 +122,7 @@ export function HabitDialog({
               El hábito mide constancia día a día; la actividad solo se registra cuando ocurre.
             </p>
           </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Tipo</Label>
