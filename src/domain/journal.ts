@@ -140,7 +140,7 @@ export const JOURNAL_META: Record<JournalType, JournalTypeMeta> = {
     plural: "Ideas",
     emoji: "💡",
     color: "#fde047",
-    quick: true,
+    quick: false,
     contentLabel: "Idea",
     placeholder: "Desarrolla la idea aquí. Puedes escribir tanto como necesites; cuando esté madura, conviértela en un proyecto de Trabajo.",
   },
