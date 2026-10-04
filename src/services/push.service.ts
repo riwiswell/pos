@@ -1,7 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+const env = import.meta.env;
 export async function subscribeToBackgroundPush(){
  if(typeof window==="undefined"||!("serviceWorker" in navigator)||!("PushManager" in window))return false;
- const key=import.meta.env.VITE_VAPID_PUBLIC_KEY as string|undefined;if(!key)return false;
+ const key=env["VITE_VAPID_PUBLIC_KEY"] as string|undefined;if(!key)return false;
  const reg=await navigator.serviceWorker.ready;
  let sub=await reg.pushManager.getSubscription();
  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(key) as BufferSource});
