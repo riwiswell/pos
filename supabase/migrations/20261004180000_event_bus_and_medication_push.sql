@@ -3,6 +3,26 @@
 
 alter table public.learning_sessions add column if not exists updated_at timestamptz not null default now();
 
+create or replace function public.schedule_work_break_notification()
+returns trigger language plpgsql as $
+declare fire_at timestamptz;
+begin
+  if new.status='completed' then
+    delete from public.notification_jobs where user_id=new.user_id and source_type='work_session' and source_id=new.id and status='pending';
+    return new;
+  end if;
+  if new.started_at is not null and (tg_op='INSERT' or old.started_at is distinct from new.started_at or old.target_minutes is distinct from new.target_minutes) then
+    delete from public.notification_jobs where user_id=new.user_id and source_type='work_session' and source_id=new.id and status='pending';
+    fire_at:=new.started_at+make_interval(mins=>greatest(1,new.target_minutes));
+    insert into public.notification_jobs(user_id,source_type,source_id,fire_at,title,body,payload)
+    values(new.user_id,'work_session',new.id,fire_at,'Pausa de trabajo','Llevas un bloque largo de trabajo. Tómate unos minutos para descansar.',jsonb_build_object('kind','work_break','target_minutes',new.target_minutes));
+  end if;
+  return new;
+end $;
+drop trigger if exists schedule_work_break_notification on public.work_sessions;
+create trigger schedule_work_break_notification after insert or update of started_at,target_minutes,status on public.work_sessions
+for each row execute function public.schedule_work_break_notification();
+
 create or replace function public.emit_life_event()
 returns trigger language plpgsql as $$
 declare payload jsonb; key text;
