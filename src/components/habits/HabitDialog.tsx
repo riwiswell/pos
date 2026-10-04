@@ -58,7 +58,7 @@ export function HabitDialog({
     setTarget(habit?.target != null ? String(habit.target) : "");
     setUnit(habit?.unit ?? "");
     setMore(Boolean(habit?.target || habit?.unit));
-  }, [open, habit, defaultCategoryId]);
+  }, [open, habit, defaultCategoryId, mode]);
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
