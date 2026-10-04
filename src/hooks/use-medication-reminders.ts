@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { todayISO } from "@/lib/date";
 import { lastWater, useDoses, useMedicationMutations, useMedications } from "@/hooks/use-medications";
 import { doseLabel, effectiveDueAt, formatGlasses, formatTime12, isOpen, type DoseStatus } from "@/domain/health";
+import { subscribeToBackgroundPush } from "@/services/push.service";
 
 const FIRED_KEY = "personal-os:med-fired";
 const WINDOW_MS = 30 * 60_000; // don't notify for doses due more than 30 min ago
