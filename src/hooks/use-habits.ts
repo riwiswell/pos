@@ -52,7 +52,7 @@ export function useHabitMutations(date: string) {
   const qc = useQueryClient();
 
   const invalidateCategories = () => qc.invalidateQueries({ queryKey: habitKeys.categories });
-  const invalidateHabits = () => qc.invalidateQueries({ queryKey: habitKeys.habits });
+  const invalidateHabits = () => qc.invalidateQueries({ queryKey: ["habits"] });
   const invalidateLogs = () => {
     void qc.invalidateQueries({ queryKey: habitKeys.logs(date) });
     void qc.invalidateQueries({ queryKey: habitKeys.recent });
