@@ -1,6 +1,6 @@
 begin;
 
-select plan(16);
+select plan(18);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -11,6 +11,8 @@ select has_column('public','spiritual_entries','prophecy','prophecy field exists
 select has_column('public','spiritual_entries','scripture_reference','scripture reference exists');
 select has_table('public','spiritual_goals','spiritual goals exists');
 select has_table('public','gamification_profiles','gamification profile exists');
+select has_column('public','gamification_profiles','current_streak','current streak exists');
+select has_column('public','gamification_profiles','best_streak','best streak exists');
 select has_table('public','gamification_achievements','gamification achievements exists');
 select has_table('public','gamification_challenges','gamification challenges exists');
 select has_table('public','gamification_xp_events','xp ledger exists');
