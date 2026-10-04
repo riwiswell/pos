@@ -39,6 +39,7 @@ import { formatMoney } from "@/lib/money";
 import { getIcon } from "@/lib/finance-icons";
 import { cn } from "@/lib/utils";
 import { HelpTip } from "@/components/common/HelpTip";
+import { categoryAppliesTo } from "@/domain/finance";
 import type { FinanceAccount, FinanceTransaction } from "@/domain/finance";
 
 export const Route = createFileRoute("/_authenticated/finanzas")({
@@ -85,6 +86,7 @@ function FinancePage() {
   const [deleting, setDeleting] = useState<FinanceTransaction | null>(null);
   const [selected, setSelected] = useState<FinanceTransaction | null>(null);
   const [lens, setLens] = useState<Lens>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [titheOpen, setTitheOpen] = useState(false);
   const [accountDialog, setAccountDialog] = useState<{
@@ -122,10 +124,12 @@ function FinancePage() {
   );
   const series = useMemo(() => dailySeries(list), [list]);
 
-  const visible = useMemo(
-    () => (lens === "all" ? list : list.filter((tx) => tx.type === lens)),
-    [list, lens],
-  );
+  const visible = useMemo(() => {
+    const byType = lens === "all" ? list : list.filter((tx) => tx.type === lens);
+    return categoryFilter === "all"
+      ? byType
+      : byType.filter((tx) => tx.category_id === categoryFilter);
+  }, [list, lens, categoryFilter]);
 
   const loading = accounts.isLoading || transactions.isLoading;
   const error = accounts.error ?? transactions.error;
@@ -139,7 +143,7 @@ function FinancePage() {
       <div className="grid grid-cols-3 gap-2" role="group" aria-label="Filtro de movimientos">
         <button
           type="button"
-          onClick={() => setLens("all")}
+          onClick={() => { setLens("all"); setCategoryFilter("all"); }}
           aria-pressed={lens === "all"}
           className={cn(
             "glass relative rounded-2xl p-3 text-left transition-shadow",
@@ -167,7 +171,7 @@ function FinancePage() {
         </button>
         <button
           type="button"
-          onClick={() => setLens("expense")}
+          onClick={() => { setLens("expense"); setCategoryFilter("all"); }}
           aria-pressed={lens === "expense"}
           className={cn(
             "glass rounded-2xl p-3 text-left transition-shadow",
@@ -179,7 +183,7 @@ function FinancePage() {
         </button>
         <button
           type="button"
-          onClick={() => setLens("income")}
+          onClick={() => { setLens("income"); setCategoryFilter("all"); }}
           aria-pressed={lens === "income"}
           className={cn(
             "glass rounded-2xl p-3 text-left transition-shadow",
@@ -285,6 +289,60 @@ function FinancePage() {
         >
           <Tags className="h-3.5 w-3.5" /> Categorías
         </Button>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Filtrar por categoría
+          </p>
+          {categoryFilter !== "all" && (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setCategoryFilter("all")}
+            >
+              Limpiar
+            </button>
+          )}
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          <button
+            type="button"
+            aria-pressed={categoryFilter === "all"}
+            onClick={() => setCategoryFilter("all")}
+            className={cn(
+              "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium",
+              categoryFilter === "all"
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border text-muted-foreground hover:bg-accent",
+            )}
+          >
+            Todas
+          </button>
+          {(categories.data ?? [])
+            .filter(
+              (category) =>
+                category.active &&
+                (lens === "all" || categoryAppliesTo(category.kind, lens)),
+            )
+            .map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                aria-pressed={categoryFilter === category.id}
+                onClick={() => setCategoryFilter(category.id)}
+                className={cn(
+                  "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium",
+                  categoryFilter === category.id
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border text-muted-foreground hover:bg-accent",
+                )}
+              >
+                {category.name}
+              </button>
+            ))}
+        </div>
       </div>
 
       <CategoryDonut
