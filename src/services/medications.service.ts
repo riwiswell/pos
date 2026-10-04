@@ -60,9 +60,37 @@ export const medicationsService = {
       .eq("status", "pending");
   },
 
-  async remove(id: string) {
-    const { error } = await supabase.from("medications").delete().eq("id", id);
+  /**
+   * Stop scheduling a medication without destroying its historical record.
+   * Past medication_doses remain untouched.
+   */
+  async discontinue(id: string) {
+    const now = new Date();
+    const iso = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+
+    const { error } = await supabase
+      .from("medications")
+      .update({ active: false, end_date: iso })
+      .eq("id", id);
     if (error) throw error;
+
+    // Only remove future pending doses. Taken/skipped/snoozed history is retained.
+    const { error: doseError } = await supabase
+      .from("medication_doses")
+      .delete()
+      .eq("medication_id", id)
+      .gte("dose_date", iso)
+      .eq("status", "pending");
+    if (doseError) throw doseError;
+  },
+
+  /** Backward-compatible alias. Destructive medication deletion is disabled. */
+  async remove(id: string) {
+    return medicationsService.discontinue(id);
   },
 
   /**
