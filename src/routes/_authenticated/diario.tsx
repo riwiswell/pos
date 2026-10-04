@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { HelpTip } from "@/components/common/HelpTip";
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus, Search } from "lucide-react";
 
@@ -75,7 +76,7 @@ function DiarioPage() {
     <div className="space-y-4 pb-20">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-semibold">Diario</h1>
+          <div className="flex items-center gap-2"><h1 className="text-xl font-semibold">Diario</h1><HelpTip helpKey="journal"/></div>
           <p className="text-sm text-muted-foreground">Tu espacio para capturar la vida cotidiana</p>
         </div>
         {filter !== "shopping" && (
