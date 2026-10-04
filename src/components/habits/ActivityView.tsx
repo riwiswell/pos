@@ -41,7 +41,7 @@ export function ActivityView() {
     category: HabitCategory | null;
   }>({ open: false, category: null });
   const [noteFor, setNoteFor] = useState<Habit | null>(null);
-  const [pauseFor, setPauseFor] = useState<Habit | null>(null);
+  const [deleteFor, setDeleteFor] = useState<Habit | null>(null);
 
   const logByActivity = useMemo(() => {
     const map = new Map<string, (typeof logs)[number]>();
@@ -192,8 +192,8 @@ export function ActivityView() {
                       }
                       onNote={() => setNoteFor(activity)}
                       onEdit={() => setDialog({ open: true, activity })}
-                      onDelete={() => setPauseFor(activity)}
-                      deleteLabel="Pausar"
+                      onDelete={() => setDeleteFor(activity)}
+                      deleteLabel="Eliminar"
                       onMove={(direction) => {
                         const next = index + direction;
                         if (next < 0 || next >= group.items.length) return;
@@ -266,13 +266,14 @@ export function ActivityView() {
       />
 
       <ConfirmDialog
-        open={Boolean(pauseFor)}
-        onOpenChange={(open) => !open && setPauseFor(null)}
-        title={pauseFor ? '¿Pausar actividad "' + pauseFor.name + '"?' : "¿Pausar actividad?"}
-        description="La actividad dejará de aparecer como activa, pero su historial diario se conservará."
+        open={Boolean(deleteFor)}
+        onOpenChange={(open) => !open && setDeleteFor(null)}
+        title={deleteFor ? `¿Eliminar actividad "${deleteFor.name}"?` : "¿Eliminar actividad?"}
+        description="La actividad se eliminará y no se conservará como actividad activa. Esta acción requiere confirmación."
+        confirmLabel="Eliminar"
         onConfirm={async () => {
-          if (pauseFor) await m.updateHabit.mutateAsync({ id: pauseFor.id, patch: { active: false } });
-          setPauseFor(null);
+          if (deleteFor) await m.deleteHabit.mutateAsync(deleteFor.id);
+          setDeleteFor(null);
         }}
       />
     </div>
