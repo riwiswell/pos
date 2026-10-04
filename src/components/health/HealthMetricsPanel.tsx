@@ -7,7 +7,7 @@ import { useGlobalDate } from "@/hooks/use-global-date";
 import { useHealthMetricMutation, usePersonalDateList } from "@/hooks/use-personal-domains";
 import { HelpTip } from "@/components/common/HelpTip";
 
-type Metric={id:string;metric_date:string;weight_kg:number|null;height_cm:number|null;waist_cm:number|null;body_fat_pct:number|null;systolic:number|null;diastolic:number|null;resting_hr:number|null;sleep_hours:number|null;exercise_minutes:number|null;water_liters:number|null;notes:string|null};
+type Metric={id:string;metric_date:string;weight_kg:number|null;height_cm:number|null;waist_cm:number|null;neck_cm:number|null;shoulders_cm:number|null;chest_cm:number|null;left_arm_cm:number|null;right_arm_cm:number|null;hips_cm:number|null;left_thigh_cm:number|null;right_thigh_cm:number|null;left_calf_cm:number|null;right_calf_cm:number|null;body_fat_pct:number|null;systolic:number|null;diastolic:number|null;resting_hr:number|null;sleep_hours:number|null;exercise_minutes:number|null;water_liters:number|null;notes:string|null};
 export function HealthMetricsPanel(){
  const {date}=useGlobalDate();const q=usePersonalDateList<Metric>("health_metrics","metric_date",date);const save=useHealthMetricMutation();const current=q.data?.[0];
  const [weight,setWeight]=useState(current?.weight_kg?.toString()??"");const [height,setHeight]=useState(current?.height_cm?.toString()??"");const [waist,setWaist]=useState(current?.waist_cm?.toString()??"");const [sleep,setSleep]=useState(current?.sleep_hours?.toString()??"");const [exercise,setExercise]=useState(current?.exercise_minutes?.toString()??"");const [water,setWater]=useState(current?.water_liters?.toString()??"");const [notes,setNotes]=useState(current?.notes??"");
