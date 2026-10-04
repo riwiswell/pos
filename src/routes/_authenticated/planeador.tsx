@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { HelpTip } from "@/components/common/HelpTip";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Clock, MapPin, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
 
