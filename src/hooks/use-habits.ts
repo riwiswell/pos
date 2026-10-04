@@ -103,7 +103,7 @@ export function useHabitMutations(date: string) {
   });
 
   const updateHabit = useMutation({
-    mutationFn: (vars: { id: string; patch: Partial<HabitInput & { position: number }> }) =>
+    mutationFn: (vars: { id: string; patch: Partial<HabitInput & { position: number; active: boolean }> }) =>
       habitsService.updateHabit(vars.id, vars.patch),
     onSuccess: () => void invalidateHabits(),
     onError,
