@@ -43,7 +43,7 @@ const BACKUP_TABLES = [
   "relationships","relationship_interactions","work_items","work_sessions","spiritual_entries",
   "gamification_achievements","gamification_challenges","life_events","notification_jobs","ai_runs",
   "finance_budgets","finance_debts","finance_savings_goals","finance_investments","finance_external_sources",
-  "finance_external_snapshots",
+  "finance_external_snapshots","life_links",
 ];
 
 function ProfilePage() {
