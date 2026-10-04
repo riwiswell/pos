@@ -12,7 +12,7 @@ import { financeService } from "@/services/finance.service";
 import { useJournalMutations } from "@/hooks/use-journal";
 import { DREAM_MOODS,JOURNAL_META,JOURNAL_TYPES,type JournalEntry,type JournalEntryInput,type JournalType } from "@/domain/journal";
 
-interface Props{open:boolean;onOpenChange:(open:boolean)=>void;entry:JournalEntry|null;defaultDate:string;onDelete?:(entry:JournalEntry)=>void}
+interface Props{open:boolean;onOpenChange:(open:boolean)=>void;entry:JournalEntry|null;defaultDate:string;initialType?:JournalType|null;onDelete?:(entry:JournalEntry)=>void}
 const TYPE_COPY:Record<JournalType,string>={
  diary:"Lo que ocurrió, cómo te fue y lo que quieras recordar.",
  dream:"Registra el sueño, sensaciones y detalles sin forzarte a interpretar.",
@@ -23,10 +23,10 @@ const TYPE_COPY:Record<JournalType,string>={
  memory:"Un recuerdo con texto, fecha y fotografías."
 };
 function nowTime(){const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
-export function JournalEntryDialog({open,onOpenChange,entry,defaultDate,onDelete}:Props){
+export function JournalEntryDialog({open,onOpenChange,entry,defaultDate,initialType,onDelete}:Props){
  const{create,update}=useJournalMutations();
  const[type,setType]=useState<JournalType|null>(null),[title,setTitle]=useState(""),[content,setContent]=useState(""),[date,setDate]=useState(defaultDate),[time,setTime]=useState(""),[mood,setMood]=useState(""),[notes,setNotes]=useState(""),[items,setItems]=useState([""]),[photos,setPhotos]=useState<string[]>([]),[uploading,setUploading]=useState(false);
- useEffect(()=>{if(!open)return;setType(entry?.type??null);setTitle(entry?.title??"");setContent(entry?.content??"");setDate(entry?.entry_date??defaultDate);setTime(entry?.entry_time?.slice(0,5)??(entry?"":nowTime()));setMood(entry?.mood??"");setNotes(entry?.notes??"");setItems(entry?.items.length?entry.items:[""]);setPhotos(entry?.photos??[])},[open,entry,defaultDate]);
+ useEffect(()=>{if(!open)return;setType(entry?.type??initialType??null);setTitle(entry?.title??"");setContent(entry?.content??"");setDate(entry?.entry_date??defaultDate);setTime(entry?.entry_time?.slice(0,5)??(entry?"":nowTime()));setMood(entry?.mood??"");setNotes(entry?.notes??"");setItems(entry?.items.length?entry.items:[""]);setPhotos(entry?.photos??[])},[open,entry,defaultDate,initialType]);
  const meta=type?JOURNAL_META[type]:null;const saving=create.isPending||update.isPending;const intro=useMemo(()=>type?TYPE_COPY[type]:"Elige cómo quieres capturar esto.",[type]);
  async function addPhotos(files:FileList|null){if(!files?.length)return;setUploading(true);try{const paths:string[]=[];for(const file of Array.from(files))paths.push(await financeService.uploadPhoto(file));setPhotos(p=>[...p,...paths])}catch(error){toast.error(error instanceof Error?error.message:"No se pudo subir la foto")}finally{setUploading(false)}}
  function save(){if(!type)return;const cleanItems=items.map(i=>i.trim()).filter(Boolean);if(type==="gratitude"?cleanItems.length===0&&!content.trim():!content.trim()){toast.error(type==="gratitude"?"Agrega al menos un motivo":"Escribe algo antes de guardar");return}const input:JournalEntryInput={type,title:title||null,content,entry_date:date,entry_time:time||null,mood:type==="dream"?mood:null,notes:type==="dream"?notes:null,items:type==="gratitude"?cleanItems:[],photos:type==="memory"?photos:[]};const done={onSuccess:()=>onOpenChange(false)};if(entry)update.mutate({id:entry.id,input},done);else create.mutate(input,done)}
