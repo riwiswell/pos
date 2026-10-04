@@ -1,0 +1,1 @@
+import { createFileRoute } from "@tanstack/react-router"; import { WorkPage } from "@/components/common/PersonalDomainPages"; export const Route=createFileRoute("/_authenticated/trabajo")({component:WorkPage});
