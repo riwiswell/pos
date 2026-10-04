@@ -36,7 +36,7 @@ export function CategoryDonut({
         {title}
       </p>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative h-32 w-32 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -61,8 +61,8 @@ export function CategoryDonut({
           </div>
         </div>
 
-        <ul className="min-w-0 flex-1 space-y-1.5">
-          {slices.slice(0, 5).map((slice) => (
+        <ul className="min-w-0 flex-1 max-h-44 overflow-y-auto space-y-1.5 pr-1">
+          {slices.map((slice) => (
             <li key={slice.categoryId ?? "none"} className="flex items-center gap-2 text-xs">
               <span
                 aria-hidden
@@ -102,7 +102,7 @@ export function DailyBars({ data, hideAmounts }: { data: DailyPoint[]; hideAmoun
       <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Evolución del período
       </p>
-      <div className="h-36 w-full">
+      <div className="h-48 w-full sm:h-56">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} barGap={2}>
             <XAxis
