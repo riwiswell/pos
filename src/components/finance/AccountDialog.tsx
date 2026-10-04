@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/common/RichTextEditor";
 import { ColorPicker, IconPicker } from "@/components/finance/Pickers";
 import { AmountInput } from "@/components/finance/AmountInput";
 import type { AccountInput, FinanceAccount } from "@/domain/finance";
@@ -91,14 +91,7 @@ export function AccountDialog({ open, onOpenChange, account, onSubmit, pending }
 
           <div className="space-y-2">
             <Label>Nota</Label>
-            <Textarea
-              value={form.note ?? ""}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, note: event.target.value || null }))
-              }
-              placeholder="Opcional"
-              rows={2}
-            />
+            <RichTextEditor value={form.note ?? ""} onChange={(value) => setForm((prev) => ({ ...prev, note: value || null }))} placeholder="Opcional" />
           </div>
 
           <div className="space-y-2">
