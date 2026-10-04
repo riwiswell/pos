@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { HelpTip } from "@/components/common/HelpTip";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
