@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
-import { ImagePlus, Plus, Trash2, X } from "lucide-react";
+import { useEffect,useMemo,useState } from "react";
+import { ImagePlus,Plus,Trash2,X,Sparkles } from "lucide-react";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog,DialogContent,DialogHeader,DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/common/RichTextEditor";
@@ -11,225 +10,25 @@ import { PhotoStrip } from "@/components/finance/PhotoStrip";
 import { HelpTip } from "@/components/common/HelpTip";
 import { financeService } from "@/services/finance.service";
 import { useJournalMutations } from "@/hooks/use-journal";
-import {
-  DREAM_MOODS,
-  JOURNAL_META,
-  JOURNAL_TYPES,
-  type JournalEntry,
-  type JournalEntryInput,
-  type JournalType,
-} from "@/domain/journal";
+import { DREAM_MOODS,JOURNAL_META,JOURNAL_TYPES,type JournalEntry,type JournalEntryInput,type JournalType } from "@/domain/journal";
 
-interface Props {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** Editing an existing entry; otherwise creating. */
-  entry: JournalEntry | null;
-  defaultDate: string;
-  onDelete?: (entry: JournalEntry) => void;
-}
-
-function nowTime() {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-export function JournalEntryDialog({ open, onOpenChange, entry, defaultDate, onDelete }: Props) {
-  const { create, update } = useJournalMutations();
-  const [type, setType] = useState<JournalType | null>(null);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [date, setDate] = useState(defaultDate);
-  const [time, setTime] = useState("");
-  const [mood, setMood] = useState("");
-  const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<string[]>([""]);
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setType(entry?.type ?? null);
-    setTitle(entry?.title ?? "");
-    setContent(entry?.content ?? "");
-    setDate(entry?.entry_date ?? defaultDate);
-    setTime(entry?.entry_time?.slice(0, 5) ?? (entry ? "" : nowTime()));
-    setMood(entry?.mood ?? "");
-    setNotes(entry?.notes ?? "");
-    setItems(entry?.items.length ? entry.items : [""]);
-    setPhotos(entry?.photos ?? []);
-  }, [open, entry, defaultDate]);
-
-  const meta = type ? JOURNAL_META[type] : null;
-  const saving = create.isPending || update.isPending;
-
-  async function addPhotos(files: FileList | null) {
-    if (!files?.length) return;
-    setUploading(true);
-    try {
-      const paths: string[] = [];
-      for (const f of Array.from(files)) paths.push(await financeService.uploadPhoto(f));
-      setPhotos((p) => [...p, ...paths]);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo subir la foto");
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  function save() {
-    if (!type) return;
-    const cleanItems = items.map((i) => i.trim()).filter(Boolean);
-    if (type === "gratitude" ? cleanItems.length === 0 && !content.trim() : !content.trim()) {
-      toast.error(type === "gratitude" ? "Agrega al menos un motivo" : "Escribe algo antes de guardar");
-      return;
-    }
-    const input: JournalEntryInput = {
-      type,
-      title: meta?.quick ? null : title,
-      content,
-      entry_date: date,
-      entry_time: time || null,
-      mood: type === "dream" ? mood : null,
-      notes: type === "dream" ? notes : null,
-      items: type === "gratitude" ? cleanItems : [],
-      photos: type === "memory" ? photos : [],
-    };
-    const done = { onSuccess: () => onOpenChange(false) };
-    if (entry) update.mutate({ id: entry.id, input }, done);
-    else create.mutate(input, done);
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            {meta ? `${meta.emoji} ${entry ? "Editar" : "Nuevo"}: ${meta.label}` : "¿Qué quieres registrar?"}
-          </DialogTitle>
-        </DialogHeader>
-
-        {!type ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {JOURNAL_TYPES.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setType(t)}
-                className="glass flex flex-col items-center gap-1 rounded-xl p-3 text-sm hover:ring-2 hover:ring-primary"
-              >
-                <span className="text-2xl">{JOURNAL_META[t].emoji}</span>
-                {JOURNAL_META[t].label}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {!meta?.quick && (
-              <div className="space-y-1">
-                <Label>Título (opcional)</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-              </div>
-            )}
-
-            {type === "gratitude" && (
-              <div className="space-y-1.5">
-                <Label className="flex items-center gap-1">
-                  Hoy agradezco por… <HelpTip helpKey="journal.gratitude" text="Escribe uno o varios motivos. Cada línea es un motivo distinto." />
-                </Label>
-                {items.map((it, i) => (
-                  <div key={i} className="flex gap-2">
-                    <Input
-                      value={it}
-                      placeholder={`Motivo ${i + 1}`}
-                      onChange={(e) => setItems((arr) => arr.map((v, j) => (j === i ? e.target.value : v)))}
-                    />
-                    {items.length > 1 && (
-                      <Button size="icon" variant="ghost" onClick={() => setItems((a) => a.filter((_, j) => j !== i))} aria-label="Quitar motivo">
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <Button size="sm" variant="outline" onClick={() => setItems((a) => [...a, ""])}>
-                  <Plus className="mr-1 h-4 w-4" /> Otro motivo
-                </Button>
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <Label className="flex items-center gap-1">
-                {meta?.contentLabel}
-                {type === "memory" && <HelpTip helpKey="journal.memory" text="La fecha es la del recuerdo, no la del día en que lo escribes." />}
-              </Label>
-              <RichTextEditor value={content} onChange={setContent} placeholder={meta?.placeholder} />
-            </div>
-
-            {type === "dream" && (
-              <>
-                <div className="space-y-1">
-                  <Label>¿Cómo te hizo sentir?</Label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {DREAM_MOODS.map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setMood(mood === m ? "" : m)}
-                        className={`rounded-full border px-3 py-1 text-xs ${mood === m ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label>Notas (opcional)</Label>
-                  <RichTextEditor value={notes} onChange={setNotes} placeholder="Notas del sueño…" />
-                </div>
-              </>
-            )}
-
-            {type === "memory" && (
-              <div className="space-y-1.5">
-                <PhotoStrip paths={photos} />
-                <div className="flex flex-wrap items-center gap-2">
-                  <Label className="inline-flex cursor-pointer items-center gap-1 rounded-md border px-3 py-1.5 text-sm">
-                    <ImagePlus className="h-4 w-4" /> {uploading ? "Subiendo…" : "Agregar fotos"}
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => void addPhotos(e.target.files)} />
-                  </Label>
-                  {photos.length > 0 && (
-                    <Button size="sm" variant="ghost" onClick={() => setPhotos([])}>Quitar fotos</Button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label>{type === "memory" ? "Fecha del recuerdo" : "Fecha"}</Label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label>Hora (opcional)</Label>
-                <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-2 pt-2">
-              {entry && onDelete ? (
-                <Button variant="ghost" className="text-destructive" onClick={() => onDelete(entry)}>
-                  <Trash2 className="mr-1 h-4 w-4" /> Eliminar
-                </Button>
-              ) : !entry ? (
-                <Button variant="ghost" onClick={() => setType(null)}>Cambiar tipo</Button>
-              ) : <span />}
-              <Button onClick={save} disabled={saving || uploading}>
-                {saving ? "Guardando…" : "Guardar"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
+interface Props{open:boolean;onOpenChange:(open:boolean)=>void;entry:JournalEntry|null;defaultDate:string;onDelete?:(entry:JournalEntry)=>void}
+const TYPE_COPY:Record<JournalType,string>={
+ diary:"Lo que ocurrió, cómo te fue y lo que quieras recordar.",
+ dream:"Registra el sueño, sensaciones y detalles sin forzarte a interpretar.",
+ thought:"Una captura mental rápida.",
+ reflection:"Pensamiento profundo, análisis personal o aprendizaje.",
+ gratitude:"Una o varias cosas por las que agradeces.",
+ idea:"Captura libre para desarrollar una idea y, cuando esté madura, convertirla en proyecto.",
+ memory:"Un recuerdo con texto, fecha y fotografías."
+};
+function nowTime(){const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+export function JournalEntryDialog({open,onOpenChange,entry,defaultDate,onDelete}:Props){
+ const{create,update}=useJournalMutations();
+ const[type,setType]=useState<JournalType|null>(null),[title,setTitle]=useState(""),[content,setContent]=useState(""),[date,setDate]=useState(defaultDate),[time,setTime]=useState(""),[mood,setMood]=useState(""),[notes,setNotes]=useState(""),[items,setItems]=useState([""]),[photos,setPhotos]=useState<string[]>([]),[uploading,setUploading]=useState(false);
+ useEffect(()=>{if(!open)return;setType(entry?.type??null);setTitle(entry?.title??"");setContent(entry?.content??"");setDate(entry?.entry_date??defaultDate);setTime(entry?.entry_time?.slice(0,5)??(entry?"":nowTime()));setMood(entry?.mood??"");setNotes(entry?.notes??"");setItems(entry?.items.length?entry.items:[""]);setPhotos(entry?.photos??[])},[open,entry,defaultDate]);
+ const meta=type?JOURNAL_META[type]:null;const saving=create.isPending||update.isPending;const intro=useMemo(()=>type?TYPE_COPY[type]:"Elige cómo quieres capturar esto.",[type]);
+ async function addPhotos(files:FileList|null){if(!files?.length)return;setUploading(true);try{const paths:string[]=[];for(const file of Array.from(files))paths.push(await financeService.uploadPhoto(file));setPhotos(p=>[...p,...paths])}catch(error){toast.error(error instanceof Error?error.message:"No se pudo subir la foto")}finally{setUploading(false)}}
+ function save(){if(!type)return;const cleanItems=items.map(i=>i.trim()).filter(Boolean);if(type==="gratitude"?cleanItems.length===0&&!content.trim():!content.trim()){toast.error(type==="gratitude"?"Agrega al menos un motivo":"Escribe algo antes de guardar");return}const input:JournalEntryInput={type,title:title||null,content,entry_date:date,entry_time:time||null,mood:type==="dream"?mood:null,notes:type==="dream"?notes:null,items:type==="gratitude"?cleanItems:[],photos:type==="memory"?photos:[]};const done={onSuccess:()=>onOpenChange(false)};if(entry)update.mutate({id:entry.id,input},done);else create.mutate(input,done)}
+ return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[94vh] overflow-y-auto sm:max-w-5xl"><DialogHeader><DialogTitle className="flex items-center gap-2">{meta?<>{meta.emoji} {entry?"Editar":"Nueva"} {meta.label}</>:<>✨ Nueva captura</>}</DialogTitle></DialogHeader>{!type?<div className="space-y-4"><p className="text-sm text-muted-foreground">Pensamiento, idea, sueño, recuerdo y reflexión no son lo mismo. El tipo solo sirve para organizar y recuperar la información; el contenido sigue siendo completamente libre.</p><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{JOURNAL_TYPES.map(t=><button key={t} type="button" onClick={()=>setType(t)} className="rounded-2xl border border-border bg-card p-4 text-left transition hover:border-primary hover:bg-primary/5"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-muted text-2xl">{JOURNAL_META[t].emoji}</span><div><p className="font-semibold">{JOURNAL_META[t].label}</p><p className="text-xs text-muted-foreground">{TYPE_COPY[t]}</p></div></div></button>)}</div></div>:<div className="space-y-4"><div className="rounded-2xl border border-border bg-muted/20 p-3"><div className="flex items-center gap-2 text-sm font-medium">{meta?.emoji} {meta?.label}</div><p className="mt-1 text-xs text-muted-foreground">{intro}</p></div>{type==="idea"&&<div className="rounded-2xl border border-primary/30 bg-primary/5 p-3"><div className="flex items-center gap-2 text-sm font-medium"><Sparkles className="h-4 w-4"/>Modo desarrollo</div><p className="mt-1 text-xs text-muted-foreground">No necesitas terminarla aquí. Captura problema, solución, funciones, dudas, referencias, nombre, siguientes pasos o cualquier cosa que vaya apareciendo. Puedes convertirla después en proyecto de Trabajo.</p></div>}{!meta?.quick&&<div className="space-y-1.5"><Label>Título</Label><Input value={title} onChange={e=>setTitle(e.target.value)} placeholder={type==="idea"?"Ej. Diseñar una app para…":"Título opcional"}/></div>}{type==="gratitude"&&<div className="space-y-2"><Label className="flex items-center gap-1">Motivos <HelpTip helpKey="journal.gratitude"/></Label>{items.map((item,i)=><div key={i} className="flex gap-2"><Input value={item} placeholder={"Motivo "+(i+1)} onChange={e=>setItems(a=>a.map((v,j)=>j===i?e.target.value:v))}/>{items.length>1&&<Button size="icon" variant="ghost" onClick={()=>setItems(a=>a.filter((_,j)=>j!==i))}><X className="h-4 w-4"/></Button>}</div>)}<Button size="sm" variant="outline" onClick={()=>setItems(a=>[...a,""])}><Plus className="mr-1 h-4 w-4"/>Otro motivo</Button></div>}<div><Label className="mb-1.5 block">{meta?.contentLabel}</Label><div className={type==="idea"||type==="diary"||type==="reflection"||type==="dream"?"min-h-[380px]":"min-h-[220px]"}><RichTextEditor value={content} onChange={setContent} placeholder={meta?.placeholder}/></div></div>{type==="dream"&&<div className="space-y-2"><Label>¿Cómo te hizo sentir?</Label><div className="flex flex-wrap gap-1.5">{DREAM_MOODS.map(m=><button key={m} type="button" onClick={()=>setMood(mood===m?"":m)} className={"rounded-full border px-3 py-1 text-xs "+(mood===m?"border-primary bg-primary text-primary-foreground":"border-border")}>{m}</button>)}</div><Label className="pt-1">Notas adicionales</Label><RichTextEditor value={notes} onChange={setNotes} placeholder="Detalles o interpretación…"/></div>}{type==="memory"&&<div className="space-y-2"><PhotoStrip paths={photos}/><Label className="inline-flex cursor-pointer items-center gap-1 rounded-md border px-3 py-1.5 text-sm"><ImagePlus className="h-4 w-4"/>{uploading?"Subiendo…":"Agregar fotos"}<input type="file" accept="image/*" multiple className="hidden" onChange={e=>void addPhotos(e.target.files)}/></Label></div>}<div className="grid gap-3 sm:grid-cols-2"><div className="space-y-1.5"><Label>{type==="memory"?"Fecha del recuerdo":"Fecha"}</Label><Input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div><div className="space-y-1.5"><Label>Hora (opcional)</Label><Input type="time" value={time} onChange={e=>setTime(e.target.value)}/></div></div><div className="flex items-center justify-between border-t border-border pt-3">{entry&&onDelete?<Button variant="ghost" className="text-destructive" onClick={()=>onDelete(entry)}><Trash2 className="mr-1 h-4 w-4"/>Eliminar</Button>:<Button variant="ghost" onClick={()=>setType(null)}>Cambiar tipo</Button>}<Button onClick={save} disabled={saving||uploading}>{saving?"Guardando…":"Guardar captura"}</Button></div></div>}</DialogContent></Dialog>
 }
