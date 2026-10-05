@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Plus, Search, Settings2, Tags } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Plus, Search, Settings2, Tags } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
@@ -403,9 +403,23 @@ function FinancePage() {
                 El resumen no mezcla el historial: aquí ves panorama, cuentas y análisis.
               </p>
             </div>
-            <Button size="sm" variant="outline" className="gap-1" onClick={() => setCategoriesOpen(true)}>
-              <Tags className="h-3.5 w-3.5" /> Categorías
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                aria-label={hideAmounts ? "Mostrar montos" : "Ocultar montos"}
+                title={hideAmounts ? "Mostrar montos" : "Ocultar montos"}
+                onClick={() =>
+                  mutations.updateSettings.mutate({ show_money_in_dashboard: hideAmounts })
+                }
+              >
+                {hideAmounts ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1" onClick={() => setCategoriesOpen(true)}>
+                <Tags className="h-3.5 w-3.5" /> Categorías
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
