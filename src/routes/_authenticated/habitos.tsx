@@ -20,10 +20,9 @@ import { HabitDialog } from "@/components/habits/HabitDialog";
 import { CategoryDialog } from "@/components/habits/CategoryDialog";
 import { NoteDialog } from "@/components/habits/NoteDialog";
 import { HabitMatrix } from "@/components/habits/HabitMatrix";
-import { ActivityView } from "@/components/habits/ActivityView";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useCategories, useHabitMutations, useHabits, useLogs } from "@/hooks/use-habits";
-import type { Habit, HabitCategory, HabitLog } from "@/domain/types";
+import type { Habit, HabitCategory, HabitLog, HabitKind } from "@/domain/types";
 
 export const Route = createFileRoute("/_authenticated/habitos")({
   head: () => ({
@@ -56,7 +55,8 @@ function HabitsPage() {
     open: boolean;
     habit: Habit | null;
     categoryId: string | null;
-  }>({ open: false, habit: null, categoryId: null });
+    mode: HabitKind;
+  }>({ open: false, habit: null, categoryId: null, mode: "habit" });
   const [categoryDialog, setCategoryDialog] = useState<{
     open: boolean;
     category: HabitCategory | null;
@@ -67,7 +67,7 @@ function HabitsPage() {
   >(null);
 
   const categories = categoriesQuery.data ?? [];
-  const habits = (habitsQuery.data ?? []).filter((habit) => habit.kind === "habit");
+  const habits = habitsQuery.data ?? [];
   const logs = logsQuery.data ?? [];
 
   const logByHabit = useMemo(() => {
@@ -128,16 +128,15 @@ function HabitsPage() {
       <GlobalDateHeader />
 
       <Tabs defaultValue="registro" className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="registro">Registro</TabsTrigger>
-          <TabsTrigger value="actividades">Actividades</TabsTrigger>
           <TabsTrigger value="matriz">Matriz</TabsTrigger>
         </TabsList>
 
         <TabsContent value="registro" className="space-y-5">
       <div className="sticky top-14 z-20 -mx-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background/90 px-4 py-2 backdrop-blur md:top-0 md:-mx-2 md:px-2">
         <div className="flex items-center gap-2"><h1 className="text-xl font-semibold">Hábitos</h1><HelpTip helpKey="habits"/></div>
-        <div className="flex flex-1 gap-2 sm:flex-none">
+        <div className="flex flex-1 flex-wrap gap-2 sm:flex-none">
           <Button
             size="sm"
             variant="outline"
@@ -149,9 +148,17 @@ function HabitsPage() {
           <Button
             size="sm"
             className="flex-1 gap-1 sm:flex-none"
-            onClick={() => setHabitDialog({ open: true, habit: null, categoryId: null })}
+            onClick={() => setHabitDialog({ open: true, habit: null, categoryId: null, mode: "habit" })}
           >
             <Plus className="h-4 w-4" /> Hábito
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="flex-1 gap-1 sm:flex-none"
+            onClick={() => setHabitDialog({ open: true, habit: null, categoryId: null, mode: "activity" })}
+          >
+            <Plus className="h-4 w-4" /> Actividad
           </Button>
         </div>
       </div>
@@ -165,7 +172,7 @@ function HabitsPage() {
           title="Aún no tienes hábitos"
           description="Crea una categoría para organizarlos, o crea un hábito directamente."
           actionLabel="+ Crear hábito"
-          onAction={() => setHabitDialog({ open: true, habit: null, categoryId: null })}
+          onAction={() => setHabitDialog({ open: true, habit: null, categoryId: null, mode: "habit" })}
         />
       )}
 
@@ -272,7 +279,14 @@ function HabitsPage() {
                         })
                       }
                       onNote={() => setNoteFor(habit)}
-                      onEdit={() => setHabitDialog({ open: true, habit, categoryId: null })}
+                      onEdit={() =>
+                        setHabitDialog({
+                          open: true,
+                          habit,
+                          categoryId: habit.category_id,
+                          mode: habit.kind,
+                        })
+                      }
                       onDelete={() =>
                         setConfirm({ kind: "habit", id: habit.id, name: habit.name })
                       }
@@ -287,9 +301,6 @@ function HabitsPage() {
       </div>
         </TabsContent>
 
-        <TabsContent value="actividades">
-          <ActivityView />
-        </TabsContent>
 
         <TabsContent value="matriz">
           <HabitMatrix />
@@ -302,6 +313,7 @@ function HabitsPage() {
         categories={categories}
         defaultCategoryId={habitDialog.categoryId}
         habit={habitDialog.habit}
+        mode={habitDialog.mode}
         onSubmit={(input) => {
           if (habitDialog.habit) {
             m.updateHabit.mutate({ id: habitDialog.habit.id, patch: input });
