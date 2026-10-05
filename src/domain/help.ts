@@ -74,6 +74,7 @@ export const HELP: Record<string, HelpEntry> = {
   "finance.history": { title: "Historial", description: "Aquí se muestran juntos los movimientos del período, con búsqueda por nota, categoría o etiquetas." },
   "finance": { title: "Finanzas", description: "Registra ingresos, gastos, cuentas y movimientos con datos persistentes. Usa las pestañas para separar el resumen, la exploración por categorías y el historial." },
   "health": { title: "Salud", description: "Registra métricas, medicamentos, hidratación y seguimiento de salud usando la fecha global." },
+  "health.medicationHistory": { title: "Historial de medicamentos", description: "Conserva las tomas registradas aunque un medicamento haya sido suspendido. Aquí puedes revisar qué medicamento se programó, para qué fecha y si fue tomada, omitida, pospuesta o quedó pendiente." },
   "life": { title: "Vida", description: "Centraliza listas, metas, alarmas y otras herramientas prácticas de la vida diaria." },
   "journal": { title: "Diario", description: "Registra experiencias, reflexiones, estado de ánimo y recuerdos por fecha." },
   "profile": { title: "Perfil", description: "Personaliza identidad, apariencia y preferencias globales de Personal OS." },
