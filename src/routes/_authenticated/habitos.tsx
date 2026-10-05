@@ -135,7 +135,7 @@ function HabitsPage() {
 
         <TabsContent value="registro" className="space-y-5">
       <div className="sticky top-14 z-20 -mx-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background/90 px-4 py-2 backdrop-blur md:top-0 md:-mx-2 md:px-2">
-        <div className="flex items-center gap-2"><h1 className="text-xl font-semibold">Hábitos</h1><HelpTip helpKey="habits"/></div>
+        <div className="flex items-center gap-2"><h1 className="text-xl font-semibold">Hábitos y actividades</h1><HelpTip helpKey="habits"/></div>
         <div className="flex flex-1 flex-wrap gap-2 sm:flex-none">
           <Button
             size="sm"
@@ -169,8 +169,8 @@ function HabitsPage() {
 
       {!loading && habits.length === 0 && categories.length === 0 && (
         <EmptyState
-          title="Aún no tienes hábitos"
-          description="Crea una categoría para organizarlos, o crea un hábito directamente."
+          title="Aún no tienes hábitos ni actividades"
+          description="Crea una categoría, hábito o actividad para comenzar a registrar tu día."
           actionLabel="+ Crear hábito"
           onAction={() => setHabitDialog({ open: true, habit: null, categoryId: null, mode: "habit" })}
         />
@@ -206,6 +206,7 @@ function HabitsPage() {
                       open: true,
                       habit: null,
                       categoryId: group.category?.id ?? null,
+                      mode: "habit",
                     })
                   }
                 >
@@ -354,7 +355,7 @@ function HabitsPage() {
         title={
           confirm?.kind === "category"
             ? `¿Eliminar la categoría "${confirm.name}"?`
-            : `¿Eliminar el hábito "${confirm?.name ?? ""}"?`
+            : `¿Eliminar "${confirm?.name ?? ""}"?`
         }
         description={
           confirm?.kind === "category"
