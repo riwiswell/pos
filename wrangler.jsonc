@@ -4,6 +4,10 @@
   "compatibility_date":"2026-10-04",
   "compatibility_flags":["nodejs_compat"],
   "main":"src/server.ts",
+  "vars":{
+    "SUPABASE_URL":"https://eutrhjvdyrakrxmjemut.supabase.co",
+    "SUPABASE_PROJECT_ID":"eutrhjvdyrakrxmjemut"
+  },
   "triggers":{"crons":["* * * * *"]},
   "observability":{"enabled":true}
 }
