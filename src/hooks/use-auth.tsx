@@ -22,21 +22,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!active) return;
-      setSession(nextSession);
-      setLoading(false);
-    });
+    let subscription: { subscription: { unsubscribe: () => void } } | null = null;
 
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      setSession(data.session);
-      setLoading(false);
-    });
+    try {
+      const auth = supabase.auth;
+      const result = auth.onAuthStateChange((_event, nextSession) => {
+        if (!active) return;
+        setSession(nextSession);
+        setLoading(false);
+      });
+      subscription = result.data;
+
+      void auth.getSession()
+        .then(({ data }) => {
+          if (!active) return;
+          setSession(data.session);
+        })
+        .catch((error) => {
+          // Authentication must not be able to take down the public shell.
+          // The auth screen will surface actionable errors when an operation
+          // actually requires Supabase.
+          console.error("[Supabase] Could not restore session", error);
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    } catch (error) {
+      console.error("[Supabase] Could not initialize auth", error);
+      if (active) setLoading(false);
+    }
 
     return () => {
       active = false;
-      subscription.subscription.unsubscribe();
+      subscription?.subscription.unsubscribe();
     };
   }, []);
 
