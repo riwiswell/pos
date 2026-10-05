@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { HelpTip } from "@/components/common/HelpTip";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ export function GlobalDateHeader({ allowFuture = true }: Props) {
       <div className="flex items-center justify-between gap-3">
         <span className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground">
           {relative}
+          <HelpTip helpKey="global.date" />
         </span>
         {relative !== "HOY" && (
           <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={goToday}>
