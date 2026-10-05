@@ -12,9 +12,6 @@ import { useGlobalDate } from "@/hooks/use-global-date";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { useHabits, useLogs } from "@/hooks/use-habits";
-import { useAccounts, useBalanceRows, useFinanceSettings, useTransactions } from "@/hooks/use-finance";
-import { accountBalances, sumBy, totalBalance } from "@/lib/finance-math";
-import { formatMoney } from "@/lib/money";
 import { usePlannerItems } from "@/hooks/use-planner";
 import { compareChronologically, shortTime } from "@/domain/planner";
 import { greeting } from "@/lib/date";
@@ -52,11 +49,6 @@ function HomePage() {
   const logsQuery = useLogs(date);
   const profileQuery = useProfile();
 
-  const accountsQuery = useAccounts();
-  const balanceRowsQuery = useBalanceRows();
-  const settingsQuery = useFinanceSettings();
-  const dayTransactions = useTransactions({ from: date, to: date });
-
   const plannerQuery = usePlannerItems(date);
   const plannerItems = plannerQuery.data ?? [];
   const pendingCount = plannerItems.filter((i) => i.status !== "done").length;
@@ -88,16 +80,6 @@ function HomePage() {
     profileQuery.data?.full_name ??
     user?.email?.split("@")[0] ??
     "";
-
-  const dayList = dayTransactions.data ?? [];
-  const dayExpense = sumBy(dayList, "expense");
-  const dayIncome = sumBy(dayList, "income");
-  const balances = accountBalances(balanceRowsQuery.data ?? []);
-  const balance = totalBalance(accountsQuery.data ?? [], balances);
-  const hideAmounts = settingsQuery.data
-    ? !settingsQuery.data.show_money_in_dashboard
-    : false;
-  const money = (value: number) => (hideAmounts ? "••••" : formatMoney(value));
 
   return (
     <div className="space-y-5">
@@ -139,48 +121,6 @@ function HomePage() {
         )}
       </section>
 
-      <section className="glass rounded-2xl p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Finanzas del día</h2>
-          <Button asChild size="sm" variant="ghost">
-            <Link to="/finanzas" search={(prev: Record<string, unknown>) => prev}>
-              Ir a Finanzas
-            </Link>
-          </Button>
-        </div>
-        {dayTransactions.isLoading ? (
-          <p className="mt-2 text-sm text-muted-foreground">Cargando…</p>
-        ) : (
-          <>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Gastos</p>
-                <p className="text-sm font-semibold tabular-nums">{money(dayExpense)}</p>
-              </div>
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Ingresos
-                </p>
-                <p className="text-sm font-semibold tabular-nums text-success">
-                  {money(dayIncome)}
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Balance
-                </p>
-                <p className="text-sm font-semibold tabular-nums">{money(balance)}</p>
-              </div>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {dayList.length === 0
-                ? "Sin movimientos registrados en esta fecha."
-                : `${dayList.length} movimiento${dayList.length === 1 ? "" : "s"} en esta fecha.`}
-            </p>
-          </>
-        )}
-      </section>
-
       <DailyFocusPicker date={date} />
 
       {habitsQuery.isLoading ? (
@@ -192,22 +132,6 @@ function HomePage() {
         />
       ) : (
         <>
-          <section className="glass rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Resumen de hábitos</h2>
-              <span className="text-sm text-muted-foreground">
-                {done}/{total}
-              </span>
-            </div>
-            <Progress value={percent} className="mt-3 h-2" />
-            <p className="mt-2 text-xs text-muted-foreground">
-              {percent}% completado
-              {activities.length > 0
-                ? ` · actividades del día ${activitiesDone}/${activities.length}`
-                : ""}
-            </p>
-          </section>
-
           <section className="glass rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Resumen de hábitos</h2>
