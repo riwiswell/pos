@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
+  // The landing page is intentionally client-rendered on Cloudflare. It only
+  // needs browser auth state and should never make the public entry point
+  // depend on server-side Supabase credentials.
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Personal OS — Tu sistema operativo personal" },
