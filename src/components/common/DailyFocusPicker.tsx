@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Crosshair, ListTodo, Target } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { HelpTip } from "@/components/common/HelpTip";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useDailyFocus, useDailyFocusMutations } from "@/hooks/use-focus";
@@ -92,7 +93,7 @@ export function DailyFocusPicker({ date }: Props) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Crosshair className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold">Enfoque del día</h2>
+            <h2 className="flex items-center gap-1 text-sm font-semibold">Enfoque del día <HelpTip helpKey="focus" /></h2>
           </div>
           <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
             {current ? "Cambiar" : "Elegir enfoque"}
