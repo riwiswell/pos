@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { HelpTip } from "@/components/common/HelpTip";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
+import { HelpTip } from "@/components/common/HelpTip";
 import { EmptyState } from "@/components/common/EmptyState";
 import { LoadingState } from "@/components/common/States";
 import { Progress } from "@/components/ui/progress";
@@ -87,6 +87,7 @@ function HomePage() {
         <h1 className="text-xl font-semibold">
           {greeting()}
           {name ? `, ${name}` : ""}
+          <HelpTip helpKey="dashboard" />
         </h1>
         <p className="text-sm text-muted-foreground">Tu día en Personal OS</p>
       </div>
@@ -95,7 +96,7 @@ function HomePage() {
 
       <section className="glass rounded-2xl p-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Planeador</h2>
+          <h2 className="flex items-center gap-1 text-sm font-semibold">Planeador <HelpTip helpKey="planner" /></h2>
           <Button asChild size="sm" variant="ghost">
             <Link to="/planeador" search={(prev: Record<string, unknown>) => prev}>
               Ir al Planeador
@@ -134,7 +135,7 @@ function HomePage() {
         <>
           <section className="glass rounded-2xl p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Resumen de hábitos</h2>
+              <h2 className="flex items-center gap-1 text-sm font-semibold">Resumen de hábitos <HelpTip helpKey="habits.summary" /></h2>
               <span className="text-sm text-muted-foreground">
                 {done}/{total}
               </span>
