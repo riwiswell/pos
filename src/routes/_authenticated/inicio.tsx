@@ -6,6 +6,7 @@ import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { LoadingState } from "@/components/common/States";
 import { Progress } from "@/components/ui/progress";
+import { DailyFocusPicker } from "@/components/common/DailyFocusPicker";
 import { Button } from "@/components/ui/button";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useAuth } from "@/hooks/use-auth";
@@ -180,6 +181,8 @@ function HomePage() {
         )}
       </section>
 
+      <DailyFocusPicker date={date} />
+
       {habitsQuery.isLoading ? (
         <LoadingState />
       ) : habits.length === 0 ? (
@@ -191,15 +194,17 @@ function HomePage() {
         <>
           <section className="glass rounded-2xl p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Enfoque del día</h2>
-              <Button asChild size="sm" variant="ghost">
-                <Link to="/habitos" search={(prev: Record<string, unknown>) => prev}>
-                  Ir a Hábitos
-                </Link>
-              </Button>
+              <h2 className="text-sm font-semibold">Resumen de hábitos</h2>
+              <span className="text-sm text-muted-foreground">
+                {done}/{total}
+              </span>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Todavía no eliges un enfoque. Entra a Hábitos y decide qué quieres priorizar hoy.
+            <Progress value={percent} className="mt-3 h-2" />
+            <p className="mt-2 text-xs text-muted-foreground">
+              {percent}% completado
+              {activities.length > 0
+                ? ` · actividades del día ${activitiesDone}/${activities.length}`
+                : ""}
             </p>
           </section>
 
