@@ -64,6 +64,7 @@ export const HELP: Record<string, HelpEntry> = {
     title: "Saldo anterior",
     description: "Lo que venía de antes de este período: pendiente (debes) o a favor (pagaste de más).",
   },
+  "global.date": { title: "Fecha global", description: "Esta es la fecha que usan los módulos de Personal OS para registrar y consultar lo que ocurre ese día. Puedes cambiarla aquí o volver a HOY." },
   "dashboard": { title: "Inicio", description: "Resumen del día basado en registros reales de Personal OS." },
   "habits": { title: "Hábitos", description: "Registra constancia diaria, contadores, notas e historial usando la fecha global." },
   "habits.summary": { title: "Resumen de hábitos", description: "Muestra el avance de tus hábitos del día. Las actividades se registran, pero no cuentan para la racha de hábitos." },
