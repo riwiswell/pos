@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Eye, EyeOff, Plus, Search, Settings2, Tags } from "lucide-react";
+import { ArrowLeft, Plus, Search, Settings2, Tags } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
@@ -711,11 +711,6 @@ function FinancePage() {
           setDeleting(null);
         }}
       />
-
-      <span className="sr-only">
-        <Eye />
-        <EyeOff />
-      </span>
     </div>
   );
 }
