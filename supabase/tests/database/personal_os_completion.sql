@@ -1,6 +1,6 @@
 begin;
 
-select plan(43);
+select plan(48);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -25,15 +25,41 @@ select is(
   'activities do not award habit XP'
 );
 select is(
-  public.gamification_xp_for_event('habit_logs', '{"habit_kind":"habit"}'::jsonb),
+  public.gamification_xp_for_event('habit_logs', '{"habit_kind":"habit","completed":true}'::jsonb),
   5,
-  'habit logs retain their expected XP'
+  'completed habit logs retain their expected XP'
 );
 
 select is(
   public.gamification_xp_for_event('habit_logs', '{"_operation":"UPDATE","habit_kind":"habit"}'::jsonb),
   0,
   'editing an existing habit log does not award XP again'
+);
+
+select is(
+  public.gamification_xp_for_event('habit_logs', '{"_operation":"INSERT","habit_kind":"habit","completed":false,"value":0}'::jsonb),
+  0,
+  'creating an empty habit log does not award XP'
+);
+select is(
+  public.gamification_xp_for_event('habit_logs', '{"_operation":"UPDATE","habit_kind":"habit","completed":true,"value":1}'::jsonb),
+  5,
+  'completing a habit log awards XP on the meaningful update'
+);
+select is(
+  public.gamification_xp_for_event('routine_logs', '{"_operation":"INSERT","completed":false}'::jsonb),
+  0,
+  'an incomplete routine log does not award XP'
+);
+select is(
+  public.gamification_xp_for_event('routine_logs', '{"_operation":"UPDATE","completed":true}'::jsonb),
+  5,
+  'completing a routine log awards XP once'
+);
+select is(
+  public.gamification_xp_for_event('work_items', '{"_operation":"UPDATE","status":"done"}'::jsonb),
+  0,
+  'editing a work item does not mint additional XP'
 );
 select is(
   public.gamification_xp_for_event('work_sessions', '{"status":"active"}'::jsonb),
