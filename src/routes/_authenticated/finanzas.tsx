@@ -89,18 +89,19 @@ function CategoryExplorer({
     const applicable = categories.filter(
       (category) => category.active && categoryAppliesTo(category.kind, type),
     );
-    const categoryRows = applicable.map((category) => {
+    const categoryRows = applicable.flatMap((category) => {
       const items = transactions.filter(
         (tx) => tx.type === type && tx.category_id === category.id,
       );
-      return {
+      if (items.length === 0) return [];
+      return [{
         id: category.id,
         name: category.name,
         color: category.color,
         icon: category.icon,
         count: items.length,
         total: sumBy(items, type),
-      };
+      }];
     });
 
     const uncategorized = transactions.filter(
