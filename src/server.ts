@@ -48,9 +48,14 @@ async function dispatchDueNotifications(env:Env){
  if(!due.ok)return;const jobs=await due.json() as any[];
  for(const job of jobs){
    const subs=await supabaseFetch(env,"push_subscriptions?user_id=eq."+encodeURIComponent(job.user_id));if(!subs.ok)continue;
-   for(const row of await subs.json() as any[]){try{await webpush.sendNotification(row.subscription,JSON.stringify({title:job.title,body:job.body??"",tag:job.id,data:{type:"scheduled-notification",url:"/alarmas"}}));}catch(e){const status=(e as any)?.statusCode;if(status===404||status===410)await supabaseFetch(env,"push_subscriptions?id=eq."+row.id,{method:"DELETE"});}}
-   await supabaseFetch(env,"notification_jobs?id=eq."+job.id,{method:"PATCH",body:JSON.stringify({status:"sent",sent_at:new Date().toISOString()})});
-   const repeat=job.payload?.repeat_rule; if(repeat==="daily"||repeat==="weekly"){const next=new Date(job.fire_at);next.setDate(next.getDate()+ (repeat==="weekly"?7:1)); if(next.getTime()>Date.now()-60000) await supabaseFetch(env,"notification_jobs",{method:"POST",body:JSON.stringify({user_id:job.user_id,source_type:job.source_type,source_id:job.source_id,fire_at:next.toISOString(),title:job.title,body:job.body,payload:job.payload,status:"pending"})});}
+   const subscriptions=await subs.json() as any[];
+   let delivered=0;
+   for(const row of subscriptions){try{await webpush.sendNotification(row.subscription,JSON.stringify({title:job.title,body:job.body??"",tag:job.id,data:{type:"scheduled-notification",url:"/alarmas"}}));delivered+=1;}catch(e){const status=(e as any)?.statusCode;if(status===404||status===410)await supabaseFetch(env,"push_subscriptions?id=eq."+encodeURIComponent(row.id),{method:"DELETE"});}}
+   // Do not lose a scheduled notification because no device is subscribed or every send failed.
+   if(delivered===0){console.warn("[push] Notification job was not delivered; keeping pending",job.id);continue;}
+   const marked=await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"sent",sent_at:new Date().toISOString()})});
+   if(!marked.ok){console.error("[push] Delivered notification but could not mark job as sent",job.id);continue;}
+   const repeat=job.payload?.repeat_rule; if(repeat==="daily"||repeat==="weekly"){const next=new Date(job.fire_at);next.setDate(next.getDate()+(repeat==="weekly"?7:1)); if(next.getTime()>Date.now()-60000) await supabaseFetch(env,"notification_jobs",{method:"POST",body:JSON.stringify({user_id:job.user_id,source_type:job.source_type,source_id:job.source_id,fire_at:next.toISOString(),title:job.title,body:job.body,payload:job.payload,status:"pending"})});}
  }
 }
 async function normalizeCatastrophicSsrResponse(response:Response){if(response.status<500)return response;const ct=response.headers.get("content-type")??"";if(!ct.includes("application/json"))return response;const body=await response.clone().text();try{const p=JSON.parse(body);if(p.unhandled===true&&p.message==="HTTPError"){console.error(consumeLastCapturedError()??new Error("h3 swallowed SSR error"));return new Response(renderErrorPage(),{status:500,headers:{"content-type":"text/html; charset=utf-8"}})}}catch{}return response}
