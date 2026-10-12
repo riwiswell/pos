@@ -34,7 +34,42 @@ export const lifeGraphService={
  async remove(table:LGTable,id:string){const{error}=await db.from(table).delete().eq("id",id);if(error)throw error},
  async cancelPendingNotifications(sourceType:string,sourceId:string){const user_id=await uid();const{error}=await db.from("notification_jobs").update({status:"cancelled"}).eq("user_id",user_id).eq("source_type",sourceType).eq("source_id",sourceId).eq("status","pending");if(error)throw error},
  async link(fromType:string,fromId:string,toType:string,toId:string,relation:string,metadata:Record<string,unknown>={}){return this.create("life_links",{from_type:fromType,from_id:fromId,to_type:toType,to_id:toId,relation,metadata})},
- async promoteJournalIdeaToProject(entryId:string){const user_id=await uid();const {data:entry,error:readError}=await db.from("journal_entries").select("id,title,content,type,entry_date").eq("id",entryId).single();if(readError)throw readError;if(entry.type!=="idea")throw new Error("Solo las ideas pueden convertirse en proyectos.");const title=(entry.title||"Idea sin título").trim();const {data:project,error}=await db.from("work_items").insert({user_id,title,kind:"project",status:"open",source_journal_entry_id:entry.id,notes:entry.content,target_date:null}).select("*").single();if(error)throw error;const {error:updateError}=await db.from("journal_entries").update({linked_work_item_id:project.id,capture_stage:"promoted"}).eq("id",entry.id);if(updateError)throw updateError;await this.link("journal_entry",entry.id,"work_item",project.id,"became_project",{entry_date:entry.entry_date});return project},
+ async promoteJournalIdeaToProject(entryId:string){
+  const user_id=await uid();
+  const {data:entry,error:readError}=await db.from("journal_entries").select("id,title,content,type,entry_date,linked_work_item_id").eq("id",entryId).eq("user_id",user_id).single();
+  if(readError)throw readError;
+  if(entry.type!=="idea")throw new Error("Solo las ideas pueden convertirse en proyectos.");
+
+  // Idempotency: if a previous attempt created the project but failed to link
+  // the journal entry, attach that project instead of creating a duplicate.
+  let project:any=null;
+  if(entry.linked_work_item_id){
+    const linked=await db.from("work_items").select("*").eq("id",entry.linked_work_item_id).eq("user_id",user_id).maybeSingle();
+    if(linked.error)throw linked.error;
+    project=linked.data;
+  }
+  if(!project){
+    const existing=await db.from("work_items").select("*").eq("user_id",user_id).eq("source_journal_entry_id",entry.id).limit(1).maybeSingle();
+    if(existing.error)throw existing.error;
+    project=existing.data;
+  }
+  if(!project){
+    const title=(entry.title||"Idea sin título").trim();
+    const created=await db.from("work_items").insert({user_id,title,kind:"project",status:"open",source_journal_entry_id:entry.id,notes:entry.content,target_date:null}).select("*").single();
+    if(created.error)throw created.error;
+    project=created.data;
+  }
+
+  if(entry.linked_work_item_id!==project.id){
+    const {error:updateError}=await db.from("journal_entries").update({linked_work_item_id:project.id,capture_stage:"promoted"}).eq("id",entry.id).eq("user_id",user_id);
+    if(updateError)throw updateError;
+  }
+
+  const existingLink=await db.from("life_links").select("id").eq("user_id",user_id).eq("from_type","journal_entry").eq("from_id",entry.id).eq("to_type","work_item").eq("to_id",project.id).eq("relation","became_project").limit(1).maybeSingle();
+  if(existingLink.error)throw existingLink.error;
+  if(!existingLink.data)await this.link("journal_entry",entry.id,"work_item",project.id,"became_project",{entry_date:entry.entry_date});
+  return project;
+ },
  async personalSnapshot(){
   const uidValue=await uid();
   const names=["life_goals","health_metrics","learning_items","language_profiles","relationships","relationship_interactions","work_items","work_sessions","life_links","finance_transactions","finance_budgets","finance_debts","finance_savings_goals","menstrual_records","medical_appointments","notification_jobs"];
