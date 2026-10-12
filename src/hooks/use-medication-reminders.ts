@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { todayISO } from "@/lib/date";
 import { lastWater, useDoses, useMedicationMutations, useMedications } from "@/hooks/use-medications";
+import { medicationsService } from "@/services/medications.service";
 import { doseLabel, effectiveDueAt, formatGlasses, formatTime12, isOpen, type DoseStatus } from "@/domain/health";
 
 const FIRED_KEY = "personal-os:med-fired";
@@ -70,6 +71,25 @@ export function useMedicationReminders() {
   }, []);
 
   const byId = useMemo(() => new Map((meds.data ?? []).map((m) => [m.id, m])), [meds.data]);
+  const scheduleSignature = useMemo(
+    () => (meds.data ?? [])
+      .map((m) => [m.id, m.active, m.start_date, m.end_date, m.frequency, m.times.join(","), m.remind_offset_min].join(":"))
+      .sort()
+      .join("|"),
+    [meds.data],
+  );
+  const preparedSignature = useRef("");
+
+  useEffect(() => {
+    if (!meds.isSuccess || !scheduleSignature || preparedSignature.current === scheduleSignature) return;
+    preparedSignature.current = scheduleSignature;
+    void medicationsService.prepareUpcomingDoses(14).catch((error) => {
+      toast.error(error instanceof Error
+        ? "No se pudieron preparar los recordatorios futuros: " + error.message
+        : "No se pudieron preparar los recordatorios futuros.");
+      preparedSignature.current = "";
+    });
+  }, [meds.isSuccess, scheduleSignature]);
 
   useEffect(() => {
     if (!doses.data) return;
@@ -92,7 +112,7 @@ export function useMedicationReminders() {
       if (getPermission() === "granted") {
         const opts: NotificationOptions & { actions?: { action: string; title: string }[] } = {
           body,
-          tag: key,
+          tag: `pos:medication:${dose.id}`,
           requireInteraction: true,
           data: { doseId: dose.id },
           actions: [
