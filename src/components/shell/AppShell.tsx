@@ -40,7 +40,9 @@ function useCollapsed() {
 function orderedItems(order: string[] | undefined, hidden: string[] | undefined) {
   const rank = new Map((order?.length ? order : NAV_ITEMS.map((item) => item.key)).map((key, i) => [key, i]));
   return NAV_ITEMS
-    .filter((item) => !(hidden ?? []).includes(item.key))
+    // Profile is already a permanent destination in the shell footer/header.
+    // Showing it again in the module list creates duplicate navigation.
+    .filter((item) => item.key !== "perfil" && !(hidden ?? []).includes(item.key))
     .sort((a, b) => (rank.get(a.key) ?? 999) - (rank.get(b.key) ?? 999));
 }
 
