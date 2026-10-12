@@ -1,6 +1,6 @@
 begin;
 
-select plan(38);
+select plan(40);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -44,6 +44,18 @@ select is(
   public.gamification_xp_for_event('work_sessions', '{"status":"completed"}'::jsonb),
   10,
   'completing a work session awards XP once'
+);
+
+select is(
+  public.gamification_xp_for_event('work_sessions', '{"_operation":"UPDATE","status":"completed"}'::jsonb),
+  10,
+  'transitioning an active work session to completed awards XP'
+);
+
+select is(
+  public.gamification_xp_for_event('work_sessions', '{"_operation":"UPDATE","status":"active"}'::jsonb),
+  0,
+  'editing an active work session does not award XP'
 );
 
 select results_eq(
