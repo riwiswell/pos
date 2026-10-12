@@ -16,6 +16,7 @@ import { subscribeToBackgroundPush } from "@/services/push.service";
 import { toast } from "sonner";
 import { lifeGraphService } from "@/services/life-graph.service";
 import { useTheme } from "@/hooks/use-theme";
+import { DASHBOARD_WIDGETS, DEFAULT_DASHBOARD_WIDGETS, normalizeDashboardWidgets } from "@/domain/dashboard";
 
 export const Route = createFileRoute("/_authenticated/perfil")({ component: ProfilePage });
 
@@ -27,14 +28,7 @@ const FEATURE_LABELS = [
   ["health.appointments", "Salud → Citas médicas"],
   ["learning.books", "Aprendizaje → Libros"],
 ] as const;
-const WIDGETS = [
-  ["daily", "Resumen del día"],
-  ["goals", "Metas"],
-  ["ai", "Señales de IA"],
-  ["finance", "Finanzas"],
-  ["health", "Salud"],
-  ["learning", "Aprendizaje"],
-] as const;
+const WIDGETS = DASHBOARD_WIDGETS;
 const BACKUP_TABLES = [
   "profiles","habits","habit_logs","habit_categories","planner_items","planner_categories",
   "finance_accounts","finance_categories","finance_transactions","finance_settings","journal_entries","alarms",
@@ -61,7 +55,7 @@ function ProfilePage() {
   const [order, setOrder] = useState<string[]>(DEFAULT_ORDER);
   const [hidden, setHidden] = useState<string[]>([]);
   const [features, setFeatures] = useState<Record<string, boolean>>({});
-  const [widgets, setWidgets] = useState<string[]>(["daily", "goals", "ai", "finance"]);
+  const [widgets, setWidgets] = useState<string[]>([...DEFAULT_DASHBOARD_WIDGETS]);
   const [privacy, setPrivacy] = useState<boolean>(true);
   const [relationshipNotifications, setRelationshipNotifications] = useState<boolean>(true);
   const [importing, setImporting] = useState(false);
@@ -81,7 +75,7 @@ function ProfilePage() {
     setOrder(Array.isArray(p.module_order) && p.module_order.length ? p.module_order : DEFAULT_ORDER);
     setHidden(Array.isArray(p.hidden_modules) ? p.hidden_modules : []);
     setFeatures(p.hidden_features || {});
-    setWidgets(Array.isArray(p.dashboard_widgets) && p.dashboard_widgets.length ? p.dashboard_widgets : ["daily","goals","ai","finance"]);
+    setWidgets(normalizeDashboardWidgets(p.dashboard_widgets));
     setPrivacy(p.notification_preferences?.privacy?.allow_external_ai !== false);
     setRelationshipNotifications(p.notification_preferences?.relationships !== false);
   }, [p]);
@@ -279,9 +273,10 @@ function ProfilePage() {
 
       <section className="glass space-y-3 rounded-2xl p-4">
         <h2 className="font-semibold">Inicio y widgets</h2>
+        <p className="text-xs text-muted-foreground">Solo aparecen aquí los bloques que Inicio ya tiene implementados; puedes dejarlo vacío para una vista despejada.</p>
         {WIDGETS.map(([key, label]) => (
           <div key={key} className="flex items-center justify-between rounded-xl border p-3">
-            <span className="text-sm">{label}</span>
+            <span className="min-w-0 flex-1 text-sm">{label}</span>
             <Switch checked={widgets.includes(key)} onCheckedChange={(value) => setWidgets((current) => value ? (current.includes(key) ? current : [...current, key]) : current.filter((x) => x !== key))} />
           </div>
         ))}
