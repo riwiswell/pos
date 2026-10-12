@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/inicio")({
       { title: "Inicio — Personal OS" },
       {
         name: "description",
-        content: "Tu resumen del día en Personal OS: enfoque, hábitos, finanzas y actividad.",
+        content: "Tu resumen del día en Personal OS: agenda, enfoque y hábitos.",
       },
       { property: "og:title", content: "Inicio — Personal OS" },
       {
