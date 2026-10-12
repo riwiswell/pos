@@ -1,6 +1,6 @@
 begin;
 
-select plan(40);
+select plan(42);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -75,6 +75,18 @@ select ok((select relrowsecurity from pg_class where oid = 'public.habit_logs'::
 select ok((select relrowsecurity from pg_class where oid = 'public.finance_transactions'::regclass), 'finance transactions have row-level security');
 select ok((select relrowsecurity from pg_class where oid = 'public.shopping_lists'::regclass), 'shopping lists have row-level security');
 select ok((select relrowsecurity from pg_class where oid = 'public.shopping_items'::regclass), 'shopping items have row-level security');
+
+select is(
+  (select count(*)::integer from pg_policies where schemaname='public' and tablename='shopping_items' and policyname='shopping_items_insert' and with_check like '%shopping_lists%'),
+  1,
+  'shopping item inserts require a list owned by the same user'
+);
+
+select is(
+  (select count(*)::integer from pg_policies where schemaname='public' and tablename='shopping_items' and policyname='shopping_items_update' and with_check like '%shopping_lists%'),
+  1,
+  'shopping item updates cannot attach items to another user list'
+);
 select ok((select relrowsecurity from pg_class where oid = 'public.medical_appointments'::regclass), 'medical appointments have row-level security');
 select ok((select relrowsecurity from pg_class where oid = 'public.notification_jobs'::regclass), 'notification jobs have row-level security');
 select ok((select relrowsecurity from pg_class where oid = 'public.push_subscriptions'::regclass), 'push subscriptions have row-level security');
