@@ -14,8 +14,8 @@ export const lifeGraphService={
  async list(table:LGTable,order="created_at",ascending=false):Promise<any[]>{
   // PostgREST caps response size; paginate so searches, histories and backups don't silently omit rows.
   // These per-user singleton tables deliberately have user_id as their primary key, not id.
-  const singleton=table==="gamification_profiles";
-  const orderColumn=table==="gamification_profiles"&&order==="created_at"?"updated_at":order;
+  const singleton=table==="gamification_profiles"||table==="finance_settings";
+  const orderColumn=singleton&&order==="created_at"?"updated_at":order;
   const pageSize=1000;
   const rows:any[]=[];
   for(let from=0;;from+=pageSize){
