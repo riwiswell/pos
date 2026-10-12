@@ -159,7 +159,7 @@ export const JOURNAL_META: Record<JournalType, JournalTypeMeta> = {
 export const DREAM_MOODS = ["Tranquilo", "Feliz", "Extraño", "Confuso", "Triste", "Angustia", "Miedo"];
 
 /** Searchable text of an entry (title, content, gratitude items, dream notes). */
-function normalizeSearchText(value: string): string {
+export function normalizeSearchText(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es");
 }
 
