@@ -66,7 +66,7 @@ export function RelationshipsPage() {
   const reset=()=>{setName("");setType("pareja");setBirthday("");setAnniversary("");setNext("");setFrequency("");setNotes("");setSelected(null)};
   const startEdit=(r:any)=>{setSelected(r);setName(r.name||"");setType(r.relationship_type||"importante");setBirthday(r.birthday||"");setAnniversary(r.anniversary||"");setNext(r.next_contact_on||"");setFrequency(r.contact_frequency_days?String(r.contact_frequency_days):"");setNotes(r.notes||"");};
   return <PageShell icon={<HeartHandshake className="h-5 w-5"/>} title="Relaciones" subtitle="Personas importantes, no una agenda de contactos: cuidado, fechas, seguimiento e historial.">
-    {(q.isError||ints.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:ints.error instanceof Error?ints.error.message:"No se pudieron cargar las relaciones o su historial."}/>
+    {(q.isError||ints.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:ints.error instanceof Error?ints.error.message :"No se pudieron cargar las relaciones o su historial."}/>}
     <section className="glass space-y-3 rounded-2xl p-4">
       <div className="flex items-center justify-between"><h2 className="font-semibold">{selected ? "Editar relación" : "Nueva relación"}</h2>{selected&&<Button size="sm" variant="ghost" onClick={reset}><X className="mr-1 h-4 w-4"/>Cancelar</Button>}</div>
       <div className="grid gap-2 sm:grid-cols-4">
@@ -106,7 +106,7 @@ export function SpiritualityPage(){
   const kinds:[string,string][]=[["prayer","Oración"],["reflection","Reflexión"],["gratitude","Gratitud"],["reading","Lectura"],["prophecy","Profecía"]];if(!fastingHidden)kinds.push(["fasting","Ayuno"]);
   const clearEntry=()=>{setTitle("");setKind("prayer");setContent("");setProphecy("");setScripture("");setAnswered(false);setAnsweredNote("")};
   return <PageShell icon={<Church className="h-5 w-5"/>} title="Espiritualidad" subtitle="Módulo opcional y configurable. Registra tu práctica espiritual sin imponer una tradición al sistema.">
-    {(entries.isError||goals.isError)&&<ErrorState message={entries.error instanceof Error?entries.error.message:goals.error instanceof Error?goals.error.message:"No se pudieron cargar los registros espirituales o sus metas."}/>
+    {(entries.isError||goals.isError)&&<ErrorState message={entries.error instanceof Error?entries.error.message:goals.error instanceof Error?goals.error.message :"No se pudieron cargar los registros espirituales o sus metas."}/>}
     <section className="glass space-y-3 rounded-2xl p-4"><h2 className="font-semibold">Nuevo registro</h2><div className="grid gap-2 sm:grid-cols-[1fr_180px]"><Input placeholder="Título" value={title} onChange={e=>setTitle(e.target.value)}/><select className="h-10 rounded-md border bg-background px-3" value={kind} onChange={e=>setKind(e.target.value)}>{kinds.map(x=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></div>
       <RichTextEditor value={content} onChange={setContent} placeholder="Escribe aquí tu oración, reflexión, gratitud o lectura…"/>
       {kind==="prophecy"&&<><div className="rounded-xl border p-3 text-sm text-muted-foreground">La profecía queda vinculada a la fecha seleccionada del día. Puedes conservar el texto completo sin convertirlo en una afirmación automática del sistema.</div><RichTextEditor value={prophecy} onChange={setProphecy} placeholder="Texto libre de la profecía recibida…"/></>}
