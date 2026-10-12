@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Pencil, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -44,7 +44,7 @@ export function CategoryManagerDialog({ open, onOpenChange, categories }: Props)
           <DialogHeader>
             <DialogTitle>Categorías</DialogTitle>
             <DialogDescription>
-              Crea, edita o elimina las categorías que usas en tus movimientos.
+              Crea, edita o archiva categorías. Los movimientos históricos conservan su clasificación.
             </DialogDescription>
           </DialogHeader>
 
@@ -85,7 +85,10 @@ export function CategoryManagerDialog({ open, onOpenChange, categories }: Props)
                   >
                     <Icon className="h-4 w-4" style={{ color: category.color }} />
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-sm">{category.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    {category.name}
+                    {!category.active && <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">Archivada</span>}
+                  </span>
                   {category.kind === "both" && (
                     <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">
                       Ambos
@@ -100,15 +103,30 @@ export function CategoryManagerDialog({ open, onOpenChange, categories }: Props)
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`Eliminar ${category.name}`}
-                    className="h-8 w-8 text-destructive"
-                    onClick={() => setDeleting(category)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {category.active ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Archivar ${category.name}`}
+                      title="Archivar categoría"
+                      className="h-8 w-8"
+                      onClick={() => setDeleting(category)}
+                    >
+                      <Archive className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Reactivar ${category.name}`}
+                      title="Reactivar categoría"
+                      className="h-8 w-8"
+                      disabled={mutations.updateCategory.isPending}
+                      onClick={() => void mutations.updateCategory.mutateAsync({id: category.id, patch: {active: true}})}
+                    >
+                      <ArchiveRestore className="h-4 w-4" />
+                    </Button>
+                  )}
                 </li>
               );
             })}
@@ -143,10 +161,10 @@ export function CategoryManagerDialog({ open, onOpenChange, categories }: Props)
       <ConfirmDialog
         open={Boolean(deleting)}
         onOpenChange={(value) => !value && setDeleting(null)}
-        title={`¿Eliminar la categoría "${deleting?.name ?? ""}"?`}
-        description="Los movimientos que la usaban quedarán sin categoría."
+        title={`¿Archivar la categoría "${deleting?.name ?? ""}"?`}
+        description="No aparecerá en formularios para nuevos movimientos, pero los registros existentes seguirán asociados a ella. Puedes reactivarla después."
         onConfirm={async () => {
-          if (deleting) await mutations.deleteCategory.mutateAsync(deleting.id);
+          if (deleting) await mutations.archiveCategory.mutateAsync(deleting.id);
           setDeleting(null);
         }}
       />
