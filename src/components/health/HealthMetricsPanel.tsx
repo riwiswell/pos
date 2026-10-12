@@ -8,7 +8,7 @@ import { useHealthMetricMutation, usePersonalDateList } from "@/hooks/use-person
 import { HelpTip } from "@/components/common/HelpTip";
 import { ErrorState } from "@/components/common/States";
 
-function totoNumber(value:string):number{return toNumber(value.trim().replace(",", "."))}
+function toNumber(value:string):number{return Number(value.trim().replace(",", "."))}
 type BodyMeasurements = { neck_cm:string; shoulders_cm:string; chest_cm:string; waist_cm:string; left_arm_cm:string; right_arm_cm:string; hips_cm:string; left_thigh_cm:string; right_thigh_cm:string; left_calf_cm:string; right_calf_cm:string };
 function readUserNotes(note:string|null){if(!note)return "";try{const x=JSON.parse(note);return x?.marker==="__POS_BODY_MEASURES__"?(x.notes??""):note}catch{return note}}
 function readBodyMeasurements(note:string|null): BodyMeasurements { const empty:BodyMeasurements={neck_cm:"",shoulders_cm:"",chest_cm:"",waist_cm:"",left_arm_cm:"",right_arm_cm:"",hips_cm:"",left_thigh_cm:"",right_thigh_cm:"",left_calf_cm:"",right_calf_cm:""}; if(!note)return empty; try{const x=JSON.parse(note);if(x?.marker!=="__POS_BODY_MEASURES__")return empty;return Object.fromEntries(Object.keys(empty).map(k=>[k,x.body?.[k]!=null?String(x.body[k]):""])) as BodyMeasurements}catch{return empty} }
