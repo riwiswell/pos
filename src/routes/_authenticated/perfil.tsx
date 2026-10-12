@@ -274,9 +274,12 @@ function ProfilePage() {
       <section className="glass space-y-3 rounded-2xl p-4">
         <h2 className="font-semibold">Inicio y widgets</h2>
         <p className="text-xs text-muted-foreground">Solo aparecen aquí los bloques que Inicio ya tiene implementados; puedes dejarlo vacío para una vista despejada.</p>
-        {WIDGETS.map(([key, label]) => (
+        {WIDGETS.map(({ key, label, description }) => (
           <div key={key} className="flex items-center justify-between rounded-xl border p-3">
-            <span className="min-w-0 flex-1 text-sm">{label}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm">{label}</span>
+              <span className="block text-xs text-muted-foreground">{description}</span>
+            </span>
             <Switch checked={widgets.includes(key)} onCheckedChange={(value) => setWidgets((current) => value ? (current.includes(key) ? current : [...current, key]) : current.filter((x) => x !== key))} />
           </div>
         ))}
