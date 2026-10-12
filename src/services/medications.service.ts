@@ -213,25 +213,24 @@ export const medicationsService = {
     return (data ?? []) as MedicationDose[];
   },
 
-  async history(fromDate: string, toDate: string): Promise<MedicationDose[]> {
-    // PostgREST applies a row limit. Page deterministically so older history isn't silently truncated.
-    const pageSize = 1000;
-    const rows: MedicationDose[] = [];
-    for (let from = 0; ; from += pageSize) {
-      const { data, error } = await supabase
-        .from("medication_doses")
-        .select("*")
-        .gte("dose_date", fromDate)
-        .lte("dose_date", toDate)
-        .order("scheduled_at", { ascending: false })
-        .order("id", { ascending: false })
-        .range(from, from + pageSize - 1);
-      if (error) throw error;
-      const page = (data ?? []) as MedicationDose[];
-      rows.push(...page);
-      if (page.length < pageSize) break;
-    }
-    return rows;
+  async historyPage(
+    fromDate: string,
+    toDate: string,
+    page = 0,
+    pageSize = 50,
+  ): Promise<{ rows: MedicationDose[]; total: number }> {
+    const safePage = Math.max(0, Math.floor(page));
+    const safeSize = Math.max(1, Math.min(100, Math.floor(pageSize) || 50));
+    const { data, error, count } = await supabase
+      .from("medication_doses")
+      .select("*", { count: "exact" })
+      .gte("dose_date", fromDate)
+      .lte("dose_date", toDate)
+      .order("scheduled_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(safePage * safeSize, safePage * safeSize + safeSize - 1);
+    if (error) throw error;
+    return { rows: (data ?? []) as MedicationDose[], total: count ?? 0 };
   },
 
   /** Number of taken doses per medication (for remaining quantity). */
