@@ -1,6 +1,6 @@
 begin;
 
-select plan(31);
+select plan(35);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -68,6 +68,12 @@ select ok((
        and not tgisinternal
   )
 ), 'medical appointment notification trigger is installed');
+
+-- Private media buckets must exist and be owned by per-user storage policies.
+select ok((select exists(select 1 from storage.buckets where id = 'finance-photos' and public = false)), 'finance photo bucket exists and is private');
+select ok((select exists(select 1 from storage.buckets where id = 'profile-media' and public = false)), 'profile media bucket exists and is private');
+select is((select count(*)::integer from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'pos_finance_photos_%'), 4, 'finance photo bucket has four per-user policies');
+select is((select count(*)::integer from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'pos_profile_media_%'), 4, 'profile media bucket has four per-user policies');
 
 select * from finish();
 rollback;
