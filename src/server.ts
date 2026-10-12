@@ -24,6 +24,38 @@ async function getServerEntry(){if(!serverEntryPromise)serverEntryPromise=import
 function json(data:unknown,status=200){return new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json;charset=utf-8"}})}
 async function supabaseFetch(env:Env,path:string,init:RequestInit={}){if(!env.SUPABASE_URL||!env.SUPABASE_SERVICE_ROLE_KEY)throw new Error("Supabase server credentials are not configured");const headers=new Headers(init.headers);headers.set("apikey",env.SUPABASE_SERVICE_ROLE_KEY);headers.set("Authorization","Bearer "+env.SUPABASE_SERVICE_ROLE_KEY);headers.set("Content-Type","application/json");if(!headers.has("Prefer"))headers.set("Prefer","return=representation");return fetch(env.SUPABASE_URL+"/rest/v1/"+path,{...init,headers})}
 async function userFromBearer(request:Request,env:Env){const auth=request.headers.get("Authorization");if(!auth||!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return null;const r=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:auth}});if(!r.ok)return null;return await r.json() as {id:string}}
+function annualDate(reference:string,year:number):Date|null{
+ const month=Number(reference.slice(5,7)),day=Number(reference.slice(8,10));
+ if(!Number.isInteger(month)||!Number.isInteger(day)||month<1||month>12||day<1||day>31)return null;
+ const date=new Date(Date.UTC(year,month-1,day));
+ if(date.getUTCMonth()!==month-1)return new Date(Date.UTC(year,month,0));
+ return date;
+}
+async function syncRelationshipJobs(env:Env,userId:string,enabled:boolean){
+ const base="notification_jobs?user_id=eq."+encodeURIComponent(userId)+"&source_type=eq.relationship&status=eq.pending";
+ const cancelled=await supabaseFetch(env,base,{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
+ if(!cancelled.ok)throw new Error("No se pudieron cancelar los recordatorios anteriores");
+ if(!enabled)return {scheduled:0};
+ const read=await supabaseFetch(env,"relationships?user_id=eq."+encodeURIComponent(userId)+"&select=id,name,birthday,anniversary,next_contact_on&order=name.asc&limit=1000");
+ if(!read.ok)throw new Error("No se pudieron leer las relaciones");
+ const relationships=await read.json() as any[];
+ const now=new Date();const jobs:any[]=[];
+ const add=(r:any,fireAt:Date,title:string,body:string,kind:string,eventOn:string)=>{
+  if(fireAt.getTime()>now.getTime())jobs.push({user_id:userId,source_type:"relationship",source_id:r.id,fire_at:fireAt.toISOString(),title,body,payload:{kind,event_on:eventOn},status:"pending"});
+ };
+ for(const relation of relationships){
+  const name=String(relation.name||"Relación importante");
+  for(const item of [{field:"birthday",kind:"birthday",label:"Cumpleaños"},{field:"anniversary",kind:"anniversary",label:"Aniversario"}]){
+   const reference=relation[item.field] as string|null;if(!reference)continue;
+   let event=annualDate(reference,now.getUTCFullYear());if(!event)continue;
+   if(event.getTime()<Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()))event=annualDate(reference,now.getUTCFullYear()+1)||event;
+   add(relation,new Date(event.getTime()-7*86400000),item.label+" de "+name,item.label+" de "+name+" en una semana.",item.kind,event.toISOString().slice(0,10));
+  }
+  if(relation.next_contact_on){const fire=new Date(String(relation.next_contact_on)+"T00:00:00.000Z");add(relation,fire,"Seguimiento: "+name,"Hoy tienes previsto cuidar esta relación.","relationship_follow_up",String(relation.next_contact_on));}
+ }
+ if(jobs.length){const created=await supabaseFetch(env,"notification_jobs",{method:"POST",body:JSON.stringify(jobs)});if(!created.ok)throw new Error("No se pudieron volver a programar los recordatorios");}
+ return {scheduled:jobs.length};
+}
 function annualDate(reference:string,year:number):Date|null{const month=Number(reference.slice(5,7)),day=Number(reference.slice(8,10));if(!Number.isInteger(month)||!Number.isInteger(day)||month<1||month>12||day<1||day>31)return null;const date=new Date(Date.UTC(year,month-1,day));if(date.getUTCMonth()!==month-1)return new Date(Date.UTC(year,month,0));return date}
 async function syncRelationshipJobs(env:Env,userId:string,enabled:boolean){
  const base="notification_jobs?user_id=eq."+encodeURIComponent(userId)+"&source_type=eq.relationship&status=eq.pending";
@@ -70,6 +102,13 @@ async function handleApi(request:Request,env:Env):Promise<Response|null>{
  if(url.pathname==="/api/notification-preferences"&&request.method==="POST"){
   const u=await userFromBearer(request,env);if(!u)return json({error:"Unauthorized"},401);
   let body:{relationships?:unknown};try{body=await request.json() as typeof body}catch{return json({error:"Invalid JSON body"},400)}
+  if(typeof body.relationships!=="boolean")return json({error:"relationships must be boolean"},400);
+  try{return json(await syncRelationshipJobs(env,u.id,body.relationships))}catch(error){return json({error:error instanceof Error?error.message:"Could not sync relationship notifications"},500)}
+ }
+ if(url.pathname==="/api/notification-preferences"&&request.method==="POST"){
+  const u=await userFromBearer(request,env);if(!u)return json({error:"Unauthorized"},401);
+  let body:{relationships?:unknown};
+  try{body=await request.json() as typeof body}catch{return json({error:"Invalid JSON body"},400)}
   if(typeof body.relationships!=="boolean")return json({error:"relationships must be boolean"},400);
   try{return json(await syncRelationshipJobs(env,u.id,body.relationships))}catch(error){return json({error:error instanceof Error?error.message:"Could not sync relationship notifications"},500)}
  }
