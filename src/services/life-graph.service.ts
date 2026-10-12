@@ -11,14 +11,14 @@ export type LGTable =
  "ai_runs"|"gamification_profiles"|"gamification_xp_events"|"gamification_achievements"|"gamification_challenges";
 async function uid(){const{data,error}=await supabase.auth.getUser();if(error||!data.user)throw error??new Error("No hay sesión activa");return data.user.id}
 export const lifeGraphService={
- async list(table:LGTable,order="created_at",ascending=false){
+ async list(table:LGTable,order="created_at",ascending=false):Promise<any[]>{
   // PostgREST caps response size; paginate so searches, histories and backups don't silently omit rows.
   const pageSize=1000;
-  const rows:Record<string,unknown>[]=[];
+  const rows:any[]=[];
   for(let from=0;;from+=pageSize){
    const{data,error}=await db.from(table).select("*").order(order,{ascending}).order("id",{ascending:true}).range(from,from+pageSize-1);
    if(error)throw error;
-   const page=(data??[]) as Record<string,unknown>[];
+   const page=(data??[]) as any[];
    rows.push(...page);
    if(page.length<pageSize)break;
   }
