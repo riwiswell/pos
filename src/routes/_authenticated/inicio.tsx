@@ -46,13 +46,13 @@ function isDone(habit: Habit, log: HabitLog | undefined) {
 function HomePage() {
   const { date } = useGlobalDate();
   const { user } = useAuth();
-  const habitsQuery = useHabits(false, showHabits);
-  const logsQuery = useLogs(date, showHabits);
   const profileQuery = useProfile();
   const dashboardWidgets = normalizeDashboardWidgets(profileQuery.data?.dashboard_widgets);
   const showPlanner = dashboardWidgets.includes("planner");
   const showFocus = dashboardWidgets.includes("focus");
   const showHabits = dashboardWidgets.includes("habits");
+  const habitsQuery = useHabits(false, showHabits);
+  const logsQuery = useLogs(date, showHabits);
 
   const plannerQuery = usePlannerItems(date, showPlanner);
   const plannerItems = plannerQuery.data ?? [];
