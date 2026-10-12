@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useProfileMediaUrl, useProfileMutations } from "@/hooks/use-profile";
 import { useHelpEnabled, useSetHelpEnabled } from "@/hooks/use-help";
-import { requestNotificationPermission } from "@/hooks/use-medication-reminders";
+import { subscribeToBackgroundPush } from "@/services/push.service";
+import { toast } from "sonner";
 import { lifeGraphService } from "@/services/life-graph.service";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -65,6 +66,7 @@ function ProfilePage() {
   const [relationshipNotifications, setRelationshipNotifications] = useState<boolean>(true);
   const [importing, setImporting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
 
   const avatarInput = useRef<HTMLInputElement | null>(null);
   const backgroundInput = useRef<HTMLInputElement | null>(null);
@@ -125,6 +127,28 @@ function ProfilePage() {
         relationships: relationshipNotifications,
       },
     });
+  };
+
+  const activateBackgroundNotifications = async () => {
+    setPushBusy(true);
+    try {
+      const result = await subscribeToBackgroundPush();
+      const messages = {
+        subscribed: ["Notificaciones en segundo plano activadas.", "success"],
+        unsupported: ["Este navegador no admite notificaciones push.", "error"],
+        "permission-denied": ["Permite las notificaciones del navegador para continuar.", "error"],
+        "missing-key": ["Falta configurar VITE_VAPID_PUBLIC_KEY en la compilación de Cloudflare.", "error"],
+        "no-session": ["Tu sesión ha caducado. Inicia sesión y vuelve a intentarlo.", "error"],
+        failed: ["No se pudo registrar el dispositivo para notificaciones push.", "error"],
+      } as const;
+      const [message, kind] = messages[result];
+      if (kind === "success") toast.success(message);
+      else toast.error(message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudieron activar las notificaciones.");
+    } finally {
+      setPushBusy(false);
+    }
   };
 
   const exportBackup = async () => {
@@ -263,8 +287,9 @@ function ProfilePage() {
         <p className="text-xs text-muted-foreground">
           Los avisos locales requieren permiso del navegador. Los avisos cuando Personal OS está cerrado requieren las credenciales VAPID del servidor.
         </p>
-        <Button variant="outline" onClick={() => void requestNotificationPermission()}>
-          <RefreshCw className="mr-1 h-4 w-4" /> Activar notificaciones en segundo plano
+        <Button variant="outline" disabled={pushBusy} onClick={() => void activateBackgroundNotifications()}>
+          <RefreshCw className={cn("mr-1 h-4 w-4", pushBusy && "animate-spin")} />
+          {pushBusy ? "Activando…" : "Activar notificaciones en segundo plano"}
         </Button>
       </section>
 
