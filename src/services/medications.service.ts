@@ -47,9 +47,27 @@ export const medicationsService = {
   },
 
   async update(id: string, patch: Partial<MedicationInput>) {
-    const { error } = await supabase.from("medications").update(clean(patch)).eq("id", id);
+    const { data: before, error: readError } = await supabase
+      .from("medications")
+      .select("frequency,times,start_date,end_date,active")
+      .eq("id", id)
+      .maybeSingle();
+    if (readError) throw readError;
+    if (!before) throw new Error("No encontramos el medicamento que intentas editar.");
+
+    const normalized = clean(patch);
+    const scheduleChanged =
+      (normalized.frequency !== undefined && normalized.frequency !== before.frequency) ||
+      (normalized.times !== undefined && JSON.stringify(normalizeTimes(normalized.times)) !== JSON.stringify(normalizeTimes(before.times ?? []))) ||
+      (normalized.start_date !== undefined && normalized.start_date !== before.start_date) ||
+      (normalized.end_date !== undefined && normalized.end_date !== before.end_date) ||
+      (normalized.active !== undefined && normalized.active !== before.active);
+
+    const { error } = await supabase.from("medications").update(normalized).eq("id", id);
     if (error) throw error;
-    // Keep history: only remove still-open rows whose scheduled/snoozed time is in the future.
+    if (!scheduleChanged) return;
+
+    // Preserve taken/skipped history and unchanged schedules. Rebuild only future open doses when scheduling settings change.
     const nowISO = new Date().toISOString();
     const { error: pendingError } = await supabase
       .from("medication_doses")
