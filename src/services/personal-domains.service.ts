@@ -20,9 +20,13 @@ export const personalDomainsService={
  return {insights,health:h,goals:goals.data??[],learning:learning.data??[],relationships:relations.data??[],work:work.data??[],alarms:alarms.data??[]}; },
  async list<T>(table:TableName,order="created_at",ascending=false){
   const pageSize=1000;
+  const singleton=table==="gamification_profiles";
+  const orderColumn=singleton&&order==="created_at"?"updated_at":order;
   const rows:T[]=[];
   for(let from=0;;from+=pageSize){
-   const {data,error}=await db.from(table).select("*").order(order,{ascending}).order("id",{ascending:true}).range(from,from+pageSize-1);
+   let query=db.from(table).select("*").order(orderColumn,{ascending});
+   if(!singleton)query=query.order("id",{ascending:true});
+   const {data,error}=await query.range(from,from+pageSize-1);
    if(error)throw error;
    const page=(data??[]) as T[];
    rows.push(...page);
