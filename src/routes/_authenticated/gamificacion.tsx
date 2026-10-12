@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
 import { HelpTip } from "@/components/common/HelpTip";
+import { ErrorState } from "@/components/common/States";
 import { useLGList, useLGMutations } from "@/hooks/use-life-graph";
 import { useAuth } from "@/hooks/use-auth";
 import { addDaysISO, todayISO } from "@/lib/date";
@@ -26,6 +27,7 @@ function GamificationPage() {
   const lastActivityOn=profile.data?.[0]?.last_activity_on as string|undefined;
   const currentStreak=lastActivityOn&&(lastActivityOn===todayISO()||lastActivityOn===addDaysISO(todayISO(),-1))?Number(profile.data?.[0]?.current_streak||0):0;
   const recentXp=useMemo(()=>[...(xpEvents.data||[])].slice(0,8),[xpEvents.data]);
+  if(xpEvents.isError||profile.isError||ach.isError||ch.isError){const error=xpEvents.error??profile.error??ach.error??ch.error;return <div className="space-y-5 pb-24"><GlobalDateHeader/><ErrorState message={error instanceof Error?error.message:"No se pudieron cargar los datos de gamificación."}/></div>}
   return <div className="space-y-5 pb-24">
     <GlobalDateHeader/>
     <div className="flex items-center gap-2"><Trophy className="h-5 w-5"/><h1 className="text-xl font-semibold">Gamificación</h1><HelpTip helpKey="gamification"/></div>
