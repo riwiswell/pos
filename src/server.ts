@@ -155,7 +155,7 @@ async function dispatchDueNotifications(env:Env){
  for(const job of jobs){
    if(job.source_type==="relationship"){
     const prefRead=await supabaseFetch(env,"profiles?id=eq."+encodeURIComponent(job.user_id)+"&select=notification_preferences&limit=1");
-    if(!prefRead.ok){console.error("[push] Could not read relationship notification preference",job.user_id);continue;}
+    if(!prefRead.ok){await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({fire_at:new Date(Date.now()+5*60_000).toISOString()})});console.error("[push] Could not verify relationship notification preference; deferred",job.id);continue;}
     const prefRows=await prefRead.json() as any[];
     if(prefRows[0]?.notification_preferences?.relationships===false){
      await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
