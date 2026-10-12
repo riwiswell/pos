@@ -28,15 +28,24 @@ function clean(input: JournalEntryInput): JournalEntryInput {
 /** Diario data service. Writes only to Diario tables — never to other modules. */
 export const journalService = {
   async listEntries(): Promise<JournalEntry[]> {
-    const { data, error } = await supabase
-      .from("journal_entries")
-      .select("*")
-      .order("entry_date", { ascending: false })
-      .order("entry_time", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .limit(1000);
-    if (error) throw error;
-    return (data ?? []) as JournalEntry[];
+    // Global search must see the whole journal, not just PostgREST's first page.
+    const pageSize = 1000;
+    const rows: JournalEntry[] = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("journal_entries")
+        .select("*")
+        .order("entry_date", { ascending: false })
+        .order("entry_time", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = (data ?? []) as JournalEntry[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return rows;
   },
 
   async createEntry(input: JournalEntryInput): Promise<JournalEntry> {
@@ -62,23 +71,41 @@ export const journalService = {
 
   /* ------------------------------------------------------------ compras */
   async listLists(): Promise<ShoppingList[]> {
-    const { data, error } = await supabase
-      .from("shopping_lists")
-      .select("*")
-      .order("position", { ascending: true })
-      .order("created_at", { ascending: true });
-    if (error) throw error;
-    return (data ?? []) as ShoppingList[];
+    const pageSize = 1000;
+    const rows: ShoppingList[] = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("shopping_lists")
+        .select("*")
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = (data ?? []) as ShoppingList[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return rows;
   },
 
   async listItems(): Promise<ShoppingItem[]> {
-    const { data, error } = await supabase
-      .from("shopping_items")
-      .select("*")
-      .order("position", { ascending: true })
-      .order("created_at", { ascending: true });
-    if (error) throw error;
-    return (data ?? []) as ShoppingItem[];
+    const pageSize = 1000;
+    const rows: ShoppingItem[] = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("shopping_items")
+        .select("*")
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = (data ?? []) as ShoppingItem[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return rows;
   },
 
   async createList(name: string, position: number): Promise<ShoppingList> {
