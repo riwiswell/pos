@@ -139,6 +139,9 @@ function MatrixTable({
                 <tr key={row.item.id}>
                   <td className="sticky left-0 z-10 max-w-[17rem] border-t border-border/50 bg-card/95 px-3 py-2 text-xs font-medium backdrop-blur">
                     <span className="block whitespace-normal break-words">{row.item.name}</span>
+                    <span className="mt-1 block text-[9px] font-normal uppercase tracking-wide text-muted-foreground">
+                      {row.item.kind === "activity" ? "Actividad" : "Hábito"}
+                    </span>
                   </td>
                   {row.cells.map((cell) => (
                     <td key={cell.day} className="border-t border-border/50 px-0.5 py-1.5">
@@ -216,9 +219,6 @@ export function HabitMatrix() {
 
   const selectedItems =
     selected === null ? items : items.filter((item) => selected.includes(item.id));
-  const selectedHabits = selectedItems.filter((item) => item.kind === "habit");
-  const selectedActivities = selectedItems.filter((item) => item.kind === "activity");
-
   const toggleItem = (id: string) => {
     const universe = items.map((item) => item.id);
     const current = selected ?? universe;
@@ -351,22 +351,15 @@ export function HabitMatrix() {
         </div>
       )}
 
-      {scope === "both" ? (
-        <div className="space-y-6">
-          <MatrixTable title="Hábitos" items={selectedHabits} days={days} logMap={logMap} />
-          <MatrixTable title="Actividades" items={selectedActivities} days={days} logMap={logMap} />
-        </div>
-      ) : (
-        <MatrixTable
-          title={scope === "habit" ? "Hábitos" : "Actividades"}
-          items={selectedItems}
-          days={days}
-          logMap={logMap}
-        />
-      )}
+      <MatrixTable
+        title={scope === "both" ? "Hábitos y actividades" : scope === "habit" ? "Hábitos" : "Actividades"}
+        items={selectedItems}
+        days={days}
+        logMap={logMap}
+      />
 
       <p className="text-xs text-muted-foreground">
-        {days.length} días · {selectedItems.length} registros · "Ambos" muestra hábitos y actividades por separado.
+        {days.length} días · {selectedItems.length} registros · En "Ambos", la matriz combina hábitos y actividades; sus métricas de progreso siguen siendo independientes.
       </p>
     </section>
   );
