@@ -103,6 +103,30 @@ async function handleApi(request:Request,env:Env):Promise<Response|null>{
  }
  return null;
 }
+async function finalizeAlarmOccurrence(env:Env,job:any){
+ const alarmRead=await supabaseFetch(env,"alarms?id=eq."+encodeURIComponent(job.source_id)+"&user_id=eq."+encodeURIComponent(job.user_id)+"&limit=1");
+ if(!alarmRead.ok)throw new Error("Could not load alarm after occurrence");
+ const rows=await alarmRead.json() as any[];
+ const alarm=rows[0];
+ if(!alarm||!alarm.enabled)return;
+ const now=new Date();
+ const currentDue=new Date(alarm.snoozed_until??alarm.alarm_at);
+ // The job may have become stale while a user edited or disabled the alarm.
+ if(Number.isFinite(currentDue.getTime())&&currentDue.getTime()>now.getTime())return;
+ const firedAt=now.toISOString();
+ if(alarm.repeat_rule==="daily"||alarm.repeat_rule==="weekly"){
+  const next=new Date(alarm.alarm_at);
+  const stepDays=alarm.repeat_rule==="weekly"?7:1;
+  do{next.setDate(next.getDate()+stepDays)}while(next.getTime()<=now.getTime());
+  const updated=await supabaseFetch(env,"alarms?id=eq."+encodeURIComponent(job.source_id)+"&user_id=eq."+encodeURIComponent(job.user_id),{method:"PATCH",body:JSON.stringify({alarm_at:next.toISOString(),last_fired_at:firedAt,snoozed_until:null})});
+  if(!updated.ok)throw new Error("Could not advance repeating alarm");
+  // The database trigger creates exactly one next notification_jobs row.
+ }else{
+  const disabled=await supabaseFetch(env,"alarms?id=eq."+encodeURIComponent(job.source_id)+"&user_id=eq."+encodeURIComponent(job.user_id),{method:"PATCH",body:JSON.stringify({enabled:false,last_fired_at:firedAt,snoozed_until:null})});
+  if(!disabled.ok)throw new Error("Could not disable fired one-time alarm");
+ }
+}
+
 async function dispatchDueNotifications(env:Env){
  if(!env.SUPABASE_URL||!env.SUPABASE_SERVICE_ROLE_KEY||!env.VAPID_PUBLIC_KEY||!env.VAPID_PRIVATE_KEY||!env.VAPID_SUBJECT)return;
  webpush.setVapidDetails(env.VAPID_SUBJECT,env.VAPID_PUBLIC_KEY,env.VAPID_PRIVATE_KEY);
@@ -129,6 +153,7 @@ async function dispatchDueNotifications(env:Env){
    const subscriptions=await subs.json() as any[];
    if(subscriptions.length===0){
     await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"failed"})});
+    if(job.source_type==="alarm"){try{await finalizeAlarmOccurrence(env,job)}catch(error){console.error("[push] Could not advance undeliverable alarm",job.id,error)}}
     console.warn("[push] No subscribed device; marking notification job as failed",job.id);
     continue;
    }
@@ -147,6 +172,7 @@ async function dispatchDueNotifications(env:Env){
      console.warn("[push] Temporary delivery failure; rescheduled for retry",job.id);
     }else{
      await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"failed"})});
+     if(job.source_type==="alarm"){try{await finalizeAlarmOccurrence(env,job)}catch(error){console.error("[push] Could not advance expired-subscription alarm",job.id,error)}}
      console.warn("[push] All push subscriptions expired; marking job as failed",job.id);
     }
     continue;
@@ -155,24 +181,8 @@ async function dispatchDueNotifications(env:Env){
    if(!marked.ok){console.error("[push] Delivered notification but could not mark job as sent",job.id);continue;}
    const repeat=job.payload?.repeat_rule;
    if(job.source_type==="alarm"){
-    // Keep the Alarm record and its push queue in sync, even when the app is closed.
-    const alarmRead=await supabaseFetch(env,"alarms?id=eq."+encodeURIComponent(job.source_id)+"&user_id=eq."+encodeURIComponent(job.user_id)+"&limit=1");
-    const alarmRows=alarmRead.ok?await alarmRead.json() as any[]:[];
-    const alarm=alarmRows[0];
-    if(!alarm||!alarm.enabled)continue;
-    const firedAt=new Date();
-    if(repeat==="daily"||repeat==="weekly"){
-     const next=new Date(job.fire_at);
-     const stepDays=repeat==="weekly"?7:1;
-     do{next.setDate(next.getDate()+stepDays)}while(next.getTime()<=firedAt.getTime());
-     const nextISO=next.toISOString();
-     const updatedAlarm=await supabaseFetch(env,"alarms?id=eq."+encodeURIComponent(job.source_id)+"&user_id=eq."+encodeURIComponent(job.user_id),{method:"PATCH",body:JSON.stringify({alarm_at:nextISO,last_fired_at:firedAt.toISOString(),snoozed_until:null})});
-     if(!updatedAlarm.ok){console.error("[push] Could not advance repeating alarm",job.source_id);continue;}
-     await supabaseFetch(env,"notification_jobs",{method:"POST",body:JSON.stringify({user_id:job.user_id,source_type:"alarm",source_id:job.source_id,fire_at:nextISO,title:job.title,body:job.body,payload:job.payload,status:"pending"})});
-    }else{
-     const disabled=await supabaseFetch(env,"alarms?id=eq."+encodeURIComponent(job.source_id)+"&user_id=eq."+encodeURIComponent(job.user_id),{method:"PATCH",body:JSON.stringify({enabled:false,last_fired_at:firedAt.toISOString(),snoozed_until:null})});
-     if(!disabled.ok)console.error("[push] Could not disable fired one-time alarm",job.source_id);
-    }
+    try{await finalizeAlarmOccurrence(env,job)}catch(error){console.error("[push] Could not synchronize fired alarm",job.source_id,error)}
+   }
    }else if(repeat==="daily"||repeat==="weekly"){
     const next=new Date(job.fire_at);
     const stepDays=repeat==="weekly"?7:1;
