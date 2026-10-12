@@ -78,6 +78,7 @@ export const HELP: Record<string, HelpEntry> = {
   "health.medicationHistory": { title: "Historial de medicamentos", description: "Conserva las tomas registradas aunque un medicamento haya sido suspendido. Aquí puedes revisar qué medicamento se programó, para qué fecha y si fue tomada, omitida, pospuesta o quedó pendiente." },
   "life": { title: "Vida", description: "Centraliza listas, metas, alarmas y otras herramientas prácticas de la vida diaria." },
   "journal": { title: "Diario", description: "Registra experiencias, reflexiones, estado de ánimo y recuerdos por fecha." },
+  "journal.gratitude": { title: "Gratitud", description: "Registra aquello por lo que agradeces, con su contexto y fecha. Este registro forma parte del Diario y se encuentra mediante la búsqueda global." },
   "profile": { title: "Perfil", description: "Personaliza identidad, apariencia y preferencias globales de Personal OS." },
   "life.alarms": { title: "Alarmas", description: "Recordatorios con fecha, hora y repetición. La notificación se activa con permiso del navegador." },
   "life.shopping": { title: "Lista de mercado", description: "Registra compras pendientes rápidamente. Marcar un artículo no borra su historial." },
