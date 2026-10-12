@@ -195,8 +195,9 @@ export const financeService = {
   },
 
 
-  async deleteCategory(id: string) {
-    const { error } = await supabase.from("finance_categories").delete().eq("id", id);
+  /** Archive rather than delete: historical transactions must retain their category reference. */
+  async archiveCategory(id: string) {
+    const { error } = await supabase.from("finance_categories").update({ active: false }).eq("id", id);
     if (error) throw error;
   },
 
