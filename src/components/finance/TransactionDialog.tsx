@@ -133,7 +133,16 @@ export function TransactionDialog({
       setShowAllCategories(false);
       setIsNow(false);
     }
-  }, [open, transaction, date, accounts]);
+  }, [open, transaction, date]);
+
+  // If accounts arrive after the dialog opens, choose a default without resetting
+  // a partially completed transaction when the account query refreshes.
+  useEffect(() => {
+    if (!open || transaction || form.account_id || accounts.length === 0) return;
+    const firstAccountId = accounts[0]?.id;
+    if (!firstAccountId) return;
+    setForm((current) => current.account_id ? current : { ...current, account_id: firstAccountId });
+  }, [open, transaction, accounts, form.account_id]);
 
   const visibleCategories = useMemo(
     () => categories.filter(
