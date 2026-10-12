@@ -24,7 +24,7 @@ function WorkPage(){
   const interval=window.setInterval(()=>setTimerRefresh((value)=>value+1),15000);
   return()=>window.clearInterval(interval);
  },[active?.id,active?.started_at]);
- const activeMinutes=active?.started_at?Math.max(0,Math.floor((Date.now()-new Date(active.started_at).getTime())/60000)):0;
+ const activeMinutes=useMemo(()=>active?.started_at?Math.max(0,Math.floor((Date.now()-new Date(active.started_at).getTime())/60000)):0,[active?.started_at,timerRefresh]);
  useEffect(()=>{if(!active?.started_at)return;const id=window.setInterval(()=>setTimerRefresh(value=>value+1),30_000);return()=>window.clearInterval(id)},[active?.id,active?.started_at]);
  const createProject=async()=>{if(!projectName.trim())return;const p=await im.create.mutateAsync({user_id:user?.id,title:projectName.trim(),kind:"project",status:"open",target_date:due||null,notes:projectNotes||null});setProjectName("");setProjectNotes("");setDue("");setSelected(p.id)};
  const createTask=async()=>{if(!selected||!task.trim())return;const created=await im.create.mutateAsync({user_id:user?.id,title:task.trim(),kind:"task",status:"open",parent_work_item_id:selected,notes:taskNotes||null}); await lifeGraphService.link("work_item",selected,"work_item",created.id,"contains_task"); setTask("");setTaskNotes("")};
