@@ -18,13 +18,24 @@ export const personalDomainsService={
  if((work.data??[]).length) insights.push(`Hay ${work.data.length} elementos de trabajo abiertos.`);
  if((learning.data??[]).length) insights.push(`Hay ${learning.data.length} elementos de aprendizaje activos.`);
  return {insights,health:h,goals:goals.data??[],learning:learning.data??[],relationships:relations.data??[],work:work.data??[],alarms:alarms.data??[]}; },
- async list<T>(table:TableName,order="created_at",ascending=false){const {data,error}=await db.from(table).select("*").order(order,{ascending});if(error)throw error;return (data??[]) as T[];},
+ async list<T>(table:TableName,order="created_at",ascending=false){
+  const pageSize=1000;
+  const rows:T[]=[];
+  for(let from=0;;from+=pageSize){
+   const {data,error}=await db.from(table).select("*").order(order,{ascending}).order("id",{ascending:true}).range(from,from+pageSize-1);
+   if(error)throw error;
+   const page=(data??[]) as T[];
+   rows.push(...page);
+   if(page.length<pageSize)break;
+  }
+  return rows;
+ },
  async byDate<T>(table:TableName,column:string,date:string){const {data,error}=await db.from(table).select("*").eq(column,date).order("created_at",{ascending:false});if(error)throw error;return (data??[]) as T[];},
  async create<T>(table:TableName,input:Record<string,unknown>){const {data,error}=await db.from(table).insert(input).select("*").single();if(error)throw error;return data as T;},
  async update<T>(table:TableName,id:string,patch:Record<string,unknown>){const {data,error}=await db.from(table).update(patch).eq("id",id).select("*").single();if(error)throw error;return data as T;},
  async remove(table:TableName,id:string){const {error}=await db.from(table).delete().eq("id",id);if(error)throw error;},
  async summary(){const tables:TableName[]=["shopping_items","learning_items","relationships","work_items","spiritual_entries","ai_insights"];const out=await Promise.all(tables.map(async table=>{const {count,error}=await db.from(table).select("id",{count:"exact",head:true});if(error)throw error;return [table,count??0] as const;}));return Object.fromEntries(out);},
  async createShoppingItem(user_id:string,input:{name:string;note?:string|null}){let {data:list,error}=await db.from("shopping_lists").select("id").eq("user_id",user_id).order("position").limit(1).maybeSingle();if(error)throw error;if(!list){const created=await db.from("shopping_lists").insert({user_id,name:"Mercado",position:0}).select("id").single();if(created.error)throw created.error;list=created.data;}const created=await db.from("shopping_items").insert({user_id,list_id:list.id,name:input.name,checked:false,position:0,note:input.note??null}).select("*").single();if(created.error)throw created.error;return created.data;},
- async upsertHealth(input:Record<string,unknown>){let {data,error}=await db.from("health_metrics").upsert(input,{onConflict:"user_id,metric_date"}).select("*").single();if(!error)return data;if(!["PGRST204","42703"].includes(String(error.code??"")))throw error;const fallback={...input};const bodyKeys=["neck_cm","shoulders_cm","chest_cm","waist_cm","left_arm_cm","right_arm_cm","hips_cm","left_thigh_cm","right_thigh_cm","left_calf_cm","right_calf_cm"];const body=Object.fromEntries(bodyKeys.map(k=>[k,input[k]??null]));for(const k of bodyKeys)delete fallback[k];const userNotes=typeof input["notes"]==="string"?String(input["notes"]):"";const marker="__POS_BODY_MEASURES__";const legacyNotes=JSON.stringify({marker,body,notes:userNotes});fallback["notes"]=legacyNotes;const retry=await db.from("health_metrics").upsert(fallback,{onConflict:"user_id,metric_date"}).select("*").single();if(retry.error)throw error;return retry.data;},
+ async upsertHealth(input:Record<string,unknown>){let {data,error}=await db.from("health_metrics").upsert(input,{onConflict:"user_id,metric_date"}).select("*").single();if(!error)return data;if(!["PGRST204","42703"].includes(String(error.code??"")))throw error;const fallback={...input};const bodyKeys=["neck_cm","shoulders_cm","chest_cm","waist_cm","left_arm_cm","right_arm_cm","hips_cm","left_thigh_cm","right_thigh_cm","left_calf_cm","right_calf_cm"];const body=Object.fromEntries(bodyKeys.map(k=>[k,input[k]??null]));for(const k of bodyKeys)delete fallback[k];const userNotes=typeof input["notes"]==="string"?String(input["notes"]):"";const marker="__POS_BODY_MEASURES__";const legacyNotes=JSON.stringify({marker,body,notes:userNotes});fallback["notes"]=legacyNotes;const retry=await db.from("health_metrics").upsert(fallback,{onConflict:"user_id,metric_date"}).select("*").single();if(retry.error)throw retry.error;return retry.data;},
  async upsertGamification(user_id:string,xp:number){const level=Math.max(1,Math.floor(Math.sqrt(Math.max(0,xp)/100))+1);const {data,error}=await db.from("gamification_profiles").upsert({user_id,xp,level}).select("*").single();if(error)throw error;return data;}
 };
