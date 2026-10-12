@@ -50,6 +50,7 @@ async function syncRelationshipJobs(env:Env,userId:string,enabled:boolean){
 }
 async function handleApi(request:Request,env:Env):Promise<Response|null>{
  const url=new URL(request.url);
+ if(url.pathname==="/api/push-config"&&request.method==="GET")return new Response(JSON.stringify({vapidPublicKey:env.VAPID_PUBLIC_KEY??null}),{status:200,headers:{"content-type":"application/json;charset=utf-8","cache-control":"public, max-age=300"}});
  if(url.pathname==="/api/push-subscription"&&request.method==="POST"){
   const u=await userFromBearer(request,env);if(!u)return json({error:"Unauthorized"},401);
   let body:{endpoint?:string;subscription?:{endpoint?:string;keys?:{p256dh?:string;auth?:string}};expiration_time?:string|null};
