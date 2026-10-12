@@ -272,6 +272,25 @@ function FinancePage() {
   const list = transactions.data ?? [];
   const accountList = accounts.data ?? [];
   const categoryList = categories.data ?? [];
+  const frequentCategoryIds = useMemo(() => {
+    const scores: Record<"expense" | "income", Map<string, { count: number; lastUsed: string }>> = {
+      expense: new Map(),
+      income: new Map(),
+    };
+    for (const tx of titheHistory.data ?? []) {
+      if ((tx.type !== "expense" && tx.type !== "income") || !tx.category_id) continue;
+      const current = scores[tx.type].get(tx.category_id);
+      const lastUsed = tx.occurred_on + "T" + (tx.occurred_time ?? "00:00:00");
+      scores[tx.type].set(tx.category_id, {
+        count: (current?.count ?? 0) + 1,
+        lastUsed: current && current.lastUsed > lastUsed ? current.lastUsed : lastUsed,
+      });
+    }
+    return {
+      expense: [...scores.expense.entries()].sort((a, b) => b[1].count - a[1].count || b[1].lastUsed.localeCompare(a[1].lastUsed)).slice(0, 5).map(([id]) => id),
+      income: [...scores.income.entries()].sort((a, b) => b[1].count - a[1].count || b[1].lastUsed.localeCompare(a[1].lastUsed)).slice(0, 5).map(([id]) => id),
+    };
+  }, [titheHistory.data]);
   const balances = accountBalances(balanceRows.data ?? []);
   const total = totalBalance(accountList, balances);
   const expenses = sumBy(list, "expense");
@@ -668,6 +687,7 @@ function FinancePage() {
         date={date}
         accounts={accountList}
         categories={categoryList}
+        frequentCategoryIds={frequentCategoryIds}
         transaction={editing}
         pending={mutations.createTransaction.isPending || mutations.updateTransaction.isPending}
         onSubmit={async (input) => {
