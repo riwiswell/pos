@@ -38,7 +38,22 @@ export const lifeGraphService={
  async personalSnapshot(){
   const uidValue=await uid();
   const names=["life_goals","health_metrics","learning_items","language_profiles","relationships","relationship_interactions","work_items","work_sessions","life_links","finance_transactions","finance_budgets","finance_debts","finance_savings_goals","menstrual_records","medical_appointments","notification_jobs"];
-  const entries=await Promise.all(names.map(async table=>{const q=table==="health_metrics"?db.from(table).select("metric_date,weight_kg,sleep_hours,exercise_minutes,water_liters").order("metric_date",{ascending:false}).limit(30):db.from(table).select("*").limit(50);const{data,error}=await q;return {table,data:data??[],error};}));
+  const entries=await Promise.all(names.map(async table=>{
+   if(table==="health_metrics"){
+    const{data,error}=await db.from(table).select("metric_date,weight_kg,sleep_hours,exercise_minutes,water_liters").order("metric_date",{ascending:false}).limit(30);
+    return {table,data:data??[],error};
+   }
+   const pageSize=1000;
+   const rows:Record<string,unknown>[]=[];
+   for(let from=0;;from+=pageSize){
+    const{data,error}=await db.from(table).select("*").order("created_at",{ascending:true}).order("id",{ascending:true}).range(from,from+pageSize-1);
+    if(error)return {table,data:rows,error};
+    const page=(data??[]) as Record<string,unknown>[];
+    rows.push(...page);
+    if(page.length<pageSize)break;
+   }
+   return {table,data:rows,error:null};
+  }));
   const failed=entries.filter(entry=>entry.error);
   if(failed.length){const details=failed.map(entry=>entry.table).join(", ");throw new Error("No se pudo preparar la lectura completa para IA. Fallaron estas fuentes: "+details+". Revisa permisos y migraciones antes de interpretar los datos.");}
   return {user_id:uidValue,date:todayISO(),data:Object.fromEntries(entries.map(entry=>[entry.table,entry.data]))}
