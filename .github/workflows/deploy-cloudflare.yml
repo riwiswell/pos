@@ -1,0 +1,33 @@
+name: Deploy Personal OS to Cloudflare Workers
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production:
+        description: "Type DEPLOY to confirm a production deployment"
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm_production == 'DEPLOY' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Verify build
+        run: bun run build
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
