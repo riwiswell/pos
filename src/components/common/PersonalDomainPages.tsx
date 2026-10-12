@@ -66,6 +66,7 @@ export function RelationshipsPage() {
   const reset=()=>{setName("");setType("pareja");setBirthday("");setAnniversary("");setNext("");setFrequency("");setNotes("");setSelected(null)};
   const startEdit=(r:any)=>{setSelected(r);setName(r.name||"");setType(r.relationship_type||"importante");setBirthday(r.birthday||"");setAnniversary(r.anniversary||"");setNext(r.next_contact_on||"");setFrequency(r.contact_frequency_days?String(r.contact_frequency_days):"");setNotes(r.notes||"");};
   return <PageShell icon={<HeartHandshake className="h-5 w-5"/>} title="Relaciones" subtitle="Personas importantes, no una agenda de contactos: cuidado, fechas, seguimiento e historial.">
+    <>
     {(q.isError||ints.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:ints.error instanceof Error?ints.error.message :"No se pudieron cargar las relaciones o su historial."}/>}
     <section className="glass space-y-3 rounded-2xl p-4">
       <div className="flex items-center justify-between"><h2 className="font-semibold">{selected ? "Editar relación" : "Nueva relación"}</h2>{selected&&<Button size="sm" variant="ghost" onClick={reset}><X className="mr-1 h-4 w-4"/>Cancelar</Button>}</div>
@@ -91,6 +92,7 @@ export function RelationshipsPage() {
       {ri.slice(0,5).map((x:any)=><div key={x.id} className="rounded-xl border px-3 py-2 text-xs"><b>{x.interaction_on}</b> · {x.interaction_type}<SafeRichText html={x.notes} className="prose prose-xs dark:prose-invert" /></div>)}
     </article>})}
     <div className="text-xs text-muted-foreground">Cumpleaños, aniversarios y seguimientos generan recordatorios persistentes; una interacción puede calcular automáticamente el próximo contacto cuando hay frecuencia definida.</div>
+    </>
   </PageShell>
 }
 
@@ -106,6 +108,7 @@ export function SpiritualityPage(){
   const kinds:[string,string][]=[["prayer","Oración"],["reflection","Reflexión"],["gratitude","Gratitud"],["reading","Lectura"],["prophecy","Profecía"]];if(!fastingHidden)kinds.push(["fasting","Ayuno"]);
   const clearEntry=()=>{setTitle("");setKind("prayer");setContent("");setProphecy("");setScripture("");setAnswered(false);setAnsweredNote("")};
   return <PageShell icon={<Church className="h-5 w-5"/>} title="Espiritualidad" subtitle="Módulo opcional y configurable. Registra tu práctica espiritual sin imponer una tradición al sistema.">
+    <>
     {(entries.isError||goals.isError)&&<ErrorState message={entries.error instanceof Error?entries.error.message:goals.error instanceof Error?goals.error.message :"No se pudieron cargar los registros espirituales o sus metas."}/>}
     <section className="glass space-y-3 rounded-2xl p-4"><h2 className="font-semibold">Nuevo registro</h2><div className="grid gap-2 sm:grid-cols-[1fr_180px]"><Input placeholder="Título" value={title} onChange={e=>setTitle(e.target.value)}/><select className="h-10 rounded-md border bg-background px-3" value={kind} onChange={e=>setKind(e.target.value)}>{kinds.map(x=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></div>
       <RichTextEditor value={content} onChange={setContent} placeholder="Escribe aquí tu oración, reflexión, gratitud o lectura…"/>
@@ -117,6 +120,7 @@ export function SpiritualityPage(){
     </section>
     <section className="glass space-y-3 rounded-2xl p-4"><h2 className="font-semibold">Metas espirituales</h2><div className="grid gap-2 sm:grid-cols-4"><Input placeholder="Meta" value={goalTitle} onChange={e=>setGoalTitle(e.target.value)}/><Input type="date" value={goalDate} onChange={e=>setGoalDate(e.target.value)}/><Input type="number" min="0" max="100" placeholder="Progreso %" value={goalProgress} onChange={e=>setGoalProgress(e.target.value)}/><Button disabled={!goalTitle.trim()} onClick={()=>{const progress=Number(goalProgress);if(!Number.isFinite(progress)||progress<0||progress>100){toast.error("El progreso debe estar entre 0 y 100.");return}void gm.create.mutateAsync({user_id:user?.id,title:goalTitle.trim(),description:goalDescription||null,target_date:goalDate||null,progress}).then(()=>{setGoalTitle("");setGoalDescription("");setGoalDate("");setGoalProgress("0")})}}><Plus className="mr-1 h-4 w-4"/>Agregar meta</Button></div><RichTextEditor value={goalDescription} onChange={setGoalDescription} placeholder="Qué significa esta meta para ti…"/>{(goals.data||[]).map((g:any)=><div key={g.id} className="rounded-xl border p-3"><div className="flex items-center gap-2"><span className="flex-1 font-medium">{g.title}</span><span className="text-xs">{Number(g.progress)||0}%</span><Button size="icon" variant="ghost" onClick={()=>void gm.remove.mutateAsync(g.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>{g.target_date&&<p className="text-xs text-muted-foreground">Meta: {g.target_date}</p>}<div className="mt-2 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary" style={{width:Math.min(100,Math.max(0,Number(g.progress)||0))+"%"}}/></div></div>)}</section>
     <section className="space-y-2"><h2 className="font-semibold">Historial</h2>{(entries.data||[]).map((x:any)=><article key={x.id} className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">{x.entry_date} · {x.kind}</p><h2 className="font-medium">{x.title||x.kind}</h2>{x.scripture_reference&&<p className="text-xs text-muted-foreground">{x.scripture_reference}</p>}<SafeRichText html={x.content||x.prophecy} className="prose prose-sm dark:prose-invert" />{x.kind==="prophecy"&&x.prophecy&&<div className="mt-2 rounded-xl border p-3"><p className="text-xs font-medium">Profecía registrada</p><SafeRichText html={x.prophecy} className="prose prose-sm dark:prose-invert" /></div>}{x.prayer_answered&&<p className="mt-2 text-xs text-muted-foreground">✓ Oración marcada como respondida</p>}</article>)}</section>
+    </>
   </PageShell>
 }
 
