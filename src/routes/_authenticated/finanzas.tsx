@@ -354,53 +354,55 @@ function FinancePage() {
     <div className="space-y-4 pb-24">
       <GlobalDateHeader />
 
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap gap-1.5">
-            {(["day", "week", "month", "year", "custom"] as PeriodKind[]).map((kind) => (
-              <button
-                key={kind}
-                type="button"
-                onClick={() => setPeriodKind(kind)}
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                  periodKind === kind
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border text-muted-foreground hover:bg-accent",
-                )}
-              >
-                {PERIOD_LABEL[kind]}
-              </button>
-            ))}
+      {tab !== "herramientas" && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              {(["day", "week", "month", "year", "custom"] as PeriodKind[]).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => setPeriodKind(kind)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                    periodKind === kind
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  {PERIOD_LABEL[kind]}
+                </button>
+              ))}
+            </div>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              {formatPeriod(period)}
+              <HelpTip helpKey="finance.period" text="Define qué fechas entran en el resumen, las categorías y el historial." />
+            </span>
           </div>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            {formatPeriod(period)}
-            <HelpTip helpKey="finance.period" text="Define qué fechas entran en el resumen, las categorías y el historial." />
-          </span>
+  
+          {periodKind === "custom" && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 p-3">
+              <label className="text-xs text-muted-foreground" htmlFor="finance-from">Desde</label>
+              <Input
+                id="finance-from"
+                type="date"
+                value={custom.start}
+                onChange={(event) => setCustom((prev) => ({ ...prev, start: event.target.value || prev.start }))}
+                className="h-9 w-auto"
+              />
+              <span className="text-xs text-muted-foreground">a</span>
+              <label className="text-xs text-muted-foreground" htmlFor="finance-to">Hasta</label>
+              <Input
+                id="finance-to"
+                type="date"
+                value={custom.end}
+                onChange={(event) => setCustom((prev) => ({ ...prev, end: event.target.value || prev.end }))}
+                className="h-9 w-auto"
+              />
+            </div>
+          )}
         </div>
-
-        {periodKind === "custom" && (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 p-3">
-            <label className="text-xs text-muted-foreground" htmlFor="finance-from">Desde</label>
-            <Input
-              id="finance-from"
-              type="date"
-              value={custom.start}
-              onChange={(event) => setCustom((prev) => ({ ...prev, start: event.target.value || prev.start }))}
-              className="h-9 w-auto"
-            />
-            <span className="text-xs text-muted-foreground">a</span>
-            <label className="text-xs text-muted-foreground" htmlFor="finance-to">Hasta</label>
-            <Input
-              id="finance-to"
-              type="date"
-              value={custom.end}
-              onChange={(event) => setCustom((prev) => ({ ...prev, end: event.target.value || prev.end }))}
-              className="h-9 w-auto"
-            />
-          </div>
-        )}
-      </div>
+      )}
 
       <Tabs value={tab} onValueChange={changeTab} className="space-y-4">
         <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
