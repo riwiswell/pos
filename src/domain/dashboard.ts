@@ -8,11 +8,13 @@ export type DashboardWidgetKey = (typeof DASHBOARD_WIDGETS)[number]["key"];
 export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetKey[] = ["planner", "focus", "habits"];
 
 /**
- * Normalize saved preferences from previous versions without silently enabling
- * nonexistent widgets. At least one real block stays enabled so a new profile never opens to an accidentally empty home.
+ * Older profiles and newly created profiles are initialized by the migration.
+ * Once a user explicitly saves an empty list, respect that choice and let Home
+ * show its clean empty state instead of silently turning disabled widgets back on.
  */
 export function normalizeDashboardWidgets(value: unknown): DashboardWidgetKey[] {
-  if (!Array.isArray(value) || value.length === 0) return [...DEFAULT_DASHBOARD_WIDGETS];
+  if (!Array.isArray(value)) return [...DEFAULT_DASHBOARD_WIDGETS];
+  if (value.length === 0) return [];
   const valid = value.filter((key): key is DashboardWidgetKey =>
     DASHBOARD_WIDGETS.some((widget) => widget.key === key),
   );
