@@ -10,6 +10,8 @@ import { useLGList, useLGMutations } from "@/hooks/use-life-graph";
 import { useAuth } from "@/hooks/use-auth";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useProfile } from "@/hooks/use-profile";
+import { toast } from "sonner";
+import { syncRelationshipNotificationSchedule } from "@/services/relationship-notifications.service";
 
 export function RelationshipsPage() {
   const q = useLGList("relationships");
@@ -20,6 +22,46 @@ export function RelationshipsPage() {
   const { date } = useGlobalDate();
   const [name,setName]=useState(""),[type,setType]=useState("pareja"),[birthday,setBirthday]=useState(""),[anniversary,setAnniversary]=useState(""),[next,setNext]=useState(""),[frequency,setFrequency]=useState(""),[notes,setNotes]=useState("");
   const [selected,setSelected]=useState<any>(null),[interaction,setInteraction]=useState(""),[interactionType,setInteractionType]=useState("contact");
+  const syncReminders = async () => {
+    try {
+      await syncRelationshipNotificationSchedule();
+    } catch (error) {
+      toast.error(error instanceof Error
+        ? "La relación se guardó, pero sus recordatorios no se actualizaron: " + error.message
+        : "La relación se guardó, pero sus recordatorios no se actualizaron.");
+    }
+  };
+  const saveRelationship = async () => {
+    if (!name.trim()) return;
+    try {
+      const patch = {
+        name: name.trim(),
+        relationship_type: type,
+        birthday: birthday || null,
+        anniversary: anniversary || null,
+        next_contact_on: next || null,
+        contact_frequency_days: Number(frequency) || null,
+        notes: notes || null,
+      };
+      if (selected) {
+        await m.update.mutateAsync({ id: selected.id, patch });
+      } else {
+        await m.create.mutateAsync({ user_id: user?.id, ...patch });
+      }
+      reset();
+      await syncReminders();
+    } catch {
+      // The mutation hook already shows the database error.
+    }
+  };
+  const deleteRelationship = async (id: string) => {
+    try {
+      await m.remove.mutateAsync(id);
+      await syncReminders();
+    } catch {
+      // The mutation hook already shows the database error.
+    }
+  };
   const reset=()=>{setName("");setType("pareja");setBirthday("");setAnniversary("");setNext("");setFrequency("");setNotes("");setSelected(null)};
   const startEdit=(r:any)=>{setSelected(r);setName(r.name||"");setType(r.relationship_type||"importante");setBirthday(r.birthday||"");setAnniversary(r.anniversary||"");setNext(r.next_contact_on||"");setFrequency(r.contact_frequency_days?String(r.contact_frequency_days):"");setNotes(r.notes||"");};
   return <PageShell icon={<HeartHandshake className="h-5 w-5"/>} title="Relaciones" subtitle="Personas importantes, no una agenda de contactos: cuidado, fechas, seguimiento e historial.">
@@ -36,12 +78,12 @@ export function RelationshipsPage() {
         <Input type="number" min="1" placeholder="Frecuencia de contacto (días)" value={frequency} onChange={e=>setFrequency(e.target.value)}/>
       </div>
       <RichTextEditor value={notes} onChange={setNotes} placeholder="Notas sobre la relación, contexto, cosas importantes…"/>
-      <Button disabled={!name.trim()} onClick={()=>void (selected ? m.update.mutateAsync({id:selected.id,patch:{name:name.trim(),relationship_type:type,birthday:birthday||null,anniversary:anniversary||null,next_contact_on:next||null,contact_frequency_days:Number(frequency)||null,notes:notes||null}}) : m.create.mutateAsync({user_id:user?.id,name:name.trim(),relationship_type:type,birthday:birthday||null,anniversary:anniversary||null,next_contact_on:next||null,contact_frequency_days:Number(frequency)||null,notes:notes||null})).then(reset)}>
+      <Button disabled={!name.trim()||m.create.isPending||m.update.isPending} onClick={()=>void saveRelationship()}>
         {selected?<><CheckCircle2 className="mr-1 h-4 w-4"/>Guardar cambios</>:<><Plus className="mr-1 h-4 w-4"/>Agregar persona</>}
       </Button>
     </section>
     {(q.data||[]).map((r:any)=>{const ri=(ints.data||[]).filter((x:any)=>x.relationship_id===r.id);return <article key={r.id} className="glass space-y-3 rounded-2xl p-4">
-      <div className="flex gap-2"><div className="flex-1"><h2 className="font-semibold">{r.name}</h2><p className="text-xs text-muted-foreground">{r.relationship_type||"Importante"}{r.birthday?" · cumpleaños "+r.birthday:""}{r.anniversary?" · aniversario "+r.anniversary:""}{r.next_contact_on?" · seguimiento "+r.next_contact_on:""}{r.contact_frequency_days?" · cada "+r.contact_frequency_days+" días":""}</p></div><Button size="icon" variant="ghost" onClick={()=>startEdit(r)}><Pencil className="h-4 w-4"/></Button><Button size="icon" variant="ghost" onClick={()=>void m.remove.mutateAsync(r.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
+      <div className="flex gap-2"><div className="flex-1"><h2 className="font-semibold">{r.name}</h2><p className="text-xs text-muted-foreground">{r.relationship_type||"Importante"}{r.birthday?" · cumpleaños "+r.birthday:""}{r.anniversary?" · aniversario "+r.anniversary:""}{r.next_contact_on?" · seguimiento "+r.next_contact_on:""}{r.contact_frequency_days?" · cada "+r.contact_frequency_days+" días":""}</p></div><Button size="icon" variant="ghost" onClick={()=>startEdit(r)}><Pencil className="h-4 w-4"/></Button><Button size="icon" variant="ghost" onClick={()=>void deleteRelationship(r.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
       <Button size="sm" variant="outline" onClick={()=>{setSelected(r);setInteraction("");setInteractionType("contact")}}>Registrar interacción</Button>
       {selected?.id===r.id&&<div className="space-y-2 rounded-xl border p-3"><div className="grid gap-2 sm:grid-cols-2"><Input type="date" value={date} readOnly/><select className="h-10 rounded-md border bg-background px-3" value={interactionType} onChange={e=>setInteractionType(e.target.value)}><option value="contact">Contacto</option><option value="conversation">Conversación</option><option value="visit">Visita</option><option value="help">Ayuda</option><option value="important">Momento importante</option></select></div><RichTextEditor value={interaction} onChange={setInteraction} placeholder="Qué hablaron, hicieron, cómo quedó la relación…"/><div className="flex gap-2"><Button size="sm" onClick={()=>void im.create.mutateAsync({user_id:user?.id,relationship_id:r.id,interaction_on:date,interaction_type:interactionType,notes:interaction||null}).then(()=>{setInteraction("");setSelected(null)})}>Guardar interacción</Button><Button size="sm" variant="ghost" onClick={()=>setSelected(null)}>Cancelar</Button></div></div>}
       {ri.slice(0,5).map((x:any)=><div key={x.id} className="rounded-xl border px-3 py-2 text-xs"><b>{x.interaction_on}</b> · {x.interaction_type}<SafeRichText html={x.notes} className="prose prose-xs dark:prose-invert" /></div>)}
