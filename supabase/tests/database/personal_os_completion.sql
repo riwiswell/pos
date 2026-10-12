@@ -1,6 +1,6 @@
 begin;
 
-select plan(18);
+select plan(20);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -19,6 +19,16 @@ select has_table('public','gamification_xp_events','xp ledger exists');
 select has_index('public','gamification_xp_events','gamification_xp_events_user_key_uidx','xp idempotency index exists');
 select has_function('public','apply_gamification_for_life_event','gamification trigger function exists');
 select has_function('public','sync_relationship_interaction','relationship sync function exists');
+select is(
+  public.gamification_xp_for_event('habit_logs', '{"habit_kind":"activity"}'::jsonb),
+  0,
+  'activities do not award habit XP'
+);
+select is(
+  public.gamification_xp_for_event('habit_logs', '{"habit_kind":"habit"}'::jsonb),
+  5,
+  'habit logs retain their expected XP'
+);
 
 select results_eq(
   $$select count(*)::integer
