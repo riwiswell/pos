@@ -1,6 +1,6 @@
 begin;
 
-select plan(37);
+select plan(38);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -74,6 +74,15 @@ select ok((
        and not tgisinternal
   )
 ), 'medical appointment notification trigger is installed');
+
+select ok((
+  select exists (
+    select 1 from pg_trigger
+     where tgrelid = 'public.alarms'::regclass
+       and tgname = 'alarms_sync_notification_job'
+       and not tgisinternal
+  )
+), 'alarm background notification trigger is installed');
 
 -- Private media buckets must exist and be owned by per-user storage policies.
 select ok((select exists(select 1 from storage.buckets where id = 'finance-photos' and public = false)), 'finance photo bucket exists and is private');
