@@ -24,12 +24,25 @@ export async function subscribeToBackgroundPush(): Promise<BackgroundPushStatus>
     return "unsupported";
   }
 
-  const key = env["VITE_VAPID_PUBLIC_KEY"] as string | undefined;
-  if (!key) return "missing-key";
-
   let permission = Notification.permission;
   if (permission === "default") permission = await Notification.requestPermission();
   if (permission !== "granted") return "permission-denied";
+
+  // Prefer the build-time public key, but fall back to the Worker runtime config.
+  // The endpoint exposes only the public VAPID key, never the private key.
+  let key = env["VITE_VAPID_PUBLIC_KEY"] as string | undefined;
+  if (!key) {
+    try {
+      const config = await fetch("/api/push-config", { cache: "no-store" });
+      if (config.ok) {
+        const payload = (await config.json()) as { vapidPublicKey?: string | null };
+        key = payload.vapidPublicKey ?? undefined;
+      }
+    } catch {
+      // Show the normal missing-key state below when runtime configuration is unavailable.
+    }
+  }
+  if (!key) return "missing-key";
 
   const {
     data: { session },
