@@ -41,9 +41,9 @@ async function syncRelationshipJobs(env:Env,userId:string,enabled:boolean){
    const reference=relation[field] as string|null;if(!reference)continue;
    let event=annualDate(reference,now.getUTCFullYear());if(!event)continue;
    if(event.getTime()<Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()))event=annualDate(reference,now.getUTCFullYear()+1)??event;
-   add(relation,new Date(event.getTime()-7*86400000),label+" de "+name,label+" de "+name+" en una semana.",kind,event.toISOString().slice(0,10));
+   const reminderAt=new Date(event.getTime()-7*86400000);reminderAt.setUTCHours(14,0,0,0);add(relation,reminderAt,label+" de "+name,label+" de "+name+" en una semana.",kind,event.toISOString().slice(0,10));
   }
-  if(relation.next_contact_on){const fire=new Date(String(relation.next_contact_on)+"T00:00:00.000Z");add(relation,fire,"Seguimiento: "+name,"Hoy tienes previsto cuidar esta relación.","relationship_follow_up",String(relation.next_contact_on))}
+  if(relation.next_contact_on){const fire=new Date(String(relation.next_contact_on)+"T14:00:00.000Z");add(relation,fire,"Seguimiento: "+name,"Hoy tienes previsto cuidar esta relación.","relationship_follow_up",String(relation.next_contact_on))}
  }
  if(jobs.length){const created=await supabaseFetch(env,"notification_jobs",{method:"POST",body:JSON.stringify(jobs)});if(!created.ok)throw new Error("No se pudieron volver a programar los recordatorios")}
  return {scheduled:jobs.length};
