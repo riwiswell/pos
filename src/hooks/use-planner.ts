@@ -22,11 +22,12 @@ export function usePlannerCategories() {
   });
 }
 
-export function usePlannerItems(date: string) {
+export function usePlannerItems(date: string, enabled = true) {
   return useQuery({
     queryKey: plannerKeys.items(date),
     queryFn: () => plannerService.listByDate(date),
     staleTime: 15_000,
+    enabled,
   });
 }
 
