@@ -49,15 +49,23 @@ export const medicationsService = {
   async update(id: string, patch: Partial<MedicationInput>) {
     const { error } = await supabase.from("medications").update(clean(patch)).eq("id", id);
     if (error) throw error;
-    // Drop still-open future doses whose time no longer exists; they are regenerated.
-    const today = new Date();
-    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    await supabase
+    // Keep history: only remove still-open rows whose scheduled/snoozed time is in the future.
+    const nowISO = new Date().toISOString();
+    const { error: pendingError } = await supabase
       .from("medication_doses")
       .delete()
       .eq("medication_id", id)
-      .gte("dose_date", iso)
-      .in("status", ["pending", "snoozed"]);
+      .eq("status", "pending")
+      .gt("scheduled_at", nowISO);
+    if (pendingError) throw pendingError;
+
+    const { error: snoozedError } = await supabase
+      .from("medication_doses")
+      .delete()
+      .eq("medication_id", id)
+      .eq("status", "snoozed")
+      .gt("snoozed_until", nowISO);
+    if (snoozedError) throw snoozedError;
   },
 
   /**
