@@ -3,89 +3,7 @@ create table if not exists public.alarms(id uuid primary key default gen_random_
 create index if not exists alarms_user_time_idx on public.alarms(user_id,alarm_at);
 create table if not exists public.health_metrics(id uuid primary key default gen_random_uuid(),user_id uuid not null references auth.users(id) on delete cascade,metric_date date not null,weight_kg numeric(6,2),height_cm numeric(6,2),waist_cm numeric(6,2),body_fat_pct numeric(5,2),systolic integer,diastolic integer,resting_hr integer,sleep_hours numeric(4,2),exercise_minutes integer,water_liters numeric(5,2),notes text,created_at timestamptz not null default now(),updated_at timestamptz not null default now());
 create unique index if not exists health_metrics_user_date_unique on public.health_metrics(user_id,metric_date);
-
--- Medication scheduling was part of the live hosted schema, but was missing from
--- the repository's clean-install migration chain. Keep its current app contract.
-create table if not exists public.medications (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  name text not null,
-  dose numeric(10,2),
-  unit text,
-  frequency text not null default 'daily',
-  times text[] not null default array['08:00']::text[],
-  start_date date not null default current_date,
-  end_date date,
-  active boolean not null default true,
-  notes text,
-  remind_offset_min integer not null default 0,
-  total_quantity numeric(10,2),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-create table if not exists public.medication_doses (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  medication_id uuid not null references public.medications(id) on delete cascade,
-  dose_date date not null,
-  scheduled_time text not null,
-  scheduled_at timestamptz not null,
-  status text not null default 'pending' check (status in ('pending','taken','skipped','snoozed')),
-  taken_at timestamptz,
-  snoozed_until timestamptz,
-  water_glasses numeric(3,1),
-  taken_time_source text not null default 'recorded',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique(medication_id,dose_date,scheduled_time)
-);
-create index if not exists medications_user_active_name_idx on public.medications(user_id,active,name);
-create index if not exists medication_doses_user_date_idx on public.medication_doses(user_id,dose_date,scheduled_at desc);
--- These tables were present in the hosted database but were never declared in the
--- baseline migration chain. Declare them here so clean installs/restores are reproducible.
-create table if not exists public.shopping_lists (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  name text not null,
-  position integer not null default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-create table if not exists public.shopping_items (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  list_id uuid not null references public.shopping_lists(id) on delete cascade,
-  name text not null,
-  checked boolean not null default false,
-  position integer not null default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-create index if not exists shopping_lists_user_position_idx
-  on public.shopping_lists(user_id, position);
-create index if not exists shopping_items_user_list_position_idx
-  on public.shopping_items(user_id, list_id, position);
-alter table public.shopping_items add column if not exists note text;
-
--- Diario is the single source of truth for diary, dream, thought, reflection,
--- gratitude, idea and memory entries. Later migrations add project linkage.
-create table if not exists public.journal_entries (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  type text not null check (type in ('diary','dream','thought','reflection','gratitude','idea','memory')),
-  title text,
-  content text not null default '',
-  entry_date date not null default current_date,
-  entry_time time,
-  mood text,
-  notes text,
-  items text[] not null default array[]::text[],
-  photos text[] not null default array[]::text[],
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-create index if not exists journal_entries_user_date_idx
-  on public.journal_entries(user_id, entry_date desc, entry_time desc, created_at desc);
+-- shopping_lists / shopping_items already exist in the current remote schema; the module reuses them. 
 
 create table if not exists public.learning_items(id uuid primary key default gen_random_uuid(),user_id uuid not null references auth.users(id) on delete cascade,title text not null,kind text not null default 'course',status text not null default 'active',progress numeric(5,2) not null default 0,target_date date,minutes_total integer not null default 0,notes text,created_at timestamptz not null default now(),updated_at timestamptz not null default now());
 create table if not exists public.relationships(id uuid primary key default gen_random_uuid(),user_id uuid not null references auth.users(id) on delete cascade,name text not null,relationship_type text,birthday date,anniversary date,importance integer not null default 3,last_contact_on date,notes text,created_at timestamptz not null default now(),updated_at timestamptz not null default now());
@@ -94,5 +12,5 @@ create table if not exists public.spiritual_entries(id uuid primary key default 
 create table if not exists public.ai_insights(id uuid primary key default gen_random_uuid(),user_id uuid not null references auth.users(id) on delete cascade,insight_date date not null,kind text not null,title text not null,body text not null,score integer,source_snapshot jsonb not null default '{}'::jsonb,created_at timestamptz not null default now());
 create table if not exists public.gamification_profiles(user_id uuid primary key references auth.users(id) on delete cascade,xp integer not null default 0,level integer not null default 1,updated_at timestamptz not null default now());
 create or replace function public.set_updated_at() returns trigger language plpgsql as $$ begin new.updated_at=now(); return new; end $$;
-do $$ declare t text; begin foreach t in array array['alarms','health_metrics','medications','medication_doses','shopping_lists','shopping_items','journal_entries','learning_items','relationships','work_items','spiritual_entries','gamification_profiles'] loop execute format('drop trigger if exists %I_updated_at on public.%I',t,t); execute format('create trigger %I_updated_at before update on public.%I for each row execute function public.set_updated_at()',t,t); end loop; end $$;
-do $$ declare t text; begin foreach t in array array['alarms','health_metrics','medications','medication_doses','shopping_lists','shopping_items','journal_entries','learning_items','relationships','work_items','spiritual_entries','ai_insights','gamification_profiles'] loop execute format('alter table public.%I enable row level security',t); execute format('revoke all on table public.%I from anon',t); execute format('grant select,insert,update,delete on table public.%I to authenticated',t); execute format('drop policy if exists %I_select on public.%I',t,t); execute format('drop policy if exists %I_insert on public.%I',t,t); execute format('drop policy if exists %I_update on public.%I',t,t); execute format('drop policy if exists %I_delete on public.%I',t,t); execute format('create policy %I_select on public.%I for select to authenticated using ((select auth.uid())=user_id)',t,t); execute format('create policy %I_insert on public.%I for insert to authenticated with check ((select auth.uid())=user_id)',t,t); execute format('create policy %I_update on public.%I for update to authenticated using ((select auth.uid())=user_id) with check ((select auth.uid())=user_id)',t,t); execute format('create policy %I_delete on public.%I for delete to authenticated using ((select auth.uid())=user_id)',t,t); end loop; end $$;
+do $$ declare t text; begin foreach t in array array['alarms','health_metrics','shopping_items','learning_items','relationships','work_items','spiritual_entries','gamification_profiles'] loop execute format('drop trigger if exists %I_updated_at on public.%I',t,t); execute format('create trigger %I_updated_at before update on public.%I for each row execute function public.set_updated_at()',t,t); end loop; end $$;
+do $$ declare t text; begin foreach t in array array['alarms','health_metrics','shopping_items','learning_items','relationships','work_items','spiritual_entries','ai_insights','gamification_profiles'] loop execute format('alter table public.%I enable row level security',t); execute format('revoke all on table public.%I from anon',t); execute format('grant select,insert,update,delete on table public.%I to authenticated',t); execute format('drop policy if exists %I_select on public.%I',t,t); execute format('drop policy if exists %I_insert on public.%I',t,t); execute format('drop policy if exists %I_update on public.%I',t,t); execute format('drop policy if exists %I_delete on public.%I',t,t); execute format('create policy %I_select on public.%I for select to authenticated using ((select auth.uid())=user_id)',t,t); execute format('create policy %I_insert on public.%I for insert to authenticated with check ((select auth.uid())=user_id)',t,t); execute format('create policy %I_update on public.%I for update to authenticated using ((select auth.uid())=user_id) with check ((select auth.uid())=user_id)',t,t); execute format('create policy %I_delete on public.%I for delete to authenticated using ((select auth.uid())=user_id)',t,t); end loop; end $$;
