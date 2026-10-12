@@ -1,4 +1,8 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
+
+const CategoryDonut = lazy(() => import("@/components/finance/FinanceCharts").then((module) => ({ default: module.CategoryDonut })));
+const DailyBars = lazy(() => import("@/components/finance/FinanceCharts").then((module) => ({ default: module.DailyBars })));
+const FinanceAdvancedPanel = lazy(() => import("@/components/finance/FinanceAdvancedPanel").then((module) => ({ default: module.FinanceAdvancedPanel })));
 import { ArrowLeft, Eye, EyeOff, Plus, Search, Settings2, Tags } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -15,8 +19,6 @@ import { TransactionList } from "@/components/finance/TransactionList";
 import { AccountDialog } from "@/components/finance/AccountDialog";
 import { CategoryManagerDialog } from "@/components/finance/CategoryManagerDialog";
 import { TitheSettingsDialog } from "@/components/finance/TitheSettingsDialog";
-import { CategoryDonut, DailyBars } from "@/components/finance/FinanceCharts";
-import { FinanceAdvancedPanel } from "@/components/finance/FinanceAdvancedPanel";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import {
   useAccounts,
@@ -491,21 +493,23 @@ function FinancePage() {
             </Button>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <CategoryDonut
-              slices={expenseSlices}
-              total={expenses}
-              hideAmounts={hideAmounts}
-              title="Gastos por categoría"
-            />
-            <CategoryDonut
-              slices={incomeSlices}
-              total={income}
-              hideAmounts={hideAmounts}
-              title="Ingresos por categoría"
-            />
-          </div>
-          <DailyBars data={series} hideAmounts={hideAmounts} />
+          <Suspense fallback={<LoadingState />}>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <CategoryDonut
+                slices={expenseSlices}
+                total={expenses}
+                hideAmounts={hideAmounts}
+                title="Gastos por categoría"
+              />
+              <CategoryDonut
+                slices={incomeSlices}
+                total={income}
+                hideAmounts={hideAmounts}
+                title="Ingresos por categoría"
+              />
+            </div>
+            <DailyBars data={series} hideAmounts={hideAmounts} />
+          </Suspense>
 
         </TabsContent>
 
@@ -566,7 +570,7 @@ function FinancePage() {
             <h2 className="text-lg font-semibold">Herramientas financieras</h2>
             <p className="text-sm text-muted-foreground">Presupuestos, deudas, ahorro, inversiones y fuentes externas están disponibles aquí para no recargar el resumen.</p>
           </div>
-          <FinanceAdvancedPanel />
+          <Suspense fallback={<LoadingState />}><FinanceAdvancedPanel /></Suspense>
         </TabsContent>
 
         <TabsContent value="gastos">
