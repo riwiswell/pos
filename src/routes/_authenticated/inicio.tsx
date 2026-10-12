@@ -46,15 +46,15 @@ function isDone(habit: Habit, log: HabitLog | undefined) {
 function HomePage() {
   const { date } = useGlobalDate();
   const { user } = useAuth();
-  const habitsQuery = useHabits();
-  const logsQuery = useLogs(date);
+  const habitsQuery = useHabits(false, showHabits);
+  const logsQuery = useLogs(date, showHabits);
   const profileQuery = useProfile();
   const dashboardWidgets = normalizeDashboardWidgets(profileQuery.data?.dashboard_widgets);
   const showPlanner = dashboardWidgets.includes("planner");
   const showFocus = dashboardWidgets.includes("focus");
   const showHabits = dashboardWidgets.includes("habits");
 
-  const plannerQuery = usePlannerItems(date);
+  const plannerQuery = usePlannerItems(date, showPlanner);
   const plannerItems = plannerQuery.data ?? [];
   const pendingCount = plannerItems.filter((i) => i.status !== "done").length;
   const eventCount = plannerItems.filter((i) => i.type === "event").length;
