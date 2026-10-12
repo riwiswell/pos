@@ -11,7 +11,19 @@ const WINDOW_MS = 30 * 60_000; // don't notify for doses due more than 30 min ag
 
 function readFired(): Record<string, true> {
   try {
-    return JSON.parse(localStorage.getItem(FIRED_KEY) ?? "{}") as Record<string, true>;
+    const parsed = JSON.parse(localStorage.getItem(FIRED_KEY) ?? "{}") as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const cutoff = Date.now() - 7 * 24 * 60 * 60_000;
+    const entries = Object.entries(parsed as Record<string, unknown>).filter(([key, value]) => {
+      const separator = key.lastIndexOf("@");
+      if (value !== true || separator < 0) return false;
+      const dueAt = Date.parse(key.slice(separator + 1));
+      return Number.isFinite(dueAt) && dueAt >= cutoff && dueAt <= Date.now() + 60 * 60_000;
+    });
+    if (entries.length !== Object.keys(parsed as Record<string, unknown>).length) {
+      try { localStorage.setItem(FIRED_KEY, JSON.stringify(Object.fromEntries(entries))); } catch { /* Storage may be disabled. */ }
+    }
+    return Object.fromEntries(entries) as Record<string, true>;
   } catch {
     return {};
   }
@@ -133,6 +145,6 @@ export function useMedicationReminders() {
         cancel: { label: "Posponer", onClick: () => actRef.current({ id: dose.id, status: "snoozed" }) },
       });
     }
-    if (changed) localStorage.setItem(FIRED_KEY, JSON.stringify(fired));
+    if (changed) { try { localStorage.setItem(FIRED_KEY, JSON.stringify(fired)); } catch { /* Reminders should still show when Storage is unavailable. */ } }
   }, [doses.data, byId, tick]);
 }
