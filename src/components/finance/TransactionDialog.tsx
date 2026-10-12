@@ -56,6 +56,7 @@ interface Props {
   date: string;
   accounts: FinanceAccount[];
   categories: FinanceCategory[];
+  frequentCategoryIds?: { expense: string[]; income: string[] };
   transaction?: FinanceTransaction | null;
   onSubmit: (input: TransactionInput) => void | Promise<void>;
   pending?: boolean;
@@ -89,6 +90,7 @@ export function TransactionDialog({
   date,
   accounts,
   categories,
+  frequentCategoryIds = { expense: [], income: [] },
   transaction,
   onSubmit,
   pending,
@@ -96,6 +98,7 @@ export function TransactionDialog({
   const mutations = useFinanceMutations();
   const [form, setForm] = useState<TransactionInput>(() => emptyInput(date, null));
   const [showDetails, setShowDetails] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [isNow, setIsNow] = useState(false);
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
   const [newAccountOpen, setNewAccountOpen] = useState(false);
@@ -121,10 +124,12 @@ export function TransactionDialog({
         is_tithe_payment: transaction.is_tithe_payment,
       });
       setShowDetails(true);
+      setShowAllCategories(false);
       setIsNow(false);
     } else {
       setForm(emptyInput(date, accounts[0]?.id ?? null));
       setShowDetails(false);
+      setShowAllCategories(false);
       setIsNow(false);
     }
   }, [open, transaction, date, accounts]);
@@ -138,6 +143,18 @@ export function TransactionDialog({
       ),
     [categories, form.type],
   );
+
+  const preferredCategoryIds = form.type === "income" ? frequentCategoryIds.income : frequentCategoryIds.expense;
+  const orderedCategories = useMemo(() => {
+    const byId = new Map(visibleCategories.map((category) => [category.id, category]));
+    const preferred = preferredCategoryIds.map((id) => byId.get(id)).filter((category): category is FinanceCategory => Boolean(category));
+    const preferredSet = new Set(preferred.map((category) => category.id));
+    const remainder = visibleCategories
+      .filter((category) => !preferredSet.has(category.id))
+      .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "es"));
+    const ordered = [...preferred, ...remainder];
+    return showAllCategories ? ordered : ordered.slice(0, 5);
+  }, [visibleCategories, preferredCategoryIds, showAllCategories]);
 
   const isTransfer = form.type === "transfer";
   const canSave =
@@ -307,7 +324,7 @@ export function TransactionDialog({
                 Categoría <span className="normal-case tracking-normal">(opcional)</span>
               </Label>
               <div className="flex flex-wrap gap-2">
-                {visibleCategories.map((category) => {
+                {orderedCategories.map((category) => {
                   const Icon = getIcon(category.icon);
                   const selected = form.category_id === category.id;
                   return (
@@ -332,6 +349,24 @@ export function TransactionDialog({
                     </button>
                   );
                 })}
+                {!showAllCategories && visibleCategories.length > orderedCategories.length && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllCategories(true)}
+                    className="rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                  >
+                    Ver todas ({visibleCategories.length})
+                  </button>
+                )}
+                {showAllCategories && visibleCategories.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllCategories(false)}
+                    className="rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                  >
+                    Mostrar menos
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setNewCategoryOpen(true)}
