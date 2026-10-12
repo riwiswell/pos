@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { differenceInCalendarDays } from "date-fns";
 import { Check, ChevronDown, Minus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -205,12 +206,14 @@ export function HabitMatrix() {
   const [selected, setSelected] = useState<string[] | null>(null);
 
   const range = rangeFor(preset, date, custom);
+  const requestedDayCount = differenceInCalendarDays(fromISODate(range.end), fromISODate(range.start)) + 1;
+  const rangeTooLong = requestedDayCount > 400;
   const habitsQuery = useHabits();
   const logsQuery = useLogsRange(range.start, range.end);
 
   const all = habitsQuery.data ?? [];
   const items = scope === "both" ? all : all.filter((item) => item.kind === scope);
-  const days = useMemo(() => daysBetween(range.start, range.end), [range.start, range.end]);
+  const days = useMemo(() => rangeTooLong ? [] : daysBetween(range.start, range.end), [range.start, range.end, rangeTooLong]);
   const logMap = useMemo(() => {
     const map = new Map<string, HabitLog>();
     for (const log of logsQuery.data ?? []) map.set(log.habit_id + "|" + log.date, log);
@@ -240,6 +243,15 @@ export function HabitMatrix() {
     const error = habitsQuery.error ?? logsQuery.error;
     return <ErrorState message={error instanceof Error ? error.message : "No se pudo cargar la matriz."} />;
   }
+  if (rangeTooLong) {
+    return (
+      <section className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm" role="alert">
+        <p className="font-medium">El período supera el límite de la matriz.</p>
+        <p className="mt-1 text-muted-foreground">Selecciona un rango de máximo 400 días para evitar una matriz demasiado pesada y no ocultar fechas del historial.</p>
+      </section>
+    );
+  }
+
   if (all.length === 0) {
     return (
       <EmptyState
