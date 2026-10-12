@@ -7,11 +7,11 @@ import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
 import { HelpTip } from "@/components/common/HelpTip";
 import { useLGList, useLGMutations } from "@/hooks/use-life-graph";
 import { useAuth } from "@/hooks/use-auth";
+import { addDaysISO, todayISO } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/gamificacion")({ component: GamificationPage });
 
 function GamificationPage() {
-  const events=useLGList("life_events");
   const xpEvents=useLGList("gamification_xp_events");
   const profile=useLGList("gamification_profiles");
   const ach=useLGList("gamification_achievements");
@@ -22,7 +22,9 @@ function GamificationPage() {
   const xp=Number(profile.data?.[0]?.xp||0);
   const level=Number(profile.data?.[0]?.level||Math.floor(xp/100)+1);
   const unlocked=(ach.data||[]).filter((x:any)=>x.unlocked_at);
-  const actionCount=(xpEvents.data||[]).length;
+  const actionCount=(xpEvents.data||[]).filter((event:any)=>!String(event.event_key||"").startsWith("achievement:")).length;
+  const lastActivityOn=profile.data?.[0]?.last_activity_on as string|undefined;
+  const currentStreak=lastActivityOn&&(lastActivityOn===todayISO()||lastActivityOn===addDaysISO(todayISO(),-1))?Number(profile.data?.[0]?.current_streak||0):0;
   const recentXp=useMemo(()=>[...(xpEvents.data||[])].slice(0,8),[xpEvents.data]);
   return <div className="space-y-5 pb-24">
     <GlobalDateHeader/>
@@ -32,7 +34,7 @@ function GamificationPage() {
       <div className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">XP</p><p className="text-3xl font-bold">{xp}</p></div>
       <div className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">Nivel</p><p className="text-3xl font-bold">{level}</p></div>
       <div className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">Acciones premiadas</p><p className="text-3xl font-bold">{actionCount}</p></div>
-      <div className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">Logros</p><p className="text-3xl font-bold">{unlocked.length}</p></div><div className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">Racha actual</p><p className="text-3xl font-bold">{Number(profile.data?.[0]?.current_streak||0)}</p></div><div className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">Mejor racha</p><p className="text-3xl font-bold">{Number(profile.data?.[0]?.best_streak||0)}</p></div>
+      <div className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">Logros</p><p className="text-3xl font-bold">{unlocked.length}</p></div><div className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">Racha actual</p><p className="text-3xl font-bold">{currentStreak}</p></div><div className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">Mejor racha</p><p className="text-3xl font-bold">{Number(profile.data?.[0]?.best_streak||0)}</p></div>
     </div>
     <section className="glass space-y-3 rounded-2xl p-4"><h2 className="font-semibold flex items-center gap-2"><Award className="h-4 w-4"/>Logros</h2>{(ach.data||[]).map((x:any)=><div key={x.id} className={"flex items-center gap-3 rounded-xl border p-3 "+(!x.unlocked_at?"opacity-50":"")}><Award className="h-4 w-4"/><div className="min-w-0 flex-1"><span className="font-medium">{x.title}</span><p className="text-xs text-muted-foreground">{x.description||"Hito personal"} · +{x.xp_reward||0} XP</p></div>{x.unlocked_at&&<CheckCircle2 className="h-4 w-4"/>}</div>)}</section>
     <section className="glass space-y-3 rounded-2xl p-4"><h2 className="font-semibold flex items-center gap-2"><Target className="h-4 w-4"/>Desafíos</h2>
