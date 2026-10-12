@@ -160,7 +160,7 @@ export const DREAM_MOODS = ["Tranquilo", "Feliz", "Extraño", "Confuso", "Triste
 
 /** Searchable text of an entry (title, content, gratitude items, dream notes). */
 function normalizeSearchText(value: string): string {
-  return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase("es");
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es");
 }
 
 /** Case- and accent-insensitive search, e.g. "dragon" matches "Dragón". */
