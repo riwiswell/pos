@@ -111,6 +111,58 @@ export const medicationsService = {
   },
 
   /**
+   * Prepare a short rolling horizon so Worker push reminders exist even if the
+   * user does not open Salud on the morning of every dose. Unique constraints
+   * and ignoreDuplicates make the operation safe to repeat across page loads.
+   */
+  async prepareUpcomingDoses(horizonDays = 14): Promise<number> {
+    const user_id = await currentUserId();
+    const meds = (await medicationsService.list()).filter((med) => med.active);
+    const horizon = Math.max(1, Math.min(30, Math.floor(horizonDays)));
+    const today = new Date();
+    const rows: {
+      user_id: string;
+      medication_id: string;
+      dose_date: string;
+      scheduled_time: string;
+      scheduled_at: string;
+    }[] = [];
+
+    for (let offset = 0; offset < horizon; offset += 1) {
+      const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
+      const iso = [
+        day.getFullYear(),
+        String(day.getMonth() + 1).padStart(2, "0"),
+        String(day.getDate()).padStart(2, "0"),
+      ].join("-");
+      for (const med of meds) {
+        if (!appliesOn(med, iso)) continue;
+        for (const time of med.times) {
+          rows.push({
+            user_id,
+            medication_id: med.id,
+            dose_date: iso,
+            scheduled_time: time,
+            scheduled_at: localDateTime(iso, time),
+          });
+        }
+      }
+    }
+
+    const chunkSize = 500;
+    for (let offset = 0; offset < rows.length; offset += chunkSize) {
+      const { error } = await supabase
+        .from("medication_doses")
+        .upsert(rows.slice(offset, offset + chunkSize), {
+          onConflict: "medication_id,dose_date,scheduled_time",
+          ignoreDuplicates: true,
+        });
+      if (error) throw error;
+    }
+    return rows.length;
+  },
+
+  /**
    * Materializes the doses of a date (idempotent: unique per medication/date/time)
    * and returns them. Never creates duplicates.
    */
