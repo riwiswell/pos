@@ -27,9 +27,11 @@ async function userFromBearer(request:Request,env:Env){const auth=request.header
 function annualDate(reference:string,year:number):Date|null{const month=Number(reference.slice(5,7)),day=Number(reference.slice(8,10));if(!Number.isInteger(month)||!Number.isInteger(day)||month<1||month>12||day<1||day>31)return null;const date=new Date(Date.UTC(year,month-1,day));if(date.getUTCMonth()!==month-1)return new Date(Date.UTC(year,month,0));return date}
 async function syncRelationshipJobs(env:Env,userId:string,enabled:boolean){
  const base="notification_jobs?user_id=eq."+encodeURIComponent(userId)+"&source_type=eq.relationship&status=eq.pending";
- const cancelled=await supabaseFetch(env,base,{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
- if(!cancelled.ok)throw new Error("No se pudieron cancelar los recordatorios anteriores");
- if(!enabled)return {scheduled:0};
+ if(!enabled){
+  const cancelled=await supabaseFetch(env,base,{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
+  if(!cancelled.ok)throw new Error("No se pudieron cancelar los recordatorios anteriores");
+  return {scheduled:0};
+ }
  const read=await supabaseFetch(env,"relationships?user_id=eq."+encodeURIComponent(userId)+"&select=id,name,birthday,anniversary,next_contact_on&order=name.asc&limit=1000");
  if(!read.ok)throw new Error("No se pudieron leer las relaciones");
  const relationships=await read.json() as any[];
@@ -45,6 +47,10 @@ async function syncRelationshipJobs(env:Env,userId:string,enabled:boolean){
   }
   if(relation.next_contact_on){const fire=new Date(String(relation.next_contact_on)+"T14:00:00.000Z");add(relation,fire,"Seguimiento: "+name,"Hoy tienes previsto cuidar esta relación.","relationship_follow_up",String(relation.next_contact_on))}
  }
+ // Build the replacement schedule before cancelling current reminders: a read/validation
+ // failure must not erase the user's working schedule.
+ const cancelled=await supabaseFetch(env,base,{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
+ if(!cancelled.ok)throw new Error("No se pudieron cancelar los recordatorios anteriores");
  if(jobs.length){const created=await supabaseFetch(env,"notification_jobs",{method:"POST",body:JSON.stringify(jobs)});if(!created.ok)throw new Error("No se pudieron volver a programar los recordatorios")}
  return {scheduled:jobs.length};
 }
