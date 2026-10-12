@@ -5,7 +5,29 @@ import { Button } from "@/components/ui/button"; import { Input } from "@/compon
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
 import { useGlobalDate } from "@/hooks/use-global-date"; import { toast } from "sonner"; import { useAuth } from "@/hooks/use-auth"; import { useHealthMetricMutation,usePersonalDateList } from "@/hooks/use-personal-domains"; import { useProfile } from "@/hooks/use-profile"; import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lastWater,useDoseHistory,useDoses,useMedicationMutations,useMedications,useTakenCounts } from "@/hooks/use-medications"; import { formatTime12,doseLabel,formatGlasses,medicationWater,remainingQuantity,durationDays,estimatedEndDate,WATER_OPTIONS,type Medication } from "@/domain/health";
 export const Route=createFileRoute("/_authenticated/salud")({component:HealthPage});
-function HealthPage(){const[tab,setTab]=useState("metrics");const{data:profile}=useProfile();const hidden=profile?.hidden_features||{};const tabs=[["meds","Medicamentos",false],["metrics","Medidas",false],["cycle","Ciclo",hidden["health.cycle"]===true],["appointments","Citas",hidden["health.appointments"]===true],["nutrition","Nutrición",hidden["health.nutrition"]===true]].filter((x:any)=>!x[2]);const current=tabs.some((x:any)=>x[0]===tab)?tab:tabs[0]?.[0]||"meds";return <div className="space-y-5 pb-24"><GlobalDateHeader/><div><h1 className="flex items-center gap-2 text-xl font-semibold">Salud <HelpTip helpKey="health" /></h1><p className="text-sm text-muted-foreground">Medidas, signos vitales, medicamentos y seguimiento diario.</p></div><HydrationCard/><div className="flex flex-wrap gap-1.5">{tabs.map(([k,v])=><button key={k as string} onClick={()=>setTab(k as string)} className={"rounded-full border px-3 py-1.5 text-xs "+(current===k?"border-primary bg-primary/10":"border-border")}>{v as string}</button>)}</div>{current==="meds"?<Medications/>:current==="metrics"?<HealthMetricsPanel/>:current==="cycle"?<Cycle/>:current==="appointments"?<Appointments/>:<Nutrition/>}</div>}
+function HealthPage(){
+ const[tab,setTab]=useState("metrics");
+ const{setStatus}=useMedicationMutations();
+ const handledDoseAction=useRef<string|null>(null);
+ useEffect(()=>{
+  if(typeof window==="undefined")return;
+  const url=new URL(window.location.href);
+  const doseId=url.searchParams.get("dose");
+  const action=url.searchParams.get("action");
+  if(!doseId||(action!=="take"&&action!=="snooze"))return;
+  const key=doseId+":"+action;
+  if(handledDoseAction.current===key)return;
+  handledDoseAction.current=key;
+  setStatus.mutate({id:doseId,status:action==="take"?"taken":"snoozed"},{
+   onSuccess:()=>{
+    toast.success(action==="take"?"Toma marcada como tomada.":"Toma pospuesta 10 minutos.");
+    url.searchParams.delete("dose");url.searchParams.delete("action");
+    window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);
+   },
+   onError:()=>{handledDoseAction.current=null;},
+  });
+ },[setStatus.mutate]);
+ const{data:profile}=useProfile();const hidden=profile?.hidden_features||{};const tabs=[["meds","Medicamentos",false],["metrics","Medidas",false],["cycle","Ciclo",hidden["health.cycle"]===true],["appointments","Citas",hidden["health.appointments"]===true],["nutrition","Nutrición",hidden["health.nutrition"]===true]].filter((x:any)=>!x[2]);const current=tabs.some((x:any)=>x[0]===tab)?tab:tabs[0]?.[0]||"meds";return <div className="space-y-5 pb-24"><GlobalDateHeader/><div><h1 className="flex items-center gap-2 text-xl font-semibold">Salud <HelpTip helpKey="health" /></h1><p className="text-sm text-muted-foreground">Medidas, signos vitales, medicamentos y seguimiento diario.</p></div><HydrationCard/><div className="flex flex-wrap gap-1.5">{tabs.map(([k,v])=><button key={k as string} onClick={()=>setTab(k as string)} className={"rounded-full border px-3 py-1.5 text-xs "+(current===k?"border-primary bg-primary/10":"border-border")}>{v as string}</button>)}</div>{current==="meds"?<Medications/>:current==="metrics"?<HealthMetricsPanel/>:current==="cycle"?<Cycle/>:current==="appointments"?<Appointments/>:<Nutrition/>}</div>}
 function HydrationCard(){
  const{date}=useGlobalDate();const{user}=useAuth();
  const metrics=usePersonalDateList<any>("health_metrics","metric_date",date);
