@@ -158,12 +158,17 @@ export const JOURNAL_META: Record<JournalType, JournalTypeMeta> = {
 export const DREAM_MOODS = ["Tranquilo", "Feliz", "Extraño", "Confuso", "Triste", "Angustia", "Miedo"];
 
 /** Searchable text of an entry (title, content, gratitude items, dream notes). */
+function normalizeSearchText(value: string): string {
+  return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase("es");
+}
+
+/** Case- and accent-insensitive search, e.g. "dragon" matches "Dragón". */
 export function entryMatches(entry: JournalEntry, query: string): boolean {
-  const q = query.trim().toLowerCase();
+  const q = normalizeSearchText(query.trim());
   if (!q) return true;
   return [entry.title, entry.content, entry.notes, ...entry.items]
     .filter(Boolean)
-    .some((v) => (v as string).toLowerCase().includes(q));
+    .some((value) => normalizeSearchText(value as string).includes(q));
 }
 
 function plainText(value: string | null | undefined) { return (value ?? "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim(); }
