@@ -152,22 +152,29 @@ function ProfilePage() {
   };
 
   const exportBackup = async () => {
-    const entries = await Promise.all(
-      BACKUP_TABLES.map(async (table) => [table, await lifeGraphService.list(table as any)]),
-    );
-    const payload = {
-      format: "personal-os-backup-v1",
-      exported_at: new Date().toISOString(),
-      user_id: user?.id,
-      data: Object.fromEntries(entries),
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "personal-os-backup.json";
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const entries = await Promise.all(
+        BACKUP_TABLES.map(async (table) => [table, await lifeGraphService.list(table as any)] as const),
+      );
+      const payload = {
+        format: "personal-os-backup-v1",
+        exported_at: new Date().toISOString(),
+        user_id: user?.id,
+        data: Object.fromEntries(entries),
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "personal-os-backup.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("Respaldo generado con los datos accesibles de Personal OS.");
+    } catch (error) {
+      toast.error(error instanceof Error ? "No se pudo generar el respaldo: " + error.message : "No se pudo generar el respaldo.");
+    }
   };
 
   const importBackup = async (file: File | undefined) => {
@@ -175,15 +182,21 @@ function ProfilePage() {
     setImporting(true);
     try {
       const payload = JSON.parse(await file.text());
-      if (payload.user_id && payload.user_id !== user?.id) {
+      if (payload?.format !== "personal-os-backup-v1" || !payload?.data || typeof payload.data !== "object" || Array.isArray(payload.data)) {
+        throw new Error("El archivo no tiene el formato de respaldo de Personal OS.");
+      }
+      if (!user?.id) throw new Error("Inicia sesión para importar un respaldo.");
+      if (payload.user_id && payload.user_id !== user.id) {
         throw new Error("Este respaldo pertenece a otro usuario.");
       }
-      await lifeGraphService.importBackup(payload.data || {}, BACKUP_TABLES);
-      await profileQuery.refetch();
+      await lifeGraphService.importBackup(payload.data, BACKUP_TABLES);
+      await Promise.all([profileQuery.refetch()]);
+      toast.success("Importación completada. Los registros se combinaron por ID; no se borraron datos que no estén en el archivo.");
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "No se pudo importar el respaldo");
+      toast.error(error instanceof Error ? error.message : "No se pudo importar el respaldo.");
     } finally {
       setImporting(false);
+      if (importInput.current) importInput.current.value = "";
     }
   };
 
