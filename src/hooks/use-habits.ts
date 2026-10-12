@@ -21,17 +21,19 @@ export function useCategories() {
   return useQuery({ queryKey: habitKeys.categories, queryFn: habitsService.listCategories });
 }
 
-export function useHabits(includeInactive = false) {
+export function useHabits(includeInactive = false, enabled = true) {
   return useQuery({
     queryKey: habitKeys.habits(includeInactive),
     queryFn: () => habitsService.listHabits(includeInactive),
+    enabled,
   });
 }
 
-export function useLogs(date: string) {
+export function useLogs(date: string, enabled = true) {
   return useQuery({
     queryKey: habitKeys.logs(date),
     queryFn: () => habitsService.listLogsByDate(date),
+    enabled,
   });
 }
 
