@@ -45,7 +45,7 @@ export function RelationshipsPage() {
       {selected?.id===r.id&&<div className="space-y-2 rounded-xl border p-3"><div className="grid gap-2 sm:grid-cols-2"><Input type="date" value={date} readOnly/><select className="h-10 rounded-md border bg-background px-3" value={interactionType} onChange={e=>setInteractionType(e.target.value)}><option value="contact">Contacto</option><option value="conversation">Conversación</option><option value="visit">Visita</option><option value="help">Ayuda</option><option value="important">Momento importante</option></select></div><RichTextEditor value={interaction} onChange={setInteraction} placeholder="Qué hablaron, hicieron, cómo quedó la relación…"/><div className="flex gap-2"><Button size="sm" onClick={()=>void im.create.mutateAsync({user_id:user?.id,relationship_id:r.id,interaction_on:date,interaction_type:interactionType,notes:interaction||null}).then(()=>{setInteraction("");setSelected(null)})}>Guardar interacción</Button><Button size="sm" variant="ghost" onClick={()=>setSelected(null)}>Cancelar</Button></div></div>}
       {ri.slice(0,5).map((x:any)=><div key={x.id} className="rounded-xl border px-3 py-2 text-xs"><b>{x.interaction_on}</b> · {x.interaction_type}<div className="prose prose-xs dark:prose-invert" dangerouslySetInnerHTML={{__html:x.notes||""}}/></div>)}
     </article>})}
-    <div className="text-xs text-muted-foreground"><HelpTip helpKey="relationships"/> Cumpleaños, aniversarios y seguimientos generan recordatorios persistentes; una interacción puede calcular automáticamente el próximo contacto cuando hay frecuencia definida.</div>
+    <div className="text-xs text-muted-foreground">Cumpleaños, aniversarios y seguimientos generan recordatorios persistentes; una interacción puede calcular automáticamente el próximo contacto cuando hay frecuencia definida.</div>
   </PageShell>
 }
 
@@ -74,4 +74,4 @@ export function SpiritualityPage(){
   </PageShell>
 }
 
-function PageShell({icon,title,subtitle,children}:{icon:ReactNode;title:string;subtitle:string;children:ReactNode}){return <div className="space-y-5 pb-24"><div className="flex items-center gap-2">{icon}<h1 className="text-xl font-semibold">{title}</h1></div><p className="text-sm text-muted-foreground">{subtitle}</p>{children}</div>}
+function PageShell({icon,title,subtitle,children}:{icon:ReactNode;title:string;subtitle:string;children:ReactNode}){return <div className="space-y-5 pb-24"><div className="flex items-center gap-2">{icon}<h1 className="flex items-center gap-2 text-xl font-semibold">{title}{(title==="Relaciones"||title==="Trabajo"||title==="Espiritualidad")&&<HelpTip helpKey={title==="Relaciones"?"relationships":title==="Trabajo"?"work":"spirituality"}/>}</h1></div><p className="text-sm text-muted-foreground">{subtitle}</p>{children}</div>}
