@@ -156,7 +156,12 @@ async function dispatchDueNotifications(env:Env){
      continue;
     }
    }
-   const subs=await supabaseFetch(env,"push_subscriptions?user_id=eq."+encodeURIComponent(job.user_id));if(!subs.ok)continue;
+   const subs=await supabaseFetch(env,"push_subscriptions?user_id=eq."+encodeURIComponent(job.user_id));
+   if(!subs.ok){
+    await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({fire_at:new Date(Date.now()+5*60_000).toISOString()})});
+    console.error("[push] Could not read device subscriptions; deferred job to avoid starving the queue",job.id,subs.status);
+    continue;
+   }
    const subscriptions=await subs.json() as any[];
    if(subscriptions.length===0){
     await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"failed"})});
@@ -187,7 +192,7 @@ async function dispatchDueNotifications(env:Env){
     continue;
    }
    const marked=await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"sent",sent_at:new Date().toISOString()})});
-   if(!marked.ok){console.error("[push] Delivered notification but could not mark job as sent",job.id);continue;}
+   if(!marked.ok){await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({fire_at:new Date(Date.now()+5*60_000).toISOString()})});console.error("[push] Delivered notification but could not mark job as sent; deferred reconciliation",job.id,marked.status);continue;}
    const repeat=job.payload?.repeat_rule;
    if(job.source_type==="alarm"){
     try{await finalizeAlarmOccurrence(env,job)}catch(error){console.error("[push] Could not synchronize fired alarm",job.source_id,error)}
