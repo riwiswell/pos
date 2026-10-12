@@ -188,7 +188,7 @@ export const medicationsService = {
     const user_id = await currentUserId();
     const meds = await medicationsService.list();
     const rows = meds
-      .filter((m) => appliesOn(m, date))
+      .filter((m) => m.active && appliesOn(m, date))
       .flatMap((m) =>
         m.times.map((t) => ({
           user_id,
