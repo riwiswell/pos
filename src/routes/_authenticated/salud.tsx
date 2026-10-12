@@ -1,8 +1,8 @@
-import { useEffect,useMemo,useState } from "react";
+import { useEffect,useMemo,useRef,useState } from "react";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { CalendarHeart,ClipboardList,HeartPulse,Pill,Plus,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label";
-import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
+import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
 import { useGlobalDate } from "@/hooks/use-global-date"; import { useAuth } from "@/hooks/use-auth"; import { useHealthMetricMutation,usePersonalDateList } from "@/hooks/use-personal-domains"; import { useProfile } from "@/hooks/use-profile"; import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lastWater,useDoseHistory,useDoses,useMedicationMutations,useMedications,useTakenCounts } from "@/hooks/use-medications"; import { formatTime12,doseLabel,formatGlasses,medicationWater,remainingQuantity,durationDays,estimatedEndDate,WATER_OPTIONS,type Medication } from "@/domain/health";
 export const Route=createFileRoute("/_authenticated/salud")({component:HealthPage});
 function HealthPage(){
