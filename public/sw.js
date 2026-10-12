@@ -55,15 +55,20 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
 
-    // Medication action buttons are handled by the open app, which owns auth/session state.
+    // Route the action through the Salud screen, which owns the authenticated
+    // mutation. postMessage alone is fire-and-forget and could be lost when the
+    // open tab is on login or has not mounted the reminder listener yet.
     if (doseId && (action === "take" || action === "snooze")) {
-      if (all.length) {
-        all[0].postMessage({ type: "medication-action", action, doseId });
-        if ("focus" in all[0]) await all[0].focus();
+      const actionUrl = new URL("/salud", self.location.origin);
+      actionUrl.searchParams.set("dose", String(doseId));
+      actionUrl.searchParams.set("action", action);
+      const target = actionUrl.href;
+      const client = all.find((entry) => "navigate" in entry) || all[0];
+      if (client && "navigate" in client) {
+        await client.navigate(target);
+        if ("focus" in client) await client.focus();
       } else {
-        await self.clients.openWindow(
-          new URL("/salud?dose=" + encodeURIComponent(doseId) + "&action=" + encodeURIComponent(action), self.location.origin).href,
-        );
+        await self.clients.openWindow(target);
       }
       return;
     }
