@@ -22,6 +22,68 @@ drop policy if exists life_links_all_own on public.life_links;
 create policy life_links_all_own on public.life_links for all to authenticated
 using ((select auth.uid())=user_id) with check ((select auth.uid())=user_id);
 
+-- Declare domain tables that existed in the hosted project but were absent from
+-- the clean-install chain. CREATE IF NOT EXISTS preserves existing user data.
+create table if not exists public.journal_entries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  type text not null default 'diary',
+  title text,
+  content text not null default '',
+  entry_date date not null default current_date,
+  entry_time time,
+  mood text,
+  notes text,
+  items jsonb not null default '[]'::jsonb,
+  photos text[] not null default '{}',
+  linked_work_item_id uuid references public.work_items(id) on delete set null,
+  capture_stage text not null default 'captured',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists journal_entries_user_date_idx
+  on public.journal_entries(user_id, entry_date desc, created_at desc);
+alter table public.journal_entries enable row level security;
+revoke all on table public.journal_entries from anon;
+grant select,insert,update,delete on public.journal_entries to authenticated;
+drop policy if exists journal_entries_select on public.journal_entries;
+drop policy if exists journal_entries_insert on public.journal_entries;
+drop policy if exists journal_entries_update on public.journal_entries;
+drop policy if exists journal_entries_delete on public.journal_entries;
+create policy journal_entries_select on public.journal_entries for select to authenticated using ((select auth.uid())=user_id);
+create policy journal_entries_insert on public.journal_entries for insert to authenticated with check ((select auth.uid())=user_id);
+create policy journal_entries_update on public.journal_entries for update to authenticated using ((select auth.uid())=user_id) with check ((select auth.uid())=user_id);
+create policy journal_entries_delete on public.journal_entries for delete to authenticated using ((select auth.uid())=user_id);
+
+create table if not exists public.work_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  work_item_id uuid not null references public.work_items(id) on delete cascade,
+  session_date date not null default current_date,
+  minutes integer not null default 0,
+  notes text,
+  started_at timestamptz,
+  ended_at timestamptz,
+  status text not null default 'completed',
+  target_minutes integer not null default 50,
+  break_notified_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists work_sessions_user_date_idx
+  on public.work_sessions(user_id, session_date desc, created_at desc);
+alter table public.work_sessions enable row level security;
+revoke all on table public.work_sessions from anon;
+grant select,insert,update,delete on public.work_sessions to authenticated;
+drop policy if exists work_sessions_select on public.work_sessions;
+drop policy if exists work_sessions_insert on public.work_sessions;
+drop policy if exists work_sessions_update on public.work_sessions;
+drop policy if exists work_sessions_delete on public.work_sessions;
+create policy work_sessions_select on public.work_sessions for select to authenticated using ((select auth.uid())=user_id);
+create policy work_sessions_insert on public.work_sessions for insert to authenticated with check ((select auth.uid())=user_id);
+create policy work_sessions_update on public.work_sessions for update to authenticated using ((select auth.uid())=user_id) with check ((select auth.uid())=user_id);
+create policy work_sessions_delete on public.work_sessions for delete to authenticated using ((select auth.uid())=user_id);
+
 -- A journal idea/capture may become a work project without losing its origin.
 alter table public.journal_entries add column if not exists linked_work_item_id uuid references public.work_items(id) on delete set null;
 alter table public.journal_entries add column if not exists capture_stage text not null default 'captured';
