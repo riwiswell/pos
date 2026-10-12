@@ -11,7 +11,19 @@ export type LGTable =
  "ai_runs"|"gamification_profiles"|"gamification_xp_events"|"gamification_achievements"|"gamification_challenges";
 async function uid(){const{data,error}=await supabase.auth.getUser();if(error||!data.user)throw error??new Error("No hay sesión activa");return data.user.id}
 export const lifeGraphService={
- async list(table:LGTable,order="created_at",ascending=false){const{data,error}=await db.from(table).select("*").order(order,{ascending});if(error)throw error;return data??[]},
+ async list(table:LGTable,order="created_at",ascending=false){
+  // PostgREST caps response size; paginate so searches, histories and backups don't silently omit rows.
+  const pageSize=1000;
+  const rows:Record<string,unknown>[]=[];
+  for(let from=0;;from+=pageSize){
+   const{data,error}=await db.from(table).select("*").order(order,{ascending}).order("id",{ascending:true}).range(from,from+pageSize-1);
+   if(error)throw error;
+   const page=(data??[]) as Record<string,unknown>[];
+   rows.push(...page);
+   if(page.length<pageSize)break;
+  }
+  return rows
+ },
  async create(table:LGTable,input:Record<string,unknown>){const user_id=await uid();const{data,error}=await db.from(table).insert({...input,user_id}).select("*").single();if(error)throw error;return data},
  async update(table:LGTable,id:string,input:Record<string,unknown>){const{data,error}=await db.from(table).update(input).eq("id",id).select("*").single();if(error)throw error;return data},
  async remove(table:LGTable,id:string){const{error}=await db.from(table).delete().eq("id",id);if(error)throw error},
