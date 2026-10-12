@@ -4,6 +4,7 @@ import { BookOpenText,Brain,ChevronRight,Clock3,Filter,FolderKanban,Lightbulb,Pl
 import { toast } from "sonner";
 import { HelpTip } from "@/components/common/HelpTip";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
+import { ErrorState } from "@/components/common/States";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +53,7 @@ function DiarioPage(){
     </div>
   </div>
   {filter==="shopping"?<ShoppingLists query={query}/>:(
-    entriesQ.isLoading?<p className="text-sm text-muted-foreground">Cargando Diario…</p>:entries.length===0?<div className="glass rounded-3xl border border-dashed p-10 text-center"><BookOpenText className="mx-auto h-10 w-10 text-muted-foreground"/><p className="mt-3 font-medium">{query||onlyDate||filter!=="all"?"No hay entradas con estos filtros.":"Aquí todavía no has escrito nada."}</p><p className="mt-1 text-sm text-muted-foreground">Una captura de treinta segundos también cuenta.</p><Button className="mt-4" onClick={()=>openNew(null)}><Plus className="mr-1 h-4 w-4"/>Escribir</Button></div>:<div className="space-y-4">{entries.map(e=><EntryCard key={e.id} entry={e} promoting={promoting===e.id} onOpen={()=>{setEditing(e);setInitialType(null);setDialogOpen(true)}} onPromote={()=>void promote(e)}/>)}</div>
+    entriesQ.isLoading?<p className="text-sm text-muted-foreground">Cargando Diario…</p>:entriesQ.isError?<ErrorState message={entriesQ.error instanceof Error?entriesQ.error.message:"No se pudo cargar el Diario. Comprueba la conexión y los permisos."}/>:entries.length===0?<div className="glass rounded-3xl border border-dashed p-10 text-center"><BookOpenText className="mx-auto h-10 w-10 text-muted-foreground"/><p className="mt-3 font-medium">{query||onlyDate||filter!=="all"?"No hay entradas con estos filtros.":"Aquí todavía no has escrito nada."}</p><p className="mt-1 text-sm text-muted-foreground">Una captura de treinta segundos también cuenta.</p><Button className="mt-4" onClick={()=>openNew(null)}><Plus className="mr-1 h-4 w-4"/>Escribir</Button></div>:<div className="space-y-4">{entries.map(e=><EntryCard key={e.id} entry={e} promoting={promoting===e.id} onOpen={()=>{setEditing(e);setInitialType(null);setDialogOpen(true)}} onPromote={()=>void promote(e)}/>)}</div>
   )}
   <Button onClick={()=>openNew(null)} className="fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full shadow-lg sm:hidden" aria-label="Nueva captura"><Plus className="h-6 w-6"/></Button>
   <JournalEntryDialog open={dialogOpen} onOpenChange={setDialogOpen} entry={editing} defaultDate={date} initialType={initialType} onDelete={e=>setToDelete(e)}/>
