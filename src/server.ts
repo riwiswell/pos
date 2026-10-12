@@ -52,7 +52,8 @@ async function dispatchDueNotifications(env:Env){
    const payload=job.payload&&typeof job.payload==="object"?job.payload as Record<string,unknown>:{};
    const targetByType:Record<string,string>={medication_dose:"/salud",medical_appointment:"/salud",relationship:"/relaciones",work_session:"/trabajo",alarm:"/alarmas"};
    const targetUrl=targetByType[job.source_type]??"/inicio";
-   const notification={title:job.title,body:job.body??"",tag:job.id,data:{type:"scheduled-notification",url:targetUrl,...(job.source_type==="medication_dose"&&typeof payload.dose_id==="string"?{doseId:payload.dose_id}:{})}};
+   const notificationTag=job.source_type==="medication_dose"?`pos:medication:${job.source_id}`:job.source_type==="alarm"?`pos:alarm:${job.source_id}`:job.id;
+   const notification={title:job.title,body:job.body??"",tag:notificationTag,data:{type:"scheduled-notification",url:targetUrl,...(job.source_type==="medication_dose"&&typeof payload.dose_id==="string"?{doseId:payload.dose_id}:{})}};
    let delivered=0;
    for(const row of subscriptions){try{await webpush.sendNotification(row.subscription,JSON.stringify(notification));delivered+=1;}catch(e){const status=(e as any)?.statusCode;if(status===404||status===410)await supabaseFetch(env,"push_subscriptions?id=eq."+encodeURIComponent(row.id),{method:"DELETE"});}}
    // Do not lose a scheduled notification because no device is subscribed or every send failed.
