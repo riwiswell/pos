@@ -109,7 +109,39 @@ export const lifeGraphService={
   if(!out.length)out.push("Todavía no hay suficiente información cruzada para una señal prioritaria."); return {insights:out,snapshot:s};
  },
  async saveAiRun(kind:string,prompt:string,response:string,snapshot:unknown){return this.create("ai_runs",{kind,prompt,response,snapshot})},
- async importBackup(data:Record<string,unknown>,tables:string[]){const own=await uid();for(const table of tables){if(!Array.isArray(data[table])||!(data[table] as unknown[]).length)continue;const rows=(data[table] as Record<string,unknown>[]).map(r=>table==="profiles"?r:{...r,user_id:own});const conflictColumn=table==="finance_settings"||table==="gamification_profiles"?"user_id":"id";const{error}=await db.from(table).upsert(rows,{onConflict:conflictColumn});if(error)throw new Error("Importación falló en "+table+": "+error.message)}},
+ async importBackup(data:Record<string,unknown>,tables:string[]){
+  const own=await uid();
+  // Journal ideas and work projects have a circular pair of nullable FKs. Load
+  // both sets first without those references, then restore the links afterwards.
+  const cyclicLinks:Array<{table:"journal_entries"|"work_items";id:string;column:"linked_work_item_id"|"source_journal_entry_id";value:string}>=[];
+  for(const table of tables){
+   if(!Array.isArray(data[table])||!(data[table] as unknown[]).length)continue;
+   const rows=(data[table] as Record<string,unknown>[]).map(source=>{
+    const row:Record<string,unknown>=table==="profiles"?{...source}:{...source,user_id:own};
+    if(table==="journal_entries"&&typeof row.linked_work_item_id==="string"){
+     cyclicLinks.push({table:"journal_entries",id:String(row.id),column:"linked_work_item_id",value:row.linked_work_item_id});
+     row.linked_work_item_id=null;
+    }
+    if(table==="work_items"&&typeof row.source_journal_entry_id==="string"){
+     cyclicLinks.push({table:"work_items",id:String(row.id),column:"source_journal_entry_id",value:row.source_journal_entry_id});
+     row.source_journal_entry_id=null;
+    }
+    return row;
+   });
+   const conflictColumn=table==="finance_settings"||table==="gamification_profiles"?"user_id":"id";
+   for(let offset=0;offset<rows.length;offset+=500){
+    const{error}=await db.from(table).upsert(rows.slice(offset,offset+500),{onConflict:conflictColumn});
+    if(error)throw new Error("Importación falló en "+table+": "+error.message);
+   }
+  }
+  for(const link of cyclicLinks){
+   const{data:existing,error:readError}=await db.from(link.table).select("id").eq("id",link.id).eq("user_id",own).maybeSingle();
+   if(readError)throw new Error("No se pudo validar el enlace de respaldo "+link.table+": "+readError.message);
+   if(!existing)continue;
+   const{error}=await db.from(link.table).update({[link.column]:link.value}).eq("id",link.id).eq("user_id",own);
+   if(error)throw new Error("Importación: no se pudo restaurar "+link.column+": "+error.message);
+  }
+ },
  async calculateNextPeriod(profileId:string,startDate:string,cycleDays:number){return {profile_id:profileId,start_date:startDate,cycle_length_days:cycleDays,next_period_on:addCalendarDays(startDate,cycleDays)}}
 };
 function addCalendarDays(iso:string,days:number){const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)}
