@@ -39,7 +39,7 @@ import { buildPeriod, formatPeriod, PERIOD_LABEL, type PeriodKind } from "@/lib/
 import { formatMoney } from "@/lib/money";
 import { getIcon } from "@/lib/finance-icons";
 import { cn } from "@/lib/utils";
-import { categoryAppliesTo } from "@/domain/finance";
+import { categoryAppliesTo, TITHE_BASIS_LABEL } from "@/domain/finance";
 import type { FinanceAccount, FinanceCategory, FinanceTransaction, TransactionType } from "@/domain/finance";
 import { HelpTip } from "@/components/common/HelpTip";
 
@@ -61,7 +61,7 @@ export const Route = createFileRoute("/_authenticated/finanzas")({
   component: FinancePage,
 });
 
-type FinanceTab = "resumen" | "gastos" | "ingresos" | "historial";
+type FinanceTab = "resumen" | "gastos" | "ingresos" | "historial" | "diezmo" | "herramientas";
 const UNCATEGORIZED = "__uncategorized__";
 
 function CategoryExplorer({
@@ -263,7 +263,6 @@ function FinancePage() {
   const [selected, setSelected] = useState<FinanceTransaction | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [titheOpen, setTitheOpen] = useState(false);
-  const [titheDetail, setTitheDetail] = useState(false);
   const [accountDialog, setAccountDialog] = useState<{
     open: boolean;
     account: FinanceAccount | null;
@@ -404,11 +403,13 @@ function FinancePage() {
       </div>
 
       <Tabs value={tab} onValueChange={changeTab} className="space-y-4">
-        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="gastos">Gastos</TabsTrigger>
           <TabsTrigger value="ingresos">Ingresos</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
+          <TabsTrigger value="diezmo">Diezmo</TabsTrigger>
+          <TabsTrigger value="herramientas">Más herramientas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumen" className="space-y-4">
@@ -504,52 +505,65 @@ function FinancePage() {
           </div>
           <DailyBars data={series} hideAmounts={hideAmounts} />
 
-          {tithe && (
-            <section className="glass space-y-3 rounded-2xl px-4 py-3" aria-label="Diezmo">
-              <div className="flex items-center justify-between gap-3">
-                <p className="flex items-center gap-1 text-sm font-medium">💰 Diezmo ({tithe.percent}%) <HelpTip helpKey="tithe.pending" /></p>
-                <div className="flex items-center gap-1">
-                  <Button size="sm" variant="ghost" onClick={() => setTitheDetail((value) => !value)} aria-expanded={titheDetail}>
-                    {titheDetail ? "Ocultar detalle" : "Ver detalle"}
-                  </Button>
-                  <Button size="icon" variant="ghost" aria-label="Configurar diezmo" className="h-8 w-8" onClick={() => setTitheOpen(true)}>
-                    <Settings2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-x-6 gap-y-1">
-                <div>
-                  <p className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground">Pendiente <HelpTip helpKey="tithe.pending" /></p>
-                  <p className="text-lg font-semibold tabular-nums text-primary">{money(tithe.pending)}</p>
-                </div>
-                {tithe.credit > 0 && (
+        </TabsContent>
+
+        <TabsContent value="diezmo" className="space-y-4">
+          {settings.isLoading || titheHistory.isLoading ? (
+            <LoadingState />
+          ) : settings.error || titheHistory.error ? (
+            <ErrorState message="No pudimos calcular tu diezmo. Revisa la configuración y los movimientos del período." />
+          ) : tithe ? (
+            <>
+              <section className="glass space-y-4 rounded-2xl p-4" aria-label="Resumen del diezmo">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground">A favor <HelpTip helpKey="tithe.credit" /></p>
-                    <p className="text-lg font-semibold tabular-nums text-success">{money(tithe.credit)}</p>
+                    <h1 className="flex items-center gap-2 text-xl font-semibold">Diezmo ({tithe.percent}%) <HelpTip helpKey="tithe.pending" /></h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {TITHE_BASIS_LABEL[settings.data!.tithe_basis]}
+                    </p>
                   </div>
-                )}
-              </div>
-              {titheDetail && (
-                <div className="grid grid-cols-2 gap-2 border-t border-border pt-3">
+                  <Button size="sm" variant="outline" className="gap-1" onClick={() => setTitheOpen(true)}>
+                    <Settings2 className="h-4 w-4" /> Configurar
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
-                    { key: "tithe.carry", label: tithe.opening >= 0 ? "Pendiente anterior" : "A favor anterior", value: Math.abs(tithe.opening) },
                     { key: "tithe.generated", label: "Generado", value: tithe.generated },
                     { key: "tithe.paid", label: "Pagado", value: tithe.paid },
                     { key: "tithe.pending", label: "Pendiente", value: tithe.pending },
                     { key: "tithe.credit", label: "A favor", value: tithe.credit },
                   ].map((item) => (
-                    <div key={item.label} className="rounded-xl border border-border px-3 py-2">
+                    <div key={item.key} className="rounded-xl border border-border px-3 py-3">
                       <p className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground">
                         {item.label} <HelpTip helpKey={item.key} />
                       </p>
-                      <p className="text-base font-semibold tabular-nums">{money(item.value)}</p>
+                      <p className="mt-1 text-lg font-semibold tabular-nums">{money(item.value)}</p>
                     </div>
                   ))}
                 </div>
-              )}
-            </section>
+                <div className="rounded-xl border border-border/70 px-3 py-3">
+                  <p className="flex items-center gap-1 text-xs uppercase tracking-wider text-muted-foreground">
+                    Saldo anterior <HelpTip helpKey="tithe.carry" />
+                  </p>
+                  <p className="mt-1 text-base font-semibold tabular-nums">
+                    {tithe.opening < 0 ? "A favor " : "Pendiente "}{money(Math.abs(tithe.opening))}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    El saldo pendiente y el crédito se arrastran entre períodos. Cambiar el rango modifica lo generado y pagado en el período sin borrar el saldo anterior.
+                  </p>
+                </div>
+              </section>
+            </>
+          ) : (
+            <EmptyState title="No hay datos para calcular el diezmo" description="Registra ingresos o revisa el criterio configurado para el período." />
           )}
+        </TabsContent>
 
+        <TabsContent value="herramientas" className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">Herramientas financieras</h2>
+            <p className="text-sm text-muted-foreground">Presupuestos, deudas, ahorro, inversiones y fuentes externas están disponibles aquí para no recargar el resumen.</p>
+          </div>
           <FinanceAdvancedPanel />
         </TabsContent>
 
