@@ -77,7 +77,7 @@ begin
   insert into public.gamification_profiles(user_id,xp,level,current_streak,best_streak,last_activity_on)
   values(
     new.user_id,earned,1,
-    case when activity_date >= local_today then 1 else 0 end,
+    case when activity_date >= local_today - 1 then 1 else 0 end,
     1,
     activity_date
   )
