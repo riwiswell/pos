@@ -97,6 +97,8 @@ function ProfilePage() {
       const path = await uploadMedia.mutateAsync({ file, kind });
       if (kind === "avatar") setAvatar(path);
       else setBackground(path);
+    } catch {
+      // The shared mutation reports the specific storage/validation error.
     } finally {
       setBusy(false);
     }
@@ -246,7 +248,7 @@ function ProfilePage() {
           <Button variant="outline" size="sm" disabled={busy} onClick={() => avatarInput.current?.click()}>
             <Upload className="mr-1 h-4 w-4" /> Foto
           </Button>
-          <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0], "avatar")} />
+          <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => { void pick(e.target.files?.[0], "avatar"); e.currentTarget.value = ""; }} />
         </div>
         <div className="space-y-1.5">
           <Label>Nombre</Label>
@@ -258,7 +260,7 @@ function ProfilePage() {
           <Button variant="outline" size="sm" disabled={busy} onClick={() => backgroundInput.current?.click()}>
             <Upload className="mr-1 h-4 w-4" /> Fondo
           </Button>
-          <input ref={backgroundInput} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0], "background")} />
+          <input ref={backgroundInput} type="file" accept="image/*" hidden onChange={(e) => { void pick(e.target.files?.[0], "background"); e.currentTarget.value = ""; }} />
           {backgroundUrl && <span className="self-center text-xs text-muted-foreground">Fondo cargado</span>}
         </div>
         <div className="flex items-center justify-between rounded-xl border p-3">
