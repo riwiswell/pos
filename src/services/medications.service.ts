@@ -78,14 +78,23 @@ export const medicationsService = {
       .eq("id", id);
     if (error) throw error;
 
-    // Remove future open doses (including snoozed reminders) but preserve the recorded history.
-    const { error: doseError } = await supabase
+    // Preserve past records. Cancel only future scheduled doses and still-active snoozes.
+    const nowISO = now.toISOString();
+    const { error: pendingError } = await supabase
       .from("medication_doses")
       .delete()
       .eq("medication_id", id)
-      .gte("dose_date", iso)
-      .in("status", ["pending", "snoozed"]);
-    if (doseError) throw doseError;
+      .eq("status", "pending")
+      .gt("scheduled_at", nowISO);
+    if (pendingError) throw pendingError;
+
+    const { error: snoozedError } = await supabase
+      .from("medication_doses")
+      .delete()
+      .eq("medication_id", id)
+      .eq("status", "snoozed")
+      .gt("snoozed_until", nowISO);
+    if (snoozedError) throw snoozedError;
   },
 
   /** Backward-compatible alias. Destructive medication deletion is disabled. */
@@ -127,22 +136,42 @@ export const medicationsService = {
   },
 
   async history(fromDate: string, toDate: string): Promise<MedicationDose[]> {
-    const { data, error } = await supabase
-      .from("medication_doses")
-      .select("*")
-      .gte("dose_date", fromDate)
-      .lte("dose_date", toDate)
-      .order("scheduled_at", { ascending: false });
-    if (error) throw error;
-    return (data ?? []) as MedicationDose[];
+    // PostgREST applies a row limit. Page deterministically so older history isn't silently truncated.
+    const pageSize = 1000;
+    const rows: MedicationDose[] = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("medication_doses")
+        .select("*")
+        .gte("dose_date", fromDate)
+        .lte("dose_date", toDate)
+        .order("scheduled_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = (data ?? []) as MedicationDose[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return rows;
   },
 
   /** Number of taken doses per medication (for remaining quantity). */
   async takenCounts(): Promise<Record<string, number>> {
-    const { data, error } = await supabase.from("medication_doses").select("medication_id").eq("status", "taken");
-    if (error) throw error;
     const out: Record<string, number> = {};
-    for (const r of data ?? []) out[r.medication_id] = (out[r.medication_id] ?? 0) + 1;
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("medication_doses")
+        .select("id,medication_id")
+        .eq("status", "taken")
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      for (const row of page) out[row.medication_id] = (out[row.medication_id] ?? 0) + 1;
+      if (page.length < pageSize) break;
+    }
     return out;
   },
 
