@@ -19,7 +19,7 @@ import { AccountDialog } from "@/components/finance/AccountDialog";
 import { formatClock, toISODate } from "@/lib/date";
 import { getIcon } from "@/lib/finance-icons";
 import { cn } from "@/lib/utils";
-import { financeService } from "@/services/finance.service";
+import { privateMediaService } from "@/services/private-media.service";
 import { useFinanceMutations } from "@/hooks/use-finance";
 import { TRANSACTION_TYPE_LABEL } from "@/domain/finance";
 import { categoryAppliesTo } from "@/domain/finance";
@@ -173,7 +173,7 @@ export function TransactionDialog({
     setUploading(true);
     try {
       const paths: string[] = [];
-      for (const file of Array.from(files)) paths.push(await financeService.uploadPhoto(file));
+      for (const file of Array.from(files)) paths.push(await privateMediaService.uploadPhoto(file));
       setForm((prev) => ({ ...prev, photos: [...prev.photos, ...paths] }));
     } finally {
       setUploading(false);
