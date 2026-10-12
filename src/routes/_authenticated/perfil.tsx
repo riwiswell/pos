@@ -328,7 +328,7 @@ function ProfilePage() {
       <section className="glass space-y-3 rounded-2xl p-4">
         <h2 className="font-semibold">Notificaciones y privacidad</h2>
         <div className="flex items-center justify-between rounded-xl border p-3">
-          <span className="text-sm">Cumpleaños, aniversarios y citas médicas</span>
+          <span className="text-sm">Cumpleaños, aniversarios y seguimientos de relaciones</span>
           <Switch checked={relationshipNotifications} onCheckedChange={setRelationshipNotifications} />
         </div>
         <div className="rounded-xl border p-3">
@@ -336,7 +336,7 @@ function ProfilePage() {
           <p className="mt-1 text-xs text-muted-foreground">La IA Personal actual calcula señales con funciones internas y no envía tus registros a proveedores externos. El control para análisis externo aparecerá cuando exista esa integración.</p>
         </div>
         <p className="text-xs text-muted-foreground">
-          Los avisos locales requieren permiso del navegador. Los avisos cuando Personal OS está cerrado requieren las credenciales VAPID del servidor.
+          Este ajuste solo controla los recordatorios de relaciones. Medicamentos, alarmas y citas médicas se programan desde cada registro. Los avisos locales requieren permiso del navegador; los push cuando Personal OS está cerrado requieren credenciales VAPID en Cloudflare.
         </p>
         <Button variant="outline" disabled={pushBusy} onClick={() => void activateBackgroundNotifications()}>
           <RefreshCw className={cn("mr-1 h-4 w-4", pushBusy && "animate-spin")} />
