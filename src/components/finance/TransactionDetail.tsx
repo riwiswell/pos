@@ -13,6 +13,7 @@ import { getIcon } from "@/lib/finance-icons";
 import { formatFullDate, formatTime } from "@/lib/period";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { richTextToPlainText } from "@/lib/rich-text";
 import { TRANSACTION_TYPE_LABEL } from "@/domain/finance";
 import type {
   FinanceAccount,
@@ -147,7 +148,7 @@ export function TransactionDetail({
           {transaction.note && (
             <div className="space-y-1.5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">Nota</p>
-              <p className="whitespace-pre-wrap text-sm">{transaction.note}</p>
+              <p className="whitespace-pre-wrap text-sm">{richTextToPlainText(transaction.note)}</p>
             </div>
           )}
 
