@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { todayISO } from "@/lib/date";
 import { lastWater, useDoses, useMedicationMutations, useMedications } from "@/hooks/use-medications";
 import { doseLabel, effectiveDueAt, formatGlasses, formatTime12, isOpen, type DoseStatus } from "@/domain/health";
-import { subscribeToBackgroundPush } from "@/services/push.service";
 
 const FIRED_KEY = "personal-os:med-fired";
 const WINDOW_MS = 30 * 60_000; // don't notify for doses due more than 30 min ago
@@ -80,7 +79,7 @@ export function useMedicationReminders() {
     for (const dose of doses.data) {
       if (!isOpen(dose)) continue;
       const med = byId.get(dose.medication_id);
-      if (!med) continue;
+      if (!med || !med.active) continue;
       const due = effectiveDueAt(dose);
       const notifyAt = due.getTime() - med.remind_offset_min * 60_000;
       const key = `${dose.id}@${due.toISOString()}`;
