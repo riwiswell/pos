@@ -1,6 +1,6 @@
 begin;
 
-select plan(20);
+select plan(29);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -39,6 +39,25 @@ select results_eq(
   $$values (1)$$,
   'gamification trigger is installed exactly once'
 );
+
+
+-- Isolation and notification wiring must be present in a fresh schema.
+select ok((select relrowsecurity from pg_class where oid = 'public.habits'::regclass), 'habits has row-level security');
+select ok((select relrowsecurity from pg_class where oid = 'public.habit_logs'::regclass), 'habit logs have row-level security');
+select ok((select relrowsecurity from pg_class where oid = 'public.finance_transactions'::regclass), 'finance transactions have row-level security');
+select ok((select relrowsecurity from pg_class where oid = 'public.shopping_lists'::regclass), 'shopping lists have row-level security');
+select ok((select relrowsecurity from pg_class where oid = 'public.shopping_items'::regclass), 'shopping items have row-level security');
+select ok((select relrowsecurity from pg_class where oid = 'public.medical_appointments'::regclass), 'medical appointments have row-level security');
+select ok((select relrowsecurity from pg_class where oid = 'public.notification_jobs'::regclass), 'notification jobs have row-level security');
+select ok((select relrowsecurity from pg_class where oid = 'public.push_subscriptions'::regclass), 'push subscriptions have row-level security');
+select ok((
+  select exists (
+    select 1 from pg_trigger
+     where tgrelid = 'public.medical_appointments'::regclass
+       and tgname = 'medical_appointment_notification_job'
+       and not tgisinternal
+  )
+), 'medical appointment notification trigger is installed');
 
 select * from finish();
 rollback;
