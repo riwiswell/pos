@@ -4,6 +4,20 @@ import { renderErrorPage } from "./lib/error-page";
 
 type Env={SUPABASE_URL?:string;SUPABASE_SERVICE_ROLE_KEY?:string;SUPABASE_PUBLISHABLE_KEY?:string;VAPID_PUBLIC_KEY?:string;VAPID_PRIVATE_KEY?:string;VAPID_SUBJECT?:string;WISWELLART_WEBHOOK_SECRET?:string;WISWELLART_USER_ID?:string};
 type ServerEntry={fetch:(request:Request,env:unknown,ctx:unknown)=>Promise<Response>|Response};
+const ALLOWED_PUSH_HOSTS = [
+ "fcm.googleapis.com",
+ "updates.push.services.mozilla.com",
+ "push.services.mozilla.com",
+ "webpush.push.apple.com",
+ "web.push.apple.com",
+];
+function isAllowedPushEndpoint(value:string){
+ try {
+  const url=new URL(value);
+  return url.protocol==="https:" && !url.username && !url.password &&
+    ALLOWED_PUSH_HOSTS.some(host=>url.hostname===host||url.hostname.endsWith("."+host));
+ } catch { return false; }
+}
 
 let serverEntryPromise:Promise<ServerEntry>|undefined;
 async function getServerEntry(){if(!serverEntryPromise)serverEntryPromise=import("@tanstack/react-start/server-entry").then(m=>(m.default??m) as ServerEntry);return serverEntryPromise}
@@ -12,7 +26,23 @@ async function supabaseFetch(env:Env,path:string,init:RequestInit={}){if(!env.SU
 async function userFromBearer(request:Request,env:Env){const auth=request.headers.get("Authorization");if(!auth||!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return null;const r=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:auth}});if(!r.ok)return null;return await r.json() as {id:string}}
 async function handleApi(request:Request,env:Env):Promise<Response|null>{
  const url=new URL(request.url);
- if(url.pathname==="/api/push-subscription"&&request.method==="POST"){const u=await userFromBearer(request,env);if(!u)return json({error:"Unauthorized"},401);const body=await request.json() as {endpoint?:string;subscription?:unknown;expiration_time?:string|null};if(!body.endpoint||!body.subscription)return json({error:"Invalid subscription"},400);const r=await supabaseFetch(env,"push_subscriptions?on_conflict=user_id%2Cendpoint",{method:"POST",body:JSON.stringify({user_id:u.id,endpoint:body.endpoint,subscription:body.subscription,expiration_time:body.expiration_time??null})});return new Response(await r.text(),{status:r.status,headers:{"content-type":"application/json"}})}
+ if(url.pathname==="/api/push-subscription"&&request.method==="POST"){
+  const u=await userFromBearer(request,env);if(!u)return json({error:"Unauthorized"},401);
+  let body:{endpoint?:string;subscription?:{endpoint?:string;keys?:{p256dh?:string;auth?:string}};expiration_time?:string|null};
+  try{body=await request.json() as typeof body}catch{return json({error:"Invalid JSON body"},400)}
+  if(!body.endpoint||!isAllowedPushEndpoint(body.endpoint)||!body.subscription||
+     body.subscription.endpoint!==body.endpoint||
+     typeof body.subscription.keys?.p256dh!=="string"||!body.subscription.keys.p256dh||
+     typeof body.subscription.keys?.auth!=="string"||!body.subscription.keys.auth){
+    return json({error:"Invalid push subscription"},400);
+  }
+  const r=await supabaseFetch(env,"push_subscriptions?on_conflict=user_id%2Cendpoint",{
+    method:"POST",
+    headers:{Prefer:"resolution=merge-duplicates,return=representation"},
+    body:JSON.stringify({user_id:u.id,endpoint:body.endpoint,subscription:body.subscription,expiration_time:body.expiration_time??null})
+  });
+  return new Response(await r.text(),{status:r.status,headers:{"content-type":"application/json"}});
+ }
  if(url.pathname==="/api/integrations/wiswellart"&&request.method==="POST"){
   if(!env.WISWELLART_WEBHOOK_SECRET||request.headers.get("x-pos-integration-secret")!==env.WISWELLART_WEBHOOK_SECRET)return json({error:"Unauthorized"},401);
   if(!env.WISWELLART_USER_ID)return json({error:"WISWELLART_USER_ID not configured"},500);
