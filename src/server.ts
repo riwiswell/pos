@@ -183,7 +183,7 @@ async function dispatchDueNotifications(env:Env){
    if(job.source_type==="alarm"){
     try{await finalizeAlarmOccurrence(env,job)}catch(error){console.error("[push] Could not synchronize fired alarm",job.source_id,error)}
    }
-   }else if(repeat==="daily"||repeat==="weekly"){
+   else if(repeat==="daily"||repeat==="weekly"){
     const next=new Date(job.fire_at);
     const stepDays=repeat==="weekly"?7:1;
     do{next.setDate(next.getDate()+stepDays)}while(next.getTime()<=Date.now());
