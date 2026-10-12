@@ -78,13 +78,13 @@ export const medicationsService = {
       .eq("id", id);
     if (error) throw error;
 
-    // Only remove future pending doses. Taken/skipped/snoozed history is retained.
+    // Remove future open doses (including snoozed reminders) but preserve the recorded history.
     const { error: doseError } = await supabase
       .from("medication_doses")
       .delete()
       .eq("medication_id", id)
       .gte("dose_date", iso)
-      .eq("status", "pending");
+      .in("status", ["pending", "snoozed"]);
     if (doseError) throw doseError;
   },
 
