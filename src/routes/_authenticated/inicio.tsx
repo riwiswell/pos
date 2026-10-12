@@ -15,6 +15,7 @@ import { useHabits, useLogs } from "@/hooks/use-habits";
 import { usePlannerItems } from "@/hooks/use-planner";
 import { compareChronologically, shortTime } from "@/domain/planner";
 import { greeting } from "@/lib/date";
+import { normalizeDashboardWidgets } from "@/domain/dashboard";
 import type { Habit, HabitLog } from "@/domain/types";
 
 export const Route = createFileRoute("/_authenticated/inicio")({
@@ -48,6 +49,10 @@ function HomePage() {
   const habitsQuery = useHabits();
   const logsQuery = useLogs(date);
   const profileQuery = useProfile();
+  const dashboardWidgets = normalizeDashboardWidgets(profileQuery.data?.dashboard_widgets);
+  const showPlanner = dashboardWidgets.includes("planner");
+  const showFocus = dashboardWidgets.includes("focus");
+  const showHabits = dashboardWidgets.includes("habits");
 
   const plannerQuery = usePlannerItems(date);
   const plannerItems = plannerQuery.data ?? [];
@@ -94,37 +99,39 @@ function HomePage() {
 
       <GlobalDateHeader />
 
-      <section className="glass rounded-2xl p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-1 text-sm font-semibold">Planeador <HelpTip helpKey="planner" /></h2>
-          <Button asChild size="sm" variant="ghost">
-            <Link to="/planeador" search={(prev: Record<string, unknown>) => prev}>
-              Ir al Planeador
-            </Link>
-          </Button>
-        </div>
-        {plannerQuery.isLoading ? (
-          <p className="mt-2 text-sm text-muted-foreground">Cargando…</p>
-        ) : plannerItems.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">Nada agendado para esta fecha.</p>
-        ) : (
-          <>
-            <p className="mt-2 text-sm">
-              {pendingCount} pendiente{pendingCount === 1 ? "" : "s"} · {eventCount} evento
-              {eventCount === 1 ? "" : "s"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {nextItem
-                ? `Próximo: ${shortTime(nextItem.start_time)} · ${nextItem.title}`
-                : "Sin compromisos con hora."}
-            </p>
-          </>
-        )}
-      </section>
+      {showPlanner && (
+        <section className="glass rounded-2xl p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="flex items-center gap-1 text-sm font-semibold">Planeador <HelpTip helpKey="planner" /></h2>
+            <Button asChild size="sm" variant="ghost">
+              <Link to="/planeador" search={(prev: Record<string, unknown>) => prev}>
+                Ir al Planeador
+              </Link>
+            </Button>
+          </div>
+          {plannerQuery.isLoading ? (
+            <p className="mt-2 text-sm text-muted-foreground">Cargando…</p>
+          ) : plannerItems.length === 0 ? (
+            <p className="mt-2 text-sm text-muted-foreground">Nada agendado para esta fecha.</p>
+          ) : (
+            <>
+              <p className="mt-2 text-sm">
+                {pendingCount} pendiente{pendingCount === 1 ? "" : "s"} · {eventCount} evento
+                {eventCount === 1 ? "" : "s"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {nextItem
+                  ? `Próximo: ${shortTime(nextItem.start_time)} · ${nextItem.title}`
+                  : "Sin compromisos con hora."}
+              </p>
+            </>
+          )}
+        </section>
+      )}
 
-      <DailyFocusPicker date={date} />
+      {showFocus && <DailyFocusPicker date={date} />}
 
-      {habitsQuery.isLoading ? (
+      {showHabits && (habitsQuery.isLoading ? (
         <LoadingState />
       ) : habits.length === 0 ? (
         <EmptyState
@@ -132,24 +139,28 @@ function HomePage() {
           description="Crea tu primer hábito para empezar a construir tu historial real."
         />
       ) : (
-        <>
-          <section className="glass rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-1 text-sm font-semibold">Resumen de hábitos <HelpTip helpKey="habits.summary" /></h2>
-              <span className="text-sm text-muted-foreground">
-                {done}/{total}
-              </span>
-            </div>
-            <Progress value={percent} className="mt-3 h-2" />
-            <p className="mt-2 text-xs text-muted-foreground">
-              {percent}% completado
-              {activities.length > 0
-                ? ` · actividades del día ${activitiesDone}/${activities.length}`
-                : ""}
-            </p>
-          </section>
+        <section className="glass rounded-2xl p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="flex items-center gap-1 text-sm font-semibold">Resumen de hábitos <HelpTip helpKey="habits.summary" /></h2>
+            <span className="text-sm text-muted-foreground">
+              {done}/{total}
+            </span>
+          </div>
+          <Progress value={percent} className="mt-3 h-2" />
+          <p className="mt-2 text-xs text-muted-foreground">
+            {percent}% completado
+            {activities.length > 0
+              ? ` · actividades del día ${activitiesDone}/${activities.length}`
+              : ""}
+          </p>
+        </section>
+      ))}
 
-        </>
+      {dashboardWidgets.length === 0 && (
+        <EmptyState
+          title="Inicio despejado"
+          description="No hay bloques visibles. Puedes elegir Agenda, Enfoque o Hábitos desde Perfil y configuración."
+        />
       )}
     </div>
   );
