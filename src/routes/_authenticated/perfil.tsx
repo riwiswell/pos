@@ -32,8 +32,9 @@ const FEATURE_LABELS = [
 ] as const;
 const WIDGETS = DASHBOARD_WIDGETS;
 const BACKUP_TABLES = [
+  // Restore user-defined challenge rows before source records run gamification triggers.
+  "profiles", "gamification_challenges",
   // Parents and lookup rows first, then their dependent records.
-  "profiles",
   "habit_categories", "habits", "habit_logs",
   "planner_categories", "planner_items", "daily_focus",
   "finance_accounts", "finance_categories", "finance_settings", "finance_transactions",
@@ -47,7 +48,7 @@ const BACKUP_TABLES = [
   "learning_items", "learning_notes", "learning_sessions", "language_profiles",
   "relationship_interactions", "work_items", "work_sessions",
   "spiritual_entries", "spiritual_goals",
-  "life_events", "gamification_profiles", "gamification_xp_events", "gamification_achievements", "gamification_challenges",
+  "life_events", "gamification_profiles", "gamification_xp_events", "gamification_achievements",
   "notification_jobs", "ai_runs", "life_links",
 ];
 
