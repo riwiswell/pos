@@ -92,7 +92,7 @@ export function TransactionList({
                           {isTransfer
                             ? "Transferencia"
                             : (category?.name ??
-                              tx.note ??
+                              richTextToPlainText(tx.note) ??
                               (tx.type === "income" ? "Ingreso" : "Gasto"))}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
