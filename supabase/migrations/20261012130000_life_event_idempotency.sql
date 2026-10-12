@@ -31,7 +31,14 @@ begin
 
   -- Stable for the lifetime of the source row. The unique(user_id,event_key)
   -- constraint makes retries and updates idempotent.
-  key := tg_table_name || ':' || new.id::text;
+  key := case
+    -- A work session earns its completion reward exactly once. Its INSERT event
+    -- is intentionally non-rewarding while it is active; completion is a second,
+    -- stable lifecycle event, not an arbitrary edit.
+    when tg_table_name = 'work_sessions' and payload->>'status' = 'completed'
+      then tg_table_name || ':' || new.id::text || ':completed'
+    else tg_table_name || ':' || new.id::text
+  end;
 
   insert into public.life_events(
     user_id, event_key, event_type, entity_type, entity_id, event_at, payload
