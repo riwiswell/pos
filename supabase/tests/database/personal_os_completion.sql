@@ -1,6 +1,6 @@
 begin;
 
-select plan(48);
+select plan(50);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -18,6 +18,15 @@ select has_table('public','gamification_challenges','gamification challenges exi
 select has_table('public','gamification_xp_events','xp ledger exists');
 select has_index('public','gamification_xp_events','gamification_xp_events_user_key_uidx','xp idempotency index exists');
 select has_function('public','apply_gamification_for_life_event','gamification trigger function exists');
+select has_function('public','award_gamification_challenge_reward','challenge reward trigger function exists');
+select ok((
+  select exists (
+    select 1 from pg_trigger
+     where tgrelid = 'public.gamification_challenges'::regclass
+       and tgname = 'gamification_challenge_reward'
+       and not tgisinternal
+  )
+), 'challenge completion reward trigger is installed');
 select has_function('public','sync_relationship_interaction','relationship sync function exists');
 select is(
   public.gamification_xp_for_event('habit_logs', '{"habit_kind":"activity"}'::jsonb),
