@@ -1,6 +1,6 @@
 begin;
 
-select plan(35);
+select plan(36);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -74,6 +74,7 @@ select ok((select exists(select 1 from storage.buckets where id = 'finance-photo
 select ok((select exists(select 1 from storage.buckets where id = 'profile-media' and public = false)), 'profile media bucket exists and is private');
 select is((select count(*)::integer from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'pos_finance_photos_%'), 4, 'finance photo bucket has four per-user policies');
 select is((select count(*)::integer from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'pos_profile_media_%'), 4, 'profile media bucket has four per-user policies');
+select ok((select exists(select 1 from pg_indexes where schemaname='public' and indexname='work_sessions_one_active_per_user_uidx')), 'only one active work session per user is enforced');
 
 select * from finish();
 rollback;
