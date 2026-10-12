@@ -3,6 +3,7 @@ import { Check, Crosshair, ListTodo, Target } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { HelpTip } from "@/components/common/HelpTip";
+import { ErrorState } from "@/components/common/States";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useDailyFocus, useDailyFocusMutations } from "@/hooks/use-focus";
@@ -95,12 +96,14 @@ export function DailyFocusPicker({ date }: Props) {
             <Crosshair className="h-4 w-4 text-primary" />
             <h2 className="flex items-center gap-1 text-sm font-semibold">Enfoque del día <HelpTip helpKey="focus" /></h2>
           </div>
-          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+          <Button size="sm" variant="outline" disabled={focusQuery.isError} onClick={() => setOpen(true)}>
             {current ? "Cambiar" : "Elegir enfoque"}
           </Button>
         </div>
 
-        {currentLabel ? (
+        {focusQuery.isError ? (
+          <ErrorState message={focusQuery.error instanceof Error ? focusQuery.error.message : "No se pudo cargar el enfoque de esta fecha."} />
+        ) : currentLabel ? (
           <p className="mt-3 text-base font-medium">{currentLabel}</p>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
@@ -140,7 +143,11 @@ export function DailyFocusPicker({ date }: Props) {
 
           {source === "habit" && (
             <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-border p-2">
-              {habits.length === 0 ? (
+              {habitsQuery.isError ? (
+                <ErrorState message={habitsQuery.error instanceof Error ? habitsQuery.error.message : "No se pudieron cargar los hábitos."} />
+              ) : habitsQuery.isLoading ? (
+                <p className="p-3 text-sm text-muted-foreground">Cargando hábitos…</p>
+              ) : habits.length === 0 ? (
                 <p className="p-3 text-sm text-muted-foreground">No tienes hábitos disponibles.</p>
               ) : (
                 habits.map((habit) => (
@@ -163,7 +170,11 @@ export function DailyFocusPicker({ date }: Props) {
 
           {source === "planner" && (
             <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-border p-2">
-              {plannerItems.length === 0 ? (
+              {plannerQuery.isError ? (
+                <ErrorState message={plannerQuery.error instanceof Error ? plannerQuery.error.message : "No se pudieron cargar los elementos del Planeador."} />
+              ) : plannerQuery.isLoading ? (
+                <p className="p-3 text-sm text-muted-foreground">Cargando Planeador…</p>
+              ) : plannerItems.length === 0 ? (
                 <p className="p-3 text-sm text-muted-foreground">No hay tareas o eventos pendientes para hoy.</p>
               ) : (
                 plannerItems.map((item) => (
@@ -206,7 +217,7 @@ export function DailyFocusPicker({ date }: Props) {
               type="button"
               variant="ghost"
               onClick={() => void clear()}
-              disabled={!current || mutations.clearFocus.isPending}
+              disabled={!current || focusQuery.isError || mutations.clearFocus.isPending}
             >
               Quitar enfoque
             </Button>
@@ -215,6 +226,9 @@ export function DailyFocusPicker({ date }: Props) {
               onClick={() => void save()}
               disabled={
                 mutations.setFocus.isPending ||
+                focusQuery.isError ||
+                (source === "habit" && habitsQuery.isError) ||
+                (source === "planner" && plannerQuery.isError) ||
                 (source !== "free" && !selectedId) ||
                 (source === "free" && !text.trim())
               }

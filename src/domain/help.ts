@@ -34,6 +34,7 @@ export const HELP: Record<string, HelpEntry> = {
       "Los vasos de agua que tomaste con esta dosis. Puedes cambiarlo en cada toma; se cuenta aparte del agua normal.",
   },
   // Hidratación
+  "hydration.daily": { title: "Hidratación diaria", description: "El agua manual se registra por fecha en litros (1 vaso equivale a 250 ml); el agua de las tomas de medicamentos se suma por separado. La meta de 9 vasos es orientativa y puedes corregir el registro con −/+ vaso." },
   "hydration.medication": {
     title: "Agua con medicamentos",
     description:
@@ -77,10 +78,12 @@ export const HELP: Record<string, HelpEntry> = {
   "health.medicationHistory": { title: "Historial de medicamentos", description: "Conserva las tomas registradas aunque un medicamento haya sido suspendido. Aquí puedes revisar qué medicamento se programó, para qué fecha y si fue tomada, omitida, pospuesta o quedó pendiente." },
   "life": { title: "Vida", description: "Centraliza listas, metas, alarmas y otras herramientas prácticas de la vida diaria." },
   "journal": { title: "Diario", description: "Registra experiencias, reflexiones, estado de ánimo y recuerdos por fecha." },
+  "journal.gratitude": { title: "Gratitud", description: "Registra aquello por lo que agradeces, con su contexto y fecha. Este registro forma parte del Diario y se encuentra mediante la búsqueda global." },
   "profile": { title: "Perfil", description: "Personaliza identidad, apariencia y preferencias globales de Personal OS." },
   "life.alarms": { title: "Alarmas", description: "Recordatorios con fecha, hora y repetición. La notificación se activa con permiso del navegador." },
   "life.shopping": { title: "Lista de mercado", description: "Registra compras pendientes rápidamente. Marcar un artículo no borra su historial." },
-  "health.metrics": { title: "Métricas de salud", description: "Guarda mediciones por la fecha global. Puedes registrar peso, estatura, cintura, sueño, ejercicio y agua." },
+  "health.metrics": { title: "Métricas de salud", description: "Guarda mediciones por la fecha global: peso, estatura, signos vitales, medidas corporales, sueño, ejercicio y agua." },
+  "health.vitals": { title: "Signos vitales", description: "Registra presión sistólica y diastólica juntas. Pulso, temperatura, saturación de oxígeno y grasa corporal son opcionales. Los límites de entrada evitan valores claramente imposibles; no sustituyen una valoración clínica." },
   "health.body-measures": { title: "Medidas del cuerpo", description: "Registra perímetros corporales por fecha para observar evolución: cuello, hombros, pecho, cintura, brazos, cadera, muslos y pantorrillas." },
   "health.bmi": { title: "IMC", description: "Se calcula automáticamente como peso en kg dividido por estatura en metros al cuadrado." },
   "health.cycle": { title: "Ciclo menstrual", description: "Registra el inicio de cada periodo y Personal OS calcula la próxima fecha según el ciclo registrado. Puede ser tu ciclo o el de otra persona que tú registres." },

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,5 +21,6 @@ export function useSetHelpEnabled() {
       if (error) throw error;
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["profile"] }),
+    onError: (error: unknown) => toast.error(error instanceof Error ? error.message : "No se pudo guardar la preferencia de ayuda."),
   });
 }

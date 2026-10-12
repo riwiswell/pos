@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { HelpTip } from "@/components/common/HelpTip";
 import { useShoppingItems, useShoppingLists, useShoppingMutations } from "@/hooks/use-journal";
-import type { ShoppingList } from "@/domain/journal";
+import type { ShoppingItem, ShoppingList } from "@/domain/journal";
 
 /** Checkable shopping lists. Lives inside Diario; never becomes Planeador tasks. */
-export function ShoppingLists() {
+export function ShoppingLists({ query = "" }: { query?: string }) {
   const lists = useShoppingLists();
   const items = useShoppingItems();
   const m = useShoppingMutations();
@@ -19,6 +19,19 @@ export function ShoppingLists() {
 
   const allLists = lists.data ?? [];
   const allItems = items.data ?? [];
+  const normalizedQuery = normalizeShoppingSearch(query);
+  const filteredLists = allLists
+    .map((list) => {
+      const listMatches = normalizedQuery.length > 0 && normalizeShoppingSearch(list.name).includes(normalizedQuery);
+      const listItems = allItems.filter((item) => item.list_id === list.id);
+      const visibleItems = !normalizedQuery || listMatches
+        ? listItems
+        : listItems.filter((item) =>
+            normalizeShoppingSearch([item.name, item.note ?? ""].join(" ")).includes(normalizedQuery),
+          );
+      return { list, listItems, visibleItems, listMatches };
+    })
+    .filter((entry) => !normalizedQuery || entry.listMatches || entry.visibleItems.length > 0);
 
   function addList() {
     if (!newList.trim()) return;
@@ -37,20 +50,30 @@ export function ShoppingLists() {
         <Button onClick={addList} disabled={!newList.trim()}>
           <Plus className="mr-1 h-4 w-4" /> Crear
         </Button>
-        <HelpTip helpKey="journal.shopping" text="Las listas de compras son solo para marcar productos. No crean tareas en el Planeador." />
+        <HelpTip helpKey="life.shopping" text="Las listas de compras son solo para marcar productos. No crean tareas en el Planeador." />
       </div>
 
-      {lists.isLoading ? (
+      {items.isError || lists.isError ? (
+        <p className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive" role="alert">
+          No se pudieron cargar las compras. Revisa la conexión e inténtalo de nuevo.
+        </p>
+      ) : lists.isLoading || items.isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>
       ) : allLists.length === 0 ? (
         <p className="glass rounded-2xl p-4 text-sm text-muted-foreground">Aún no tienes listas de compras.</p>
+      ) : filteredLists.length === 0 ? (
+        <p className="glass rounded-2xl p-4 text-sm text-muted-foreground" role="status">
+          No hay listas ni productos que coincidan con «{query.trim()}».
+        </p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {allLists.map((list) => (
+          {filteredLists.map(({ list, visibleItems, listItems }) => (
             <ListCard
               key={list.id}
               list={list}
-              items={allItems.filter((i) => i.list_id === list.id)}
+              items={visibleItems}
+              totalItems={listItems.length}
+              isFiltered={normalizedQuery.length > 0 && visibleItems.length !== listItems.length}
               onDelete={() => setToDelete(list)}
             />
           ))}
@@ -75,10 +98,14 @@ export function ShoppingLists() {
 function ListCard({
   list,
   items,
+  totalItems,
+  isFiltered,
   onDelete,
 }: {
   list: ShoppingList;
-  items: ReturnType<typeof useShoppingItems>["data"] & {};
+  items: ShoppingItem[];
+  totalItems: number;
+  isFiltered: boolean;
   onDelete: () => void;
 }) {
   const m = useShoppingMutations();
@@ -95,7 +122,7 @@ function ListCard({
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-semibold">🛒 {list.name}</h3>
         <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground">{done}/{items.length}</span>
+          <span className="text-xs text-muted-foreground">{isFiltered ? items.length + " encontrados" : done + "/" + totalItems}</span>
           <Button size="icon" variant="ghost" onClick={onDelete} aria-label="Eliminar lista">
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -130,4 +157,7 @@ function ListCard({
       </div>
     </section>
   );
+}
+function normalizeShoppingSearch(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es").trim();
 }

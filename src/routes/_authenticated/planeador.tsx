@@ -174,7 +174,7 @@ function PlannerPage() {
       <Button
         size="icon"
         aria-label="Crear tarea"
-        className="fixed bottom-24 right-4 z-30 h-14 w-14 rounded-full shadow-lg md:bottom-8 md:right-8"
+        className="fixed bottom-24 right-4 z-30 h-14 w-14 rounded-full shadow-lg md:hidden"
         onClick={() => setItemDialog({ open: true, item: null, type: "task" })}
       >
         <Plus className="h-6 w-6" />

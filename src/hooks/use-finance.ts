@@ -111,12 +111,11 @@ export function useFinanceMutations() {
     onError,
   });
 
-  const deleteCategory = useMutation({
-    mutationFn: (id: string) => financeService.deleteCategory(id),
+  const archiveCategory = useMutation({
+    mutationFn: (id: string) => financeService.archiveCategory(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: financeKeys.categories });
-      refreshDerived();
-      toast.success("Categoría eliminada");
+      toast.success("Categoría archivada; los movimientos históricos conservan su clasificación.");
     },
     onError,
   });
@@ -176,7 +175,7 @@ export function useFinanceMutations() {
     reorderAccounts,
     createCategory,
     updateCategory,
-    deleteCategory,
+    archiveCategory,
     reorderCategories,
     createTransaction,
     updateTransaction,

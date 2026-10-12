@@ -3,15 +3,27 @@ import { toast } from "sonner";
 
 import { todayISO } from "@/lib/date";
 import { lastWater, useDoses, useMedicationMutations, useMedications } from "@/hooks/use-medications";
+import { medicationsService } from "@/services/medications.service";
 import { doseLabel, effectiveDueAt, formatGlasses, formatTime12, isOpen, type DoseStatus } from "@/domain/health";
-import { subscribeToBackgroundPush } from "@/services/push.service";
 
 const FIRED_KEY = "personal-os:med-fired";
 const WINDOW_MS = 30 * 60_000; // don't notify for doses due more than 30 min ago
 
 function readFired(): Record<string, true> {
   try {
-    return JSON.parse(localStorage.getItem(FIRED_KEY) ?? "{}") as Record<string, true>;
+    const parsed = JSON.parse(localStorage.getItem(FIRED_KEY) ?? "{}") as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const cutoff = Date.now() - 7 * 24 * 60 * 60_000;
+    const entries = Object.entries(parsed as Record<string, unknown>).filter(([key, value]) => {
+      const separator = key.lastIndexOf("@");
+      if (value !== true || separator < 0) return false;
+      const dueAt = Date.parse(key.slice(separator + 1));
+      return Number.isFinite(dueAt) && dueAt >= cutoff && dueAt <= Date.now() + 60 * 60_000;
+    });
+    if (entries.length !== Object.keys(parsed as Record<string, unknown>).length) {
+      try { localStorage.setItem(FIRED_KEY, JSON.stringify(Object.fromEntries(entries))); } catch { /* Storage may be disabled. */ }
+    }
+    return Object.fromEntries(entries) as Record<string, true>;
   } catch {
     return {};
   }
@@ -71,6 +83,25 @@ export function useMedicationReminders() {
   }, []);
 
   const byId = useMemo(() => new Map((meds.data ?? []).map((m) => [m.id, m])), [meds.data]);
+  const scheduleSignature = useMemo(
+    () => (meds.data ?? [])
+      .map((m) => JSON.stringify([m.id, m.updated_at, m.active, m.name, m.dose, m.unit, m.total_quantity, m.notes, m.start_date, m.end_date, m.frequency, m.times, m.remind_offset_min]))
+      .sort()
+      .join("|") + ":" + today,
+    [today, meds.data],
+  );
+  const preparedSignature = useRef("");
+
+  useEffect(() => {
+    if (!meds.isSuccess || !scheduleSignature || preparedSignature.current === scheduleSignature) return;
+    preparedSignature.current = scheduleSignature;
+    void medicationsService.prepareUpcomingDoses(14).catch((error) => {
+      toast.error(error instanceof Error
+        ? "No se pudieron preparar los recordatorios futuros: " + error.message
+        : "No se pudieron preparar los recordatorios futuros.");
+      preparedSignature.current = "";
+    });
+  }, [meds.isSuccess, scheduleSignature]);
 
   useEffect(() => {
     if (!doses.data) return;
@@ -80,7 +111,7 @@ export function useMedicationReminders() {
     for (const dose of doses.data) {
       if (!isOpen(dose)) continue;
       const med = byId.get(dose.medication_id);
-      if (!med) continue;
+      if (!med || !med.active) continue;
       const due = effectiveDueAt(dose);
       const notifyAt = due.getTime() - med.remind_offset_min * 60_000;
       const key = `${dose.id}@${due.toISOString()}`;
@@ -93,7 +124,7 @@ export function useMedicationReminders() {
       if (getPermission() === "granted") {
         const opts: NotificationOptions & { actions?: { action: string; title: string }[] } = {
           body,
-          tag: key,
+          tag: `pos:medication:${dose.id}`,
           requireInteraction: true,
           data: { doseId: dose.id },
           actions: [
@@ -114,6 +145,6 @@ export function useMedicationReminders() {
         cancel: { label: "Posponer", onClick: () => actRef.current({ id: dose.id, status: "snoozed" }) },
       });
     }
-    if (changed) localStorage.setItem(FIRED_KEY, JSON.stringify(fired));
+    if (changed) { try { localStorage.setItem(FIRED_KEY, JSON.stringify(fired)); } catch { /* Reminders should still show when Storage is unavailable. */ } }
   }, [doses.data, byId, tick]);
 }

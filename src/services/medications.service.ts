@@ -47,17 +47,43 @@ export const medicationsService = {
   },
 
   async update(id: string, patch: Partial<MedicationInput>) {
-    const { error } = await supabase.from("medications").update(clean(patch)).eq("id", id);
+    const { data: before, error: readError } = await supabase
+      .from("medications")
+      .select("frequency,times,start_date,end_date,active")
+      .eq("id", id)
+      .maybeSingle();
+    if (readError) throw readError;
+    if (!before) throw new Error("No encontramos el medicamento que intentas editar.");
+
+    const normalized = clean(patch);
+    const scheduleChanged =
+      (normalized.frequency !== undefined && normalized.frequency !== before.frequency) ||
+      (normalized.times !== undefined && JSON.stringify(normalizeTimes(normalized.times)) !== JSON.stringify(normalizeTimes(before.times ?? []))) ||
+      (normalized.start_date !== undefined && normalized.start_date !== before.start_date) ||
+      (normalized.end_date !== undefined && normalized.end_date !== before.end_date) ||
+      (normalized.active !== undefined && normalized.active !== before.active);
+
+    const { error } = await supabase.from("medications").update(normalized).eq("id", id);
     if (error) throw error;
-    // Drop still-open future doses whose time no longer exists; they are regenerated.
-    const today = new Date();
-    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    await supabase
+    if (!scheduleChanged) return;
+
+    // Preserve taken/skipped history and unchanged schedules. Rebuild only future open doses when scheduling settings change.
+    const nowISO = new Date().toISOString();
+    const { error: pendingError } = await supabase
       .from("medication_doses")
       .delete()
       .eq("medication_id", id)
-      .gte("dose_date", iso)
-      .in("status", ["pending", "snoozed"]);
+      .eq("status", "pending")
+      .gt("scheduled_at", nowISO);
+    if (pendingError) throw pendingError;
+
+    const { error: snoozedError } = await supabase
+      .from("medication_doses")
+      .delete()
+      .eq("medication_id", id)
+      .eq("status", "snoozed")
+      .gt("snoozed_until", nowISO);
+    if (snoozedError) throw snoozedError;
   },
 
   /**
@@ -78,19 +104,80 @@ export const medicationsService = {
       .eq("id", id);
     if (error) throw error;
 
-    // Only remove future pending doses. Taken/skipped/snoozed history is retained.
-    const { error: doseError } = await supabase
+    // Preserve past records. Cancel only future scheduled doses and still-active snoozes.
+    const nowISO = now.toISOString();
+    const { error: pendingError } = await supabase
       .from("medication_doses")
       .delete()
       .eq("medication_id", id)
-      .gte("dose_date", iso)
-      .eq("status", "pending");
-    if (doseError) throw doseError;
+      .eq("status", "pending")
+      .gt("scheduled_at", nowISO);
+    if (pendingError) throw pendingError;
+
+    const { error: snoozedError } = await supabase
+      .from("medication_doses")
+      .delete()
+      .eq("medication_id", id)
+      .eq("status", "snoozed")
+      .gt("snoozed_until", nowISO);
+    if (snoozedError) throw snoozedError;
   },
 
   /** Backward-compatible alias. Destructive medication deletion is disabled. */
   async remove(id: string) {
     return medicationsService.discontinue(id);
+  },
+
+  /**
+   * Prepare a short rolling horizon so Worker push reminders exist even if the
+   * user does not open Salud on the morning of every dose. Unique constraints
+   * and ignoreDuplicates make the operation safe to repeat across page loads.
+   */
+  async prepareUpcomingDoses(horizonDays = 14): Promise<number> {
+    const user_id = await currentUserId();
+    const meds = (await medicationsService.list()).filter((med) => med.active);
+    const horizon = Math.max(1, Math.min(30, Math.floor(horizonDays)));
+    const today = new Date();
+    const rows: {
+      user_id: string;
+      medication_id: string;
+      dose_date: string;
+      scheduled_time: string;
+      scheduled_at: string;
+    }[] = [];
+
+    for (let offset = 0; offset < horizon; offset += 1) {
+      const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
+      const iso = [
+        day.getFullYear(),
+        String(day.getMonth() + 1).padStart(2, "0"),
+        String(day.getDate()).padStart(2, "0"),
+      ].join("-");
+      for (const med of meds) {
+        if (!appliesOn(med, iso)) continue;
+        for (const time of med.times) {
+          rows.push({
+            user_id,
+            medication_id: med.id,
+            dose_date: iso,
+            scheduled_time: time,
+            scheduled_at: localDateTime(iso, time),
+          });
+        }
+      }
+    }
+
+    const chunkSize = 500;
+    for (let offset = 0; offset < rows.length; offset += chunkSize) {
+      const { error } = await supabase
+        .from("medication_doses")
+        .upsert(rows.slice(offset, offset + chunkSize), {
+          onConflict: "medication_id,dose_date,scheduled_time",
+          ignoreDuplicates: true,
+        });
+      if (error) throw error;
+    }
+    return rows.length;
   },
 
   /**
@@ -126,23 +213,42 @@ export const medicationsService = {
     return (data ?? []) as MedicationDose[];
   },
 
-  async history(fromDate: string, toDate: string): Promise<MedicationDose[]> {
-    const { data, error } = await supabase
+  async historyPage(
+    fromDate: string,
+    toDate: string,
+    page = 0,
+    pageSize = 50,
+  ): Promise<{ rows: MedicationDose[]; total: number }> {
+    const safePage = Math.max(0, Math.floor(page));
+    const safeSize = Math.max(1, Math.min(100, Math.floor(pageSize) || 50));
+    const { data, error, count } = await supabase
       .from("medication_doses")
-      .select("*")
+      .select("*", { count: "exact" })
       .gte("dose_date", fromDate)
       .lte("dose_date", toDate)
-      .order("scheduled_at", { ascending: false });
+      .order("scheduled_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(safePage * safeSize, safePage * safeSize + safeSize - 1);
     if (error) throw error;
-    return (data ?? []) as MedicationDose[];
+    return { rows: (data ?? []) as MedicationDose[], total: count ?? 0 };
   },
 
   /** Number of taken doses per medication (for remaining quantity). */
   async takenCounts(): Promise<Record<string, number>> {
-    const { data, error } = await supabase.from("medication_doses").select("medication_id").eq("status", "taken");
-    if (error) throw error;
     const out: Record<string, number> = {};
-    for (const r of data ?? []) out[r.medication_id] = (out[r.medication_id] ?? 0) + 1;
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("medication_doses")
+        .select("id,medication_id")
+        .eq("status", "taken")
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      for (const row of page) out[row.medication_id] = (out[row.medication_id] ?? 0) + 1;
+      if (page.length < pageSize) break;
+    }
     return out;
   },
 

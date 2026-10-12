@@ -41,10 +41,11 @@ function rememberWater(n: number) {
   localStorage.setItem(WATER_KEY, String(n));
 }
 
-export function useDoseHistory(from: string, to: string) {
+export function useDoseHistory(from: string, to: string, page = 0, pageSize = 50) {
   return useQuery({
-    queryKey: medKeys.history(from, to),
-    queryFn: () => medicationsService.history(from, to),
+    queryKey: [...medKeys.history(from, to), page, pageSize],
+    queryFn: () => medicationsService.historyPage(from, to, page, pageSize),
+    placeholderData: (previous) => previous,
   });
 }
 

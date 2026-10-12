@@ -6,22 +6,97 @@ export type LGTable =
  "menstrual_profiles"|"menstrual_records"|"medical_appointments"|"nutrition_logs"|
  "learning_items"|"learning_notes"|"learning_sessions"|"language_profiles"|
  "relationships"|"relationship_interactions"|"life_links"|"work_items"|"work_sessions"|
- "spiritual_entries"|"spiritual_goals"|"finance_budgets"|"finance_debts"|"finance_savings_goals"|"finance_investments"|
+ "spiritual_entries"|"spiritual_goals"|"finance_settings"|"finance_budgets"|"finance_debts"|"finance_savings_goals"|"finance_investments"|
  "finance_external_sources"|"finance_external_snapshots"|"life_events"|"notification_jobs"|
  "ai_runs"|"gamification_profiles"|"gamification_xp_events"|"gamification_achievements"|"gamification_challenges";
 async function uid(){const{data,error}=await supabase.auth.getUser();if(error||!data.user)throw error??new Error("No hay sesión activa");return data.user.id}
 export const lifeGraphService={
- async list(table:LGTable,order="created_at",ascending=false){const{data,error}=await db.from(table).select("*").order(order,{ascending});if(error)throw error;return data??[]},
+ async list(table:LGTable,order="created_at",ascending=false):Promise<any[]>{
+  // PostgREST caps response size; paginate so searches, histories and backups don't silently omit rows.
+  // These per-user singleton tables deliberately have user_id as their primary key, not id.
+  const singleton=table==="gamification_profiles"||table==="finance_settings";
+  const orderColumn=singleton&&order==="created_at"?"updated_at":order;
+  const pageSize=1000;
+  const rows:any[]=[];
+  for(let from=0;;from+=pageSize){
+   let query=db.from(table).select("*").order(orderColumn,{ascending});
+   if(!singleton)query=query.order("id",{ascending:true});
+   const{data,error}=await query.range(from,from+pageSize-1);
+   if(error)throw error;
+   const page=(data??[]) as any[];
+   rows.push(...page);
+   if(page.length<pageSize)break;
+  }
+  return rows
+ },
  async create(table:LGTable,input:Record<string,unknown>){const user_id=await uid();const{data,error}=await db.from(table).insert({...input,user_id}).select("*").single();if(error)throw error;return data},
  async update(table:LGTable,id:string,input:Record<string,unknown>){const{data,error}=await db.from(table).update(input).eq("id",id).select("*").single();if(error)throw error;return data},
  async remove(table:LGTable,id:string){const{error}=await db.from(table).delete().eq("id",id);if(error)throw error},
+ async cancelPendingNotifications(sourceType:string,sourceId:string){const user_id=await uid();const{error}=await db.from("notification_jobs").update({status:"cancelled"}).eq("user_id",user_id).eq("source_type",sourceType).eq("source_id",sourceId).eq("status","pending");if(error)throw error},
  async link(fromType:string,fromId:string,toType:string,toId:string,relation:string,metadata:Record<string,unknown>={}){return this.create("life_links",{from_type:fromType,from_id:fromId,to_type:toType,to_id:toId,relation,metadata})},
- async promoteJournalIdeaToProject(entryId:string){const user_id=await uid();const {data:entry,error:readError}=await db.from("journal_entries").select("id,title,content,type,entry_date").eq("id",entryId).single();if(readError)throw readError;if(entry.type!=="idea")throw new Error("Solo las ideas pueden convertirse en proyectos.");const title=(entry.title||"Idea sin título").trim();const {data:project,error}=await db.from("work_items").insert({user_id,title,kind:"project",status:"open",source_journal_entry_id:entry.id,notes:entry.content,target_date:null}).select("*").single();if(error)throw error;const {error:updateError}=await db.from("journal_entries").update({linked_work_item_id:project.id,capture_stage:"promoted"}).eq("id",entry.id);if(updateError)throw updateError;await this.link("journal_entry",entry.id,"work_item",project.id,"became_project",{entry_date:entry.entry_date});return project},
+ async promoteJournalIdeaToProject(entryId:string){
+  const user_id=await uid();
+  const {data:entry,error:readError}=await db.from("journal_entries").select("id,title,content,type,entry_date,linked_work_item_id").eq("id",entryId).eq("user_id",user_id).single();
+  if(readError)throw readError;
+  if(entry.type!=="idea")throw new Error("Solo las ideas pueden convertirse en proyectos.");
+
+  // Idempotency: if a previous attempt created the project but failed to link
+  // the journal entry, attach that project instead of creating a duplicate.
+  let project:any=null;
+  if(entry.linked_work_item_id){
+    const linked=await db.from("work_items").select("*").eq("id",entry.linked_work_item_id).eq("user_id",user_id).maybeSingle();
+    if(linked.error)throw linked.error;
+    project=linked.data;
+  }
+  if(!project){
+    const existing=await db.from("work_items").select("*").eq("user_id",user_id).eq("source_journal_entry_id",entry.id).limit(1).maybeSingle();
+    if(existing.error)throw existing.error;
+    project=existing.data;
+  }
+  if(!project){
+    const title=(entry.title||"Idea sin título").trim();
+    const created=await db.from("work_items").insert({user_id,title,kind:"project",status:"open",source_journal_entry_id:entry.id,notes:entry.content,target_date:null}).select("*").single();
+    if(created.error)throw created.error;
+    project=created.data;
+  }
+
+  if(entry.linked_work_item_id!==project.id){
+    const {error:updateError}=await db.from("journal_entries").update({linked_work_item_id:project.id,capture_stage:"promoted"}).eq("id",entry.id).eq("user_id",user_id);
+    if(updateError)throw updateError;
+  }
+
+  const existingLink=await db.from("life_links").select("id").eq("user_id",user_id).eq("from_type","journal_entry").eq("from_id",entry.id).eq("to_type","work_item").eq("to_id",project.id).eq("relation","became_project").limit(1).maybeSingle();
+  if(existingLink.error)throw existingLink.error;
+  if(!existingLink.data)await this.link("journal_entry",entry.id,"work_item",project.id,"became_project",{entry_date:entry.entry_date});
+  return project;
+ },
  async personalSnapshot(){
   const uidValue=await uid();
-  const names=["life_goals","health_metrics","learning_items","language_profiles","relationships","relationship_interactions","work_items","work_sessions","life_links","finance_transactions","finance_budgets","finance_debts","finance_savings_goals","menstrual_records","medical_appointments","notification_jobs"];
-  const entries=await Promise.all(names.map(async table=>{const q=table==="health_metrics"?db.from(table).select("metric_date,weight_kg,sleep_hours,exercise_minutes,water_liters").order("metric_date",{ascending:false}).limit(30):db.from(table).select("*").limit(50);const{data,error}=await q;return [table,error?[]:data??[]] as const}));
-  return {user_id:uidValue,date:todayISO(),data:Object.fromEntries(entries)}
+  // Read only fields needed for the local analysis. Do not pull journal-like notes,
+  // relationship names, provider/location details, transaction amounts or notification bodies.
+  // Each source below is a bounded sample; the UI must not present it as a complete total.
+  const sources:Record<string,{columns:string;limit:number;order?:string}>={
+   life_goals:{columns:"id,status,progress,target_date",limit:50},
+   health_metrics:{columns:"metric_date,weight_kg,sleep_hours,exercise_minutes,water_liters",limit:30,order:"metric_date"},
+   learning_items:{columns:"id,kind,status,total_pages,current_page,progress",limit:50},
+   language_profiles:{columns:"id,active,level",limit:50},
+   relationships:{columns:"id,next_contact_on",limit:50},
+   work_items:{columns:"id,status,target_date",limit:50},
+   work_sessions:{columns:"id,status,started_at,minutes,session_date,target_minutes",limit:50},
+   finance_transactions:{columns:"id,occurred_on,type",limit:50},
+   finance_debts:{columns:"id,balance,status",limit:50},
+   medical_appointments:{columns:"id,status,appointment_at",limit:50},
+   notification_jobs:{columns:"id,status,fire_at,source_type",limit:50}
+  };
+  const entries=await Promise.all(Object.entries(sources).map(async([table,spec])=>{
+   let query=db.from(table).select(spec.columns);
+   if(spec.order)query=query.order(spec.order,{ascending:false});
+   const{data,error}=await query.limit(spec.limit);
+   return {table,data:data??[],error};
+  }));
+  const failed=entries.filter(entry=>entry.error);
+  if(failed.length){const details=failed.map(entry=>entry.table).join(", ");throw new Error("No se pudo preparar la lectura completa para IA. Fallaron estas fuentes: "+details+". Revisa permisos y migraciones antes de interpretar los datos.");}
+  return {user_id:uidValue,date:todayISO(),data:Object.fromEntries(entries.map(entry=>[entry.table,entry.data]))}
  },
  async advancedInsights(){
   const s=await this.personalSnapshot();const d=s.data as Record<string,any[]>,out:string[]=[];
@@ -39,7 +114,55 @@ export const lifeGraphService={
   if(!out.length)out.push("Todavía no hay suficiente información cruzada para una señal prioritaria."); return {insights:out,snapshot:s};
  },
  async saveAiRun(kind:string,prompt:string,response:string,snapshot:unknown){return this.create("ai_runs",{kind,prompt,response,snapshot})},
- async importBackup(data:Record<string,unknown>,tables:string[]){const own=await uid();for(const table of tables){if(!Array.isArray(data[table])||!(data[table] as unknown[]).length)continue;const rows=(data[table] as Record<string,unknown>[]).map(r=>table==="profiles"?r:{...r,user_id:own});const{error}=await db.from(table).upsert(rows,{onConflict:"id"});if(error)throw new Error("Importación falló en "+table+": "+error.message)}},
+ async importBackup(data:Record<string,unknown>,tables:string[]):Promise<{restoredRows:number;rebuiltTables:string[]}>{
+  const own=await uid();
+  // Derived event ledgers and pending jobs are intentionally regenerated by
+  // database triggers; direct client writes to those tables are not permitted.
+  const rebuilt=new Set(["life_events","gamification_profiles","gamification_xp_events","gamification_achievements","notification_jobs"]);
+  const rebuiltTables=tables.filter(table=>rebuilt.has(table)&&Array.isArray(data[table])&&(data[table] as unknown[]).length>0);
+  const rowsToRestore=tables.filter(table=>!rebuilt.has(table));
+  // Journal/work references and self-parenting goals/tasks are nullable cycles.
+  const cyclicLinks:Array<{table:"journal_entries"|"work_items"|"life_goals";id:string;column:"linked_work_item_id"|"source_journal_entry_id"|"parent_work_item_id"|"parent_goal_id";value:string}>=[];
+  let restoredRows=0;
+  for(const table of rowsToRestore){
+   if(!Array.isArray(data[table])||!(data[table] as unknown[]).length)continue;
+   const rows=(data[table] as Record<string,unknown>[]).map(source=>{
+    const row:Record<string,unknown>=table==="profiles"?{...source}:{...source,user_id:own};
+    if(table==="journal_entries"&&typeof row.linked_work_item_id==="string"){
+     cyclicLinks.push({table:"journal_entries",id:String(row.id),column:"linked_work_item_id",value:row.linked_work_item_id});
+     row.linked_work_item_id=null;
+    }
+    if(table==="work_items"&&typeof row.source_journal_entry_id==="string"){
+     cyclicLinks.push({table:"work_items",id:String(row.id),column:"source_journal_entry_id",value:row.source_journal_entry_id});
+     row.source_journal_entry_id=null;
+    }
+    if(table==="work_items"&&typeof row.parent_work_item_id==="string"){
+     cyclicLinks.push({table:"work_items",id:String(row.id),column:"parent_work_item_id",value:row.parent_work_item_id});
+     row.parent_work_item_id=null;
+    }
+    if(table==="life_goals"&&typeof row.parent_goal_id==="string"){
+     cyclicLinks.push({table:"life_goals",id:String(row.id),column:"parent_goal_id",value:row.parent_goal_id});
+     row.parent_goal_id=null;
+    }
+    return row;
+   });
+   const conflictColumn=table==="finance_settings"?"user_id":"id";
+   for(let offset=0;offset<rows.length;offset+=500){
+    const batch=rows.slice(offset,offset+500);
+    const{error}=await db.from(table).upsert(batch,{onConflict:conflictColumn});
+    if(error)throw new Error("Importación falló en "+table+": "+error.message);
+    restoredRows+=batch.length;
+   }
+  }
+  for(const link of cyclicLinks){
+   const{data:existing,error:readError}=await db.from(link.table).select("id").eq("id",link.id).eq("user_id",own).maybeSingle();
+   if(readError)throw new Error("No se pudo validar el enlace de respaldo "+link.table+": "+readError.message);
+   if(!existing)continue;
+   const{error}=await db.from(link.table).update({[link.column]:link.value}).eq("id",link.id).eq("user_id",own);
+   if(error)throw new Error("Importación: no se pudo restaurar "+link.column+": "+error.message);
+  }
+  return {restoredRows,rebuiltTables};
+ },
  async calculateNextPeriod(profileId:string,startDate:string,cycleDays:number){return {profile_id:profileId,start_date:startDate,cycle_length_days:cycleDays,next_period_on:addCalendarDays(startDate,cycleDays)}}
 };
 function addCalendarDays(iso:string,days:number){const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)}

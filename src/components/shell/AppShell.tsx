@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "personal-os:sidebar-collapsed";
+const MOBILE_PRIMARY_KEYS = new Set(["inicio", "habitos", "planeador", "salud", "finanzas"]);
 
 function useCollapsed() {
   const [collapsed, setCollapsed] = useState(false);
@@ -38,7 +40,9 @@ function useCollapsed() {
 function orderedItems(order: string[] | undefined, hidden: string[] | undefined) {
   const rank = new Map((order?.length ? order : NAV_ITEMS.map((item) => item.key)).map((key, i) => [key, i]));
   return NAV_ITEMS
-    .filter((item) => !(hidden ?? []).includes(item.key))
+    // Profile is already a permanent destination in the shell footer/header.
+    // Showing it again in the module list creates duplicate navigation.
+    .filter((item) => item.key !== "perfil" && !(hidden ?? []).includes(item.key))
     .sort((a, b) => (rank.get(a.key) ?? 999) - (rank.get(b.key) ?? 999));
 }
 
@@ -92,6 +96,7 @@ function useSignOut() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { collapsed, toggle } = useCollapsed();
+  const [moreOpen, setMoreOpen] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const signOut = useSignOut();
   const { data: profile } = useProfile();
@@ -102,6 +107,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     () => orderedItems(profile?.module_order, profile?.hidden_modules),
     [profile?.module_order, profile?.hidden_modules],
   );
+  const mobilePrimaryItems = items.filter((item) => MOBILE_PRIMARY_KEYS.has(item.key));
+  const mobileMoreItems = items.filter((item) => !MOBILE_PRIMARY_KEYS.has(item.key));
+  const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
   const currentHelpKey = items.find((item) => pathname.startsWith(item.to))?.helpKey ?? "dashboard";
 
   const background = profile?.background_url ?? null;
@@ -111,7 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? { backgroundColor: background! }
     : {
         backgroundImage: bgImageUrl
-          ? `linear-gradient(hsl(var(--background)/0.82),hsl(var(--background)/0.92)),url(${bgImageUrl})`
+          ? `linear-gradient(color-mix(in oklab, var(--background) 82%, transparent),color-mix(in oklab, var(--background) 92%, transparent)),url(${bgImageUrl})`
           : undefined,
         backgroundSize: "cover",
         backgroundPosition: "center",
@@ -163,7 +171,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <item.icon className="h-5 w-5 shrink-0" />
                 {!collapsed && <span className="truncate">{item.label}</span>}
               </Link>
-              <HelpTip helpKey={item.helpKey} />
+              {!collapsed && <HelpTip helpKey={item.helpKey} />}
             </div>
           ))}
         </nav>
@@ -195,29 +203,77 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main
         className={cn(
-          "mx-auto w-full max-w-4xl px-4 pb-28 pt-4 md:pb-10 md:pt-8",
-          collapsed ? "md:pl-[88px]" : "md:pl-[272px]",
+          "w-full px-4 pb-28 pt-4 md:pb-10 md:pt-8 md:px-8",
+          collapsed
+            ? "md:ml-[72px] md:w-[calc(100%_-_72px)]"
+            : "md:ml-64 md:w-[calc(100%_-_16rem)]",
         )}
       >
-        {children}
+        <div className="mx-auto w-full max-w-6xl">{children}</div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-border bg-background/95 backdrop-blur">
-        {items.map((item) => (
+      {/* Five frequent destinations plus a compact drawer for the remaining modules. */}
+      <nav aria-label="Navegación principal móvil" className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background/95 backdrop-blur md:hidden">
+        {mobilePrimaryItems.map((item) => (
           <Link
             key={item.key}
             to={item.to}
             search={(p: Record<string, unknown>) => p}
+            title={item.label}
+            aria-current={pathname.startsWith(item.to) ? "page" : undefined}
             className={cn(
-              "flex min-w-[88px] shrink-0 flex-col items-center gap-1 py-2.5 text-[11px] font-medium",
+              "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-medium",
               pathname.startsWith(item.to) ? "text-primary" : "text-muted-foreground",
             )}
           >
             <item.icon className="h-5 w-5" />
-            {item.label}
+            <span className="max-w-full truncate">{item.label}</span>
           </Link>
         ))}
+        {mobileMoreItems.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            aria-label="Abrir más módulos"
+            aria-haspopup="dialog"
+            aria-expanded={moreOpen}
+            className={cn(
+              "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-medium",
+              moreActive ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+            <span>Más</span>
+          </button>
+        )}
       </nav>
+
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side="bottom" className="max-h-[82vh] overflow-y-auto rounded-t-2xl px-4 pb-8">
+          <SheetHeader className="mb-4 pr-8 text-left">
+            <SheetTitle>Más módulos</SheetTitle>
+            <SheetDescription>Accede al resto de Personal OS sin desplazar una barra interminable.</SheetDescription>
+          </SheetHeader>
+          <div className="grid grid-cols-2 gap-2">
+            {mobileMoreItems.map((item) => (
+              <Link
+                key={item.key}
+                to={item.to}
+                search={(p: Record<string, unknown>) => p}
+                onClick={() => setMoreOpen(false)}
+                aria-current={pathname.startsWith(item.to) ? "page" : undefined}
+                className={cn(
+                  "flex min-h-12 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent",
+                  pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary",
+                )}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 truncate">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

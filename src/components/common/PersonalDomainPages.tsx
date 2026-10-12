@@ -4,11 +4,15 @@ import { HeartHandshake, BriefcaseBusiness, Church, Plus, Trash2, Clock3, Pencil
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/common/RichTextEditor";
+import { SafeRichText } from "@/components/common/SafeRichText";
 import { HelpTip } from "@/components/common/HelpTip";
+import { ErrorState } from "@/components/common/States";
 import { useLGList, useLGMutations } from "@/hooks/use-life-graph";
 import { useAuth } from "@/hooks/use-auth";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useProfile } from "@/hooks/use-profile";
+import { toast } from "sonner";
+import { syncRelationshipNotificationSchedule } from "@/services/relationship-notifications.service";
 
 export function RelationshipsPage() {
   const q = useLGList("relationships");
@@ -18,10 +22,52 @@ export function RelationshipsPage() {
   const { user } = useAuth();
   const { date } = useGlobalDate();
   const [name,setName]=useState(""),[type,setType]=useState("pareja"),[birthday,setBirthday]=useState(""),[anniversary,setAnniversary]=useState(""),[next,setNext]=useState(""),[frequency,setFrequency]=useState(""),[notes,setNotes]=useState("");
-  const [selected,setSelected]=useState<any>(null),[interaction,setInteraction]=useState(""),[interactionType,setInteractionType]=useState("contact");
+  const [selected,setSelected]=useState<any>(null),[interactionFor,setInteractionFor]=useState<string|null>(null),[interaction,setInteraction]=useState(""),[interactionType,setInteractionType]=useState("contact");
+  const syncReminders = async () => {
+    try {
+      await syncRelationshipNotificationSchedule();
+    } catch (error) {
+      toast.error(error instanceof Error
+        ? "La relación se guardó, pero sus recordatorios no se actualizaron: " + error.message
+        : "La relación se guardó, pero sus recordatorios no se actualizaron.");
+    }
+  };
+  const saveRelationship = async () => {
+    if (!name.trim()) return;
+    try {
+      const patch = {
+        name: name.trim(),
+        relationship_type: type,
+        birthday: birthday || null,
+        anniversary: anniversary || null,
+        next_contact_on: next || null,
+        contact_frequency_days: Number(frequency) || null,
+        notes: notes || null,
+      };
+      if (selected) {
+        await m.update.mutateAsync({ id: selected.id, patch });
+      } else {
+        await m.create.mutateAsync({ user_id: user?.id, ...patch });
+      }
+      reset();
+      await syncReminders();
+    } catch {
+      // The mutation hook already shows the database error.
+    }
+  };
+  const deleteRelationship = async (id: string) => {
+    try {
+      await m.remove.mutateAsync(id);
+      await syncReminders();
+    } catch {
+      // The mutation hook already shows the database error.
+    }
+  };
   const reset=()=>{setName("");setType("pareja");setBirthday("");setAnniversary("");setNext("");setFrequency("");setNotes("");setSelected(null)};
   const startEdit=(r:any)=>{setSelected(r);setName(r.name||"");setType(r.relationship_type||"importante");setBirthday(r.birthday||"");setAnniversary(r.anniversary||"");setNext(r.next_contact_on||"");setFrequency(r.contact_frequency_days?String(r.contact_frequency_days):"");setNotes(r.notes||"");};
   return <PageShell icon={<HeartHandshake className="h-5 w-5"/>} title="Relaciones" subtitle="Personas importantes, no una agenda de contactos: cuidado, fechas, seguimiento e historial.">
+    <>
+    {(q.isError||ints.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:ints.error instanceof Error?ints.error.message :"No se pudieron cargar las relaciones o su historial."}/>}
     <section className="glass space-y-3 rounded-2xl p-4">
       <div className="flex items-center justify-between"><h2 className="font-semibold">{selected ? "Editar relación" : "Nueva relación"}</h2>{selected&&<Button size="sm" variant="ghost" onClick={reset}><X className="mr-1 h-4 w-4"/>Cancelar</Button>}</div>
       <div className="grid gap-2 sm:grid-cols-4">
@@ -35,17 +81,18 @@ export function RelationshipsPage() {
         <Input type="number" min="1" placeholder="Frecuencia de contacto (días)" value={frequency} onChange={e=>setFrequency(e.target.value)}/>
       </div>
       <RichTextEditor value={notes} onChange={setNotes} placeholder="Notas sobre la relación, contexto, cosas importantes…"/>
-      <Button disabled={!name.trim()} onClick={()=>void (selected ? m.update.mutateAsync({id:selected.id,patch:{name:name.trim(),relationship_type:type,birthday:birthday||null,anniversary:anniversary||null,next_contact_on:next||null,contact_frequency_days:Number(frequency)||null,notes:notes||null}}) : m.create.mutateAsync({user_id:user?.id,name:name.trim(),relationship_type:type,birthday:birthday||null,anniversary:anniversary||null,next_contact_on:next||null,contact_frequency_days:Number(frequency)||null,notes:notes||null})).then(reset)}>
+      <Button disabled={!name.trim()||m.create.isPending||m.update.isPending} onClick={()=>void saveRelationship()}>
         {selected?<><CheckCircle2 className="mr-1 h-4 w-4"/>Guardar cambios</>:<><Plus className="mr-1 h-4 w-4"/>Agregar persona</>}
       </Button>
     </section>
     {(q.data||[]).map((r:any)=>{const ri=(ints.data||[]).filter((x:any)=>x.relationship_id===r.id);return <article key={r.id} className="glass space-y-3 rounded-2xl p-4">
-      <div className="flex gap-2"><div className="flex-1"><h2 className="font-semibold">{r.name}</h2><p className="text-xs text-muted-foreground">{r.relationship_type||"Importante"}{r.birthday?" · cumpleaños "+r.birthday:""}{r.anniversary?" · aniversario "+r.anniversary:""}{r.next_contact_on?" · seguimiento "+r.next_contact_on:""}{r.contact_frequency_days?" · cada "+r.contact_frequency_days+" días":""}</p></div><Button size="icon" variant="ghost" onClick={()=>startEdit(r)}><Pencil className="h-4 w-4"/></Button><Button size="icon" variant="ghost" onClick={()=>void m.remove.mutateAsync(r.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
-      <Button size="sm" variant="outline" onClick={()=>{setSelected(r);setInteraction("");setInteractionType("contact")}}>Registrar interacción</Button>
-      {selected?.id===r.id&&<div className="space-y-2 rounded-xl border p-3"><div className="grid gap-2 sm:grid-cols-2"><Input type="date" value={date} readOnly/><select className="h-10 rounded-md border bg-background px-3" value={interactionType} onChange={e=>setInteractionType(e.target.value)}><option value="contact">Contacto</option><option value="conversation">Conversación</option><option value="visit">Visita</option><option value="help">Ayuda</option><option value="important">Momento importante</option></select></div><RichTextEditor value={interaction} onChange={setInteraction} placeholder="Qué hablaron, hicieron, cómo quedó la relación…"/><div className="flex gap-2"><Button size="sm" onClick={()=>void im.create.mutateAsync({user_id:user?.id,relationship_id:r.id,interaction_on:date,interaction_type:interactionType,notes:interaction||null}).then(()=>{setInteraction("");setSelected(null)})}>Guardar interacción</Button><Button size="sm" variant="ghost" onClick={()=>setSelected(null)}>Cancelar</Button></div></div>}
-      {ri.slice(0,5).map((x:any)=><div key={x.id} className="rounded-xl border px-3 py-2 text-xs"><b>{x.interaction_on}</b> · {x.interaction_type}<div className="prose prose-xs dark:prose-invert" dangerouslySetInnerHTML={{__html:x.notes||""}}/></div>)}
+      <div className="flex gap-2"><div className="flex-1"><h2 className="font-semibold">{r.name}</h2><p className="text-xs text-muted-foreground">{r.relationship_type||"Importante"}{r.birthday?" · cumpleaños "+r.birthday:""}{r.anniversary?" · aniversario "+r.anniversary:""}{r.next_contact_on?" · seguimiento "+r.next_contact_on:""}{r.contact_frequency_days?" · cada "+r.contact_frequency_days+" días":""}</p></div><Button size="icon" variant="ghost" onClick={()=>startEdit(r)}><Pencil className="h-4 w-4"/></Button><Button size="icon" variant="ghost" onClick={()=>void deleteRelationship(r.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
+      <Button size="sm" variant="outline" onClick={()=>{setInteractionFor(r.id);setInteraction("");setInteractionType("contact")}}>Registrar interacción</Button>
+      {interactionFor===r.id&&<div className="space-y-2 rounded-xl border p-3"><div className="grid gap-2 sm:grid-cols-2"><Input type="date" value={date} readOnly/><select className="h-10 rounded-md border bg-background px-3" value={interactionType} onChange={e=>setInteractionType(e.target.value)}><option value="contact">Contacto</option><option value="conversation">Conversación</option><option value="visit">Visita</option><option value="help">Ayuda</option><option value="important">Momento importante</option></select></div><RichTextEditor value={interaction} onChange={setInteraction} placeholder="Qué hablaron, hicieron, cómo quedó la relación…"/><div className="flex gap-2"><Button size="sm" disabled={im.create.isPending||!user?.id} onClick={()=>void (async()=>{try{await im.create.mutateAsync({user_id:user?.id,relationship_id:r.id,interaction_on:date,interaction_type:interactionType,notes:interaction||null});if(Number(r.contact_frequency_days)>0){const nextDate=new Date(date+"T12:00:00");nextDate.setDate(nextDate.getDate()+Number(r.contact_frequency_days));const iso=[nextDate.getFullYear(),String(nextDate.getMonth()+1).padStart(2,"0"),String(nextDate.getDate()).padStart(2,"0")].join("-");await m.update.mutateAsync({id:r.id,patch:{last_contact_on:date,next_contact_on:iso}});await syncReminders()}setInteraction("");setInteractionFor(null);toast.success("Interacción registrada")}catch{/* Hooks show the persistence error; data is not silently reset. */}})()}>Guardar interacción</Button><Button size="sm" variant="ghost" onClick={()=>setInteractionFor(null)}>Cancelar</Button></div></div>}
+      {ri.slice(0,5).map((x:any)=><div key={x.id} className="rounded-xl border px-3 py-2 text-xs"><b>{x.interaction_on}</b> · {x.interaction_type}<SafeRichText html={x.notes} className="prose prose-xs dark:prose-invert" /></div>)}
     </article>})}
-    <div className="text-xs text-muted-foreground"><HelpTip helpKey="relationships"/> Cumpleaños, aniversarios y seguimientos generan recordatorios persistentes; una interacción puede calcular automáticamente el próximo contacto cuando hay frecuencia definida.</div>
+    <div className="text-xs text-muted-foreground">Cumpleaños, aniversarios y seguimientos generan recordatorios persistentes; una interacción puede calcular automáticamente el próximo contacto cuando hay frecuencia definida.</div>
+    </>
   </PageShell>
 }
 
@@ -61,17 +108,20 @@ export function SpiritualityPage(){
   const kinds:[string,string][]=[["prayer","Oración"],["reflection","Reflexión"],["gratitude","Gratitud"],["reading","Lectura"],["prophecy","Profecía"]];if(!fastingHidden)kinds.push(["fasting","Ayuno"]);
   const clearEntry=()=>{setTitle("");setKind("prayer");setContent("");setProphecy("");setScripture("");setAnswered(false);setAnsweredNote("")};
   return <PageShell icon={<Church className="h-5 w-5"/>} title="Espiritualidad" subtitle="Módulo opcional y configurable. Registra tu práctica espiritual sin imponer una tradición al sistema.">
+    <>
+    {(entries.isError||goals.isError)&&<ErrorState message={entries.error instanceof Error?entries.error.message:goals.error instanceof Error?goals.error.message :"No se pudieron cargar los registros espirituales o sus metas."}/>}
     <section className="glass space-y-3 rounded-2xl p-4"><h2 className="font-semibold">Nuevo registro</h2><div className="grid gap-2 sm:grid-cols-[1fr_180px]"><Input placeholder="Título" value={title} onChange={e=>setTitle(e.target.value)}/><select className="h-10 rounded-md border bg-background px-3" value={kind} onChange={e=>setKind(e.target.value)}>{kinds.map(x=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></div>
       <RichTextEditor value={content} onChange={setContent} placeholder="Escribe aquí tu oración, reflexión, gratitud o lectura…"/>
       {kind==="prophecy"&&<><div className="rounded-xl border p-3 text-sm text-muted-foreground">La profecía queda vinculada a la fecha seleccionada del día. Puedes conservar el texto completo sin convertirlo en una afirmación automática del sistema.</div><RichTextEditor value={prophecy} onChange={setProphecy} placeholder="Texto libre de la profecía recibida…"/></>}
       {kind==="reading"&&<Input placeholder="Referencia de lectura (libro, capítulo, pasaje…)" value={scripture} onChange={e=>setScripture(e.target.value)}/>}
       {kind==="prayer"&&<div className="space-y-2 rounded-xl border p-3"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={answered} onChange={e=>setAnswered(e.target.checked)}/>Marcar como oración respondida</label>{answered&&<RichTextEditor value={answeredNote} onChange={setAnsweredNote} placeholder="Cómo identificas o recuerdas la respuesta…"/>}</div>}
-      {kind==="fasting"&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" defaultChecked/>Registrado</label>}
+      {kind==="fasting"&&<p className="rounded-xl border p-3 text-xs text-muted-foreground">Al guardar, este registro quedará asociado como ayuno a la fecha seleccionada.</p>}
       <Button disabled={!content.trim()&&!prophecy.trim()} onClick={()=>void em.create.mutateAsync({user_id:user?.id,entry_date:date,kind,title:title||null,content:content||prophecy||null,prophecy:kind==="prophecy"?prophecy:null,scripture_reference:scripture||null,prayer_answered:kind==="prayer"?answered:null,answered_note:kind==="prayer"&&answered?answeredNote:null,fasting:kind==="fasting"}).then(clearEntry)}><Plus className="mr-1 h-4 w-4"/>Guardar registro</Button>
     </section>
-    <section className="glass space-y-3 rounded-2xl p-4"><h2 className="font-semibold">Metas espirituales</h2><div className="grid gap-2 sm:grid-cols-4"><Input placeholder="Meta" value={goalTitle} onChange={e=>setGoalTitle(e.target.value)}/><Input type="date" value={goalDate} onChange={e=>setGoalDate(e.target.value)}/><Input type="number" min="0" max="100" placeholder="Progreso %" value={goalProgress} onChange={e=>setGoalProgress(e.target.value)}/><Button disabled={!goalTitle.trim()} onClick={()=>void gm.create.mutateAsync({user_id:user?.id,title:goalTitle.trim(),description:goalDescription||null,target_date:goalDate||null,progress:Number(goalProgress)||0}).then(()=>{setGoalTitle("");setGoalDescription("");setGoalDate("");setGoalProgress("0")})}><Plus className="mr-1 h-4 w-4"/>Agregar meta</Button></div><RichTextEditor value={goalDescription} onChange={setGoalDescription} placeholder="Qué significa esta meta para ti…"/>{(goals.data||[]).map((g:any)=><div key={g.id} className="rounded-xl border p-3"><div className="flex items-center gap-2"><span className="flex-1 font-medium">{g.title}</span><span className="text-xs">{Number(g.progress)||0}%</span><Button size="icon" variant="ghost" onClick={()=>void gm.remove.mutateAsync(g.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>{g.target_date&&<p className="text-xs text-muted-foreground">Meta: {g.target_date}</p>}<div className="mt-2 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary" style={{width:Math.min(100,Math.max(0,Number(g.progress)||0))+"%"}}/></div></div>)}</section>
-    <section className="space-y-2"><h2 className="font-semibold">Historial</h2>{(entries.data||[]).map((x:any)=><article key={x.id} className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">{x.entry_date} · {x.kind}</p><h2 className="font-medium">{x.title||x.kind}</h2>{x.scripture_reference&&<p className="text-xs text-muted-foreground">{x.scripture_reference}</p>}<div className="prose prose-sm dark:prose-invert" dangerouslySetInnerHTML={{__html:x.content||x.prophecy||""}}/>{x.kind==="prophecy"&&x.prophecy&&<div className="mt-2 rounded-xl border p-3"><p className="text-xs font-medium">Profecía registrada</p><div className="prose prose-sm dark:prose-invert" dangerouslySetInnerHTML={{__html:x.prophecy}}/></div>}{x.prayer_answered&&<p className="mt-2 text-xs text-muted-foreground">✓ Oración marcada como respondida</p>}</article>)}</section>
+    <section className="glass space-y-3 rounded-2xl p-4"><h2 className="font-semibold">Metas espirituales</h2><div className="grid gap-2 sm:grid-cols-4"><Input placeholder="Meta" value={goalTitle} onChange={e=>setGoalTitle(e.target.value)}/><Input type="date" value={goalDate} onChange={e=>setGoalDate(e.target.value)}/><Input type="number" min="0" max="100" placeholder="Progreso %" value={goalProgress} onChange={e=>setGoalProgress(e.target.value)}/><Button disabled={!goalTitle.trim()} onClick={()=>{const progress=Number(goalProgress);if(!Number.isFinite(progress)||progress<0||progress>100){toast.error("El progreso debe estar entre 0 y 100.");return}void gm.create.mutateAsync({user_id:user?.id,title:goalTitle.trim(),description:goalDescription||null,target_date:goalDate||null,progress}).then(()=>{setGoalTitle("");setGoalDescription("");setGoalDate("");setGoalProgress("0")})}}><Plus className="mr-1 h-4 w-4"/>Agregar meta</Button></div><RichTextEditor value={goalDescription} onChange={setGoalDescription} placeholder="Qué significa esta meta para ti…"/>{(goals.data||[]).map((g:any)=><div key={g.id} className="rounded-xl border p-3"><div className="flex items-center gap-2"><span className="flex-1 font-medium">{g.title}</span><span className="text-xs">{Number(g.progress)||0}%</span><Button size="icon" variant="ghost" onClick={()=>void gm.remove.mutateAsync(g.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>{g.target_date&&<p className="text-xs text-muted-foreground">Meta: {g.target_date}</p>}<div className="mt-2 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary" style={{width:Math.min(100,Math.max(0,Number(g.progress)||0))+"%"}}/></div></div>)}</section>
+    <section className="space-y-2"><h2 className="font-semibold">Historial</h2>{(entries.data||[]).map((x:any)=><article key={x.id} className="glass rounded-2xl p-4"><p className="text-xs text-muted-foreground">{x.entry_date} · {x.kind}</p><h2 className="font-medium">{x.title||x.kind}</h2>{x.scripture_reference&&<p className="text-xs text-muted-foreground">{x.scripture_reference}</p>}<SafeRichText html={x.content||x.prophecy} className="prose prose-sm dark:prose-invert" />{x.kind==="prophecy"&&x.prophecy&&<div className="mt-2 rounded-xl border p-3"><p className="text-xs font-medium">Profecía registrada</p><SafeRichText html={x.prophecy} className="prose prose-sm dark:prose-invert" /></div>}{x.prayer_answered&&<p className="mt-2 text-xs text-muted-foreground">✓ Oración marcada como respondida</p>}</article>)}</section>
+    </>
   </PageShell>
 }
 
-function PageShell({icon,title,subtitle,children}:{icon:ReactNode;title:string;subtitle:string;children:ReactNode}){return <div className="space-y-5 pb-24"><div className="flex items-center gap-2">{icon}<h1 className="text-xl font-semibold">{title}</h1></div><p className="text-sm text-muted-foreground">{subtitle}</p>{children}</div>}
+function PageShell({icon,title,subtitle,children}:{icon:ReactNode;title:string;subtitle:string;children:ReactNode}){return <div className="space-y-5 pb-24"><div className="flex items-center gap-2">{icon}<h1 className="flex items-center gap-2 text-xl font-semibold">{title}{(title==="Relaciones"||title==="Trabajo"||title==="Espiritualidad")&&<HelpTip helpKey={title==="Relaciones"?"relationships":title==="Trabajo"?"work":"spirituality"}/>}</h1></div><p className="text-sm text-muted-foreground">{subtitle}</p>{children}</div>}

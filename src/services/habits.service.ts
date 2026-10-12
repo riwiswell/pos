@@ -118,16 +118,25 @@ export const habitsService = {
     return (data ?? []) as HabitLog[];
   },
 
-  /** All logs inside an inclusive date range — one single query, never per cell. */
+  /** All logs inside an inclusive date range, paged to avoid PostgREST row truncation. */
   async listLogsInRange(start: string, end: string): Promise<HabitLog[]> {
-    const { data, error } = await supabase
-      .from("habit_logs")
-      .select("*")
-      .gte("date", start)
-      .lte("date", end)
-      .order("date", { ascending: true });
-    if (error) throw error;
-    return (data ?? []) as HabitLog[];
+    const pageSize = 1000;
+    const rows: HabitLog[] = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("habit_logs")
+        .select("*")
+        .gte("date", start)
+        .lte("date", end)
+        .order("date", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = (data ?? []) as HabitLog[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return rows;
   },
 
   /** Creates or updates the log for a habit on a given date. */

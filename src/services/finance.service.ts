@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { privateMediaService } from "@/services/private-media.service";
 import type { BalanceRow } from "@/lib/finance-math";
 import type {
   AccountInput,
@@ -11,7 +12,6 @@ import type {
   TransactionType,
 } from "@/domain/finance";
 
-const PHOTO_BUCKET = "finance-photos";
 
 /** "  Comida " and "COMIDA" must be treated as the same category name. */
 export function normalizeName(value: string): string {
@@ -195,8 +195,9 @@ export const financeService = {
   },
 
 
-  async deleteCategory(id: string) {
-    const { error } = await supabase.from("finance_categories").delete().eq("id", id);
+  /** Archive rather than delete: historical transactions must retain their category reference. */
+  async archiveCategory(id: string) {
+    const { error } = await supabase.from("finance_categories").update({ active: false }).eq("id", id);
     if (error) throw error;
   },
 
@@ -209,33 +210,49 @@ export const financeService = {
 
   /* ------------------------------------------------------------ transactions */
   async listTransactions(filters: TransactionFilters): Promise<FinanceTransaction[]> {
-    let query = supabase
-      .from("finance_transactions")
-      .select("*")
-      .gte("occurred_on", filters.from)
-      .lte("occurred_on", filters.to);
+    const pageSize = 1000;
+    const rows: FinanceTransaction[] = [];
+    for (let from = 0; ; from += pageSize) {
+      let query = supabase
+        .from("finance_transactions")
+        .select("*")
+        .gte("occurred_on", filters.from)
+        .lte("occurred_on", filters.to);
 
-    if (filters.type && filters.type !== "all") query = query.eq("type", filters.type);
-    if (filters.accountId && filters.accountId !== "all") {
-      query = query.eq("account_id", filters.accountId);
+      if (filters.type && filters.type !== "all") query = query.eq("type", filters.type);
+      if (filters.accountId && filters.accountId !== "all") query = query.eq("account_id", filters.accountId);
+      if (filters.search?.trim()) query = query.ilike("note", `%${filters.search.trim()}%`);
+
+      const { data, error } = await query
+        .order("occurred_on", { ascending: false })
+        .order("occurred_time", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = (data ?? []) as FinanceTransaction[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
     }
-    if (filters.search?.trim()) query = query.ilike("note", `%${filters.search.trim()}%`);
-
-    const { data, error } = await query
-      .order("occurred_on", { ascending: false })
-      .order("occurred_time", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return (data ?? []) as FinanceTransaction[];
+    return rows;
   },
 
-  /** Minimal projection used to derive account balances from the ledger. */
+  /** Minimal projection used to derive account balances from the complete ledger. */
   async listBalanceRows(): Promise<BalanceRow[]> {
-    const { data, error } = await supabase
-      .from("finance_transactions")
-      .select("account_id, transfer_account_id, type, amount");
-    if (error) throw error;
-    return (data ?? []) as BalanceRow[];
+    const pageSize = 1000;
+    const rows: BalanceRow[] = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("finance_transactions")
+        .select("id,account_id,transfer_account_id,type,amount")
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = (data ?? []) as BalanceRow[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return rows;
   },
 
   async createTransaction(input: TransactionInput): Promise<FinanceTransaction> {
@@ -299,28 +316,19 @@ export const financeService = {
     if (error) throw error;
   },
 
-  /* -------------------------------------------------------------------- fotos */
+  /* ----------------------------------------------------- legacy photo wrappers */
+  /** @deprecated Use privateMediaService from shared UI/domains. */
   async uploadPhoto(file: File): Promise<string> {
-    const user_id = await currentUserId();
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const path = `${user_id}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-    if (error) throw error;
-    return path;
+    return privateMediaService.uploadPhoto(file);
   },
 
+  /** @deprecated Use privateMediaService from shared UI/domains. */
   async photoUrl(path: string): Promise<string | null> {
-    const { data, error } = await supabase.storage
-      .from(PHOTO_BUCKET)
-      .createSignedUrl(path, 60 * 60);
-    if (error) return null;
-    return data?.signedUrl ?? null;
+    return privateMediaService.photoUrl(path);
   },
 
-  async removePhoto(path: string) {
-    await supabase.storage.from(PHOTO_BUCKET).remove([path]);
+  /** @deprecated Use privateMediaService from shared UI/domains. */
+  async removePhoto(path: string): Promise<void> {
+    return privateMediaService.removePhoto(path);
   },
 };

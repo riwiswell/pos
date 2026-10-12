@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { differenceInCalendarDays } from "date-fns";
 import { Check, ChevronDown, Minus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -139,6 +140,9 @@ function MatrixTable({
                 <tr key={row.item.id}>
                   <td className="sticky left-0 z-10 max-w-[17rem] border-t border-border/50 bg-card/95 px-3 py-2 text-xs font-medium backdrop-blur">
                     <span className="block whitespace-normal break-words">{row.item.name}</span>
+                    <span className="mt-1 block text-[9px] font-normal uppercase tracking-wide text-muted-foreground">
+                      {row.item.kind === "activity" ? "Actividad" : "Hábito"}
+                    </span>
                   </td>
                   {row.cells.map((cell) => (
                     <td key={cell.day} className="border-t border-border/50 px-0.5 py-1.5">
@@ -202,12 +206,14 @@ export function HabitMatrix() {
   const [selected, setSelected] = useState<string[] | null>(null);
 
   const range = rangeFor(preset, date, custom);
+  const requestedDayCount = differenceInCalendarDays(fromISODate(range.end), fromISODate(range.start)) + 1;
+  const rangeTooLong = requestedDayCount > 400;
   const habitsQuery = useHabits();
-  const logsQuery = useLogsRange(range.start, range.end);
+  const logsQuery = useLogsRange(range.start, range.end, !rangeTooLong);
 
   const all = habitsQuery.data ?? [];
   const items = scope === "both" ? all : all.filter((item) => item.kind === scope);
-  const days = useMemo(() => daysBetween(range.start, range.end), [range.start, range.end]);
+  const days = useMemo(() => rangeTooLong ? [] : daysBetween(range.start, range.end), [range.start, range.end, rangeTooLong]);
   const logMap = useMemo(() => {
     const map = new Map<string, HabitLog>();
     for (const log of logsQuery.data ?? []) map.set(log.habit_id + "|" + log.date, log);
@@ -216,9 +222,6 @@ export function HabitMatrix() {
 
   const selectedItems =
     selected === null ? items : items.filter((item) => selected.includes(item.id));
-  const selectedHabits = selectedItems.filter((item) => item.kind === "habit");
-  const selectedActivities = selectedItems.filter((item) => item.kind === "activity");
-
   const toggleItem = (id: string) => {
     const universe = items.map((item) => item.id);
     const current = selected ?? universe;
@@ -240,6 +243,15 @@ export function HabitMatrix() {
     const error = habitsQuery.error ?? logsQuery.error;
     return <ErrorState message={error instanceof Error ? error.message : "No se pudo cargar la matriz."} />;
   }
+  if (rangeTooLong) {
+    return (
+      <section className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm" role="alert">
+        <p className="font-medium">El período supera el límite de la matriz.</p>
+        <p className="mt-1 text-muted-foreground">Selecciona un rango de máximo 400 días para evitar una matriz demasiado pesada y no ocultar fechas del historial.</p>
+      </section>
+    );
+  }
+
   if (all.length === 0) {
     return (
       <EmptyState
@@ -351,22 +363,15 @@ export function HabitMatrix() {
         </div>
       )}
 
-      {scope === "both" ? (
-        <div className="space-y-6">
-          <MatrixTable title="Hábitos" items={selectedHabits} days={days} logMap={logMap} />
-          <MatrixTable title="Actividades" items={selectedActivities} days={days} logMap={logMap} />
-        </div>
-      ) : (
-        <MatrixTable
-          title={scope === "habit" ? "Hábitos" : "Actividades"}
-          items={selectedItems}
-          days={days}
-          logMap={logMap}
-        />
-      )}
+      <MatrixTable
+        title={scope === "both" ? "Hábitos y actividades" : scope === "habit" ? "Hábitos" : "Actividades"}
+        items={selectedItems}
+        days={days}
+        logMap={logMap}
+      />
 
       <p className="text-xs text-muted-foreground">
-        {days.length} días · {selectedItems.length} registros · "Ambos" muestra hábitos y actividades por separado.
+        {days.length} días · {selectedItems.length} registros · En "Ambos", la matriz combina hábitos y actividades; sus métricas de progreso siguen siendo independientes.
       </p>
     </section>
   );

@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Session, User } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +19,20 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const currentUserId = useRef<string | null | undefined>(undefined);
+
+  // Query keys in legacy domain hooks are not yet all user-scoped. Clear all
+  // in-memory query/mutation cache whenever identity changes so another user
+  // in the same browser can never momentarily see the previous account's data.
+  const syncSession = useCallback((nextSession: Session | null) => {
+    const nextUserId = nextSession?.user?.id ?? null;
+    if (currentUserId.current !== nextUserId) {
+      queryClient.clear();
+      currentUserId.current = nextUserId;
+    }
+    setSession(nextSession);
+  }, [queryClient]);
 
   useEffect(() => {
     let active = true;
@@ -28,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const auth = supabase.auth;
       const result = auth.onAuthStateChange((_event, nextSession) => {
         if (!active) return;
-        setSession(nextSession);
+        syncSession(nextSession);
         setLoading(false);
       });
       subscription = result.data;
@@ -36,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void auth.getSession()
         .then(({ data }) => {
           if (!active) return;
-          setSession(data.session);
+          syncSession(data.session);
         })
         .catch((error) => {
           // Authentication must not be able to take down the public shell.
@@ -56,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       subscription?.subscription.unsubscribe();
     };
-  }, []);
+  }, [syncSession]);
 
   const value = useMemo(
     () => ({ session, user: session?.user ?? null, loading }),

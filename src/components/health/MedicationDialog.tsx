@@ -94,7 +94,7 @@ export function MedicationDialog({ open, onOpenChange, medication, pending, onSu
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="med-dose">Dosis</Label>
+              <Label htmlFor="med-dose" className="flex items-center gap-1">Dosis <HelpTip helpKey="medication.dose" /></Label>
               <Input
                 id="med-dose"
                 inputMode="decimal"

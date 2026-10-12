@@ -16,6 +16,10 @@ function normalizeName(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+function categoryKey(value: string) {
+  return normalizeName(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+}
+
 /**
  * Planner data service. Every read/write is scoped to the authenticated user
  * and RLS enforces the same rule server-side.
@@ -37,7 +41,7 @@ export const plannerService = {
 
     // Reuse an equivalent category instead of creating a duplicate.
     const existing = await plannerService.listCategories();
-    const match = existing.find((c) => c.name.trim().toLowerCase() === name.toLowerCase());
+    const match = existing.find((c) => categoryKey(c.name) === categoryKey(name));
     if (match) return match;
 
     const { data, error } = await supabase
@@ -50,7 +54,14 @@ export const plannerService = {
   },
 
   async updateCategory(id: string, patch: Partial<PlannerCategoryInput>) {
-    const next = { ...patch, ...(patch.name ? { name: normalizeName(patch.name) } : {}) };
+    const next = { ...patch, ...(patch.name !== undefined ? { name: normalizeName(patch.name) } : {}) };
+    if (next.name !== undefined) {
+      const existing = await plannerService.listCategories();
+      const duplicate = existing.find((category) =>
+        category.id !== id && categoryKey(category.name) === categoryKey(next.name!),
+      );
+      if (duplicate) throw new Error(`Ya existe la categoría "${duplicate.name}".`);
+    }
     const { error } = await supabase.from("planner_categories").update(next).eq("id", id);
     if (error) throw error;
   },

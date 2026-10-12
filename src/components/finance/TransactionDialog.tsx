@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Clock, Loader2, Plus, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +20,7 @@ import { AccountDialog } from "@/components/finance/AccountDialog";
 import { formatClock, toISODate } from "@/lib/date";
 import { getIcon } from "@/lib/finance-icons";
 import { cn } from "@/lib/utils";
-import { financeService } from "@/services/finance.service";
+import { privateMediaService } from "@/services/private-media.service";
 import { useFinanceMutations } from "@/hooks/use-finance";
 import { TRANSACTION_TYPE_LABEL } from "@/domain/finance";
 import { categoryAppliesTo } from "@/domain/finance";
@@ -56,6 +57,7 @@ interface Props {
   date: string;
   accounts: FinanceAccount[];
   categories: FinanceCategory[];
+  frequentCategoryIds?: { expense: string[]; income: string[] };
   transaction?: FinanceTransaction | null;
   onSubmit: (input: TransactionInput) => void | Promise<void>;
   pending?: boolean;
@@ -89,6 +91,7 @@ export function TransactionDialog({
   date,
   accounts,
   categories,
+  frequentCategoryIds = { expense: [], income: [] },
   transaction,
   onSubmit,
   pending,
@@ -96,6 +99,7 @@ export function TransactionDialog({
   const mutations = useFinanceMutations();
   const [form, setForm] = useState<TransactionInput>(() => emptyInput(date, null));
   const [showDetails, setShowDetails] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [isNow, setIsNow] = useState(false);
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
   const [newAccountOpen, setNewAccountOpen] = useState(false);
@@ -121,13 +125,24 @@ export function TransactionDialog({
         is_tithe_payment: transaction.is_tithe_payment,
       });
       setShowDetails(true);
+      setShowAllCategories(false);
       setIsNow(false);
     } else {
       setForm(emptyInput(date, accounts[0]?.id ?? null));
       setShowDetails(false);
+      setShowAllCategories(false);
       setIsNow(false);
     }
-  }, [open, transaction, date, accounts]);
+  }, [open, transaction, date]);
+
+  // If accounts arrive after the dialog opens, choose a default without resetting
+  // a partially completed transaction when the account query refreshes.
+  useEffect(() => {
+    if (!open || transaction || form.account_id || accounts.length === 0) return;
+    const firstAccountId = accounts[0]?.id;
+    if (!firstAccountId) return;
+    setForm((current) => current.account_id ? current : { ...current, account_id: firstAccountId });
+  }, [open, transaction, accounts, form.account_id]);
 
   const visibleCategories = useMemo(
     () => categories.filter(
@@ -138,6 +153,26 @@ export function TransactionDialog({
       ),
     [categories, form.type],
   );
+
+  const preferredCategoryIds = form.type === "income" ? frequentCategoryIds.income : frequentCategoryIds.expense;
+  const orderedCategories = useMemo(() => {
+    const byId = new Map(visibleCategories.map((category) => [category.id, category]));
+    const preferred = preferredCategoryIds.map((id) => byId.get(id)).filter((category): category is FinanceCategory => Boolean(category));
+    const preferredSet = new Set(preferred.map((category) => category.id));
+    const remainder = visibleCategories
+      .filter((category) => !preferredSet.has(category.id))
+      .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "es"));
+    const ordered = [...preferred, ...remainder];
+    if (showAllCategories) return ordered;
+    const topFive = ordered.slice(0, 5);
+    const selectedCategory = byId.get(form.category_id ?? "");
+    // Editing a transaction with a rarely used category must still show its
+    // current selection; otherwise the form appears to have no category.
+    if (selectedCategory && !topFive.some((category) => category.id === selectedCategory.id)) {
+      return [selectedCategory, ...topFive.slice(0, 4)];
+    }
+    return topFive;
+  }, [visibleCategories, preferredCategoryIds, showAllCategories, form.category_id]);
 
   const isTransfer = form.type === "transfer";
   const canSave =
@@ -170,11 +205,20 @@ export function TransactionDialog({
 
   const uploadPhotos = async (files: FileList | null) => {
     if (!files?.length) return;
+    const selectedFiles = Array.from(files);
     setUploading(true);
+    let added = 0;
     try {
-      const paths: string[] = [];
-      for (const file of Array.from(files)) paths.push(await financeService.uploadPhoto(file));
-      setForm((prev) => ({ ...prev, photos: [...prev.photos, ...paths] }));
+      for (const file of selectedFiles) {
+        try {
+          const path = await privateMediaService.uploadPhoto(file);
+          setForm((prev) => ({ ...prev, photos: prev.photos.includes(path) ? prev.photos : [...prev.photos, path] }));
+          added += 1;
+        } catch (error) {
+          toast.error((file.name ? file.name + ": " : "") + (error instanceof Error ? error.message : "No se pudo subir la foto"));
+        }
+      }
+      if (added > 0) toast.success(added === 1 ? "Foto agregada" : "Fotos agregadas: " + added);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -307,7 +351,7 @@ export function TransactionDialog({
                 Categoría <span className="normal-case tracking-normal">(opcional)</span>
               </Label>
               <div className="flex flex-wrap gap-2">
-                {visibleCategories.map((category) => {
+                {orderedCategories.map((category) => {
                   const Icon = getIcon(category.icon);
                   const selected = form.category_id === category.id;
                   return (
@@ -332,6 +376,24 @@ export function TransactionDialog({
                     </button>
                   );
                 })}
+                {!showAllCategories && visibleCategories.length > orderedCategories.length && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllCategories(true)}
+                    className="rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                  >
+                    Ver todas ({visibleCategories.length})
+                  </button>
+                )}
+                {showAllCategories && visibleCategories.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllCategories(false)}
+                    className="rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                  >
+                    Mostrar menos
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setNewCategoryOpen(true)}

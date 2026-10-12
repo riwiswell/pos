@@ -7,18 +7,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { HelpTip } from "@/components/common/HelpTip";
+import { ErrorState } from "@/components/common/States";
 import { NAV_ITEMS } from "@/components/shell/nav-items";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useProfileMediaUrl, useProfileMutations } from "@/hooks/use-profile";
 import { useHelpEnabled, useSetHelpEnabled } from "@/hooks/use-help";
-import { requestNotificationPermission } from "@/hooks/use-medication-reminders";
+import { subscribeToBackgroundPush } from "@/services/push.service";
+import { toast } from "sonner";
 import { lifeGraphService } from "@/services/life-graph.service";
 import { useTheme } from "@/hooks/use-theme";
+import { supabase } from "@/integrations/supabase/client";
+import { DASHBOARD_WIDGETS, DEFAULT_DASHBOARD_WIDGETS, normalizeDashboardWidgets } from "@/domain/dashboard";
 
 export const Route = createFileRoute("/_authenticated/perfil")({ component: ProfilePage });
 
-const DEFAULT_ORDER = NAV_ITEMS.map((x) => x.key);
+const SIDEBAR_ITEMS = NAV_ITEMS.filter((x) => x.key !== "perfil");
+const DEFAULT_ORDER = SIDEBAR_ITEMS.map((x) => x.key);
 const FEATURE_LABELS = [
   ["spirituality.fasting", "Espiritualidad → Ayuno"],
   ["health.cycle", "Salud → Registro menstrual"],
@@ -26,24 +31,26 @@ const FEATURE_LABELS = [
   ["health.appointments", "Salud → Citas médicas"],
   ["learning.books", "Aprendizaje → Libros"],
 ] as const;
-const WIDGETS = [
-  ["daily", "Resumen del día"],
-  ["goals", "Metas"],
-  ["ai", "Señales de IA"],
-  ["finance", "Finanzas"],
-  ["health", "Salud"],
-  ["learning", "Aprendizaje"],
-] as const;
+const WIDGETS = DASHBOARD_WIDGETS;
 const BACKUP_TABLES = [
-  "profiles","habits","habit_logs","habit_categories","planner_items","planner_categories",
-  "finance_accounts","finance_categories","finance_transactions","finance_settings","journal_entries","alarms",
-  "health_metrics","medications","medication_doses","shopping_lists","shopping_items","life_goals","routines",
-  "routine_logs","checklists","checklist_items","bucket_list","menstrual_profiles","menstrual_records",
-  "medical_appointments","nutrition_logs","learning_items","learning_notes","learning_sessions","language_profiles",
-  "relationships","relationship_interactions","work_items","work_sessions","spiritual_entries",
-  "gamification_achievements","gamification_challenges","life_events","notification_jobs","ai_runs",
-  "finance_budgets","finance_debts","finance_savings_goals","finance_investments","finance_external_sources",
-  "finance_external_snapshots","life_links",
+  // Restore user-defined challenge rows before source records run gamification triggers.
+  "profiles", "gamification_challenges",
+  // Parents and lookup rows first, then their dependent records.
+  "habit_categories", "habits", "habit_logs",
+  "planner_categories", "planner_items", "daily_focus",
+  "finance_accounts", "finance_categories", "finance_settings", "finance_transactions",
+  "finance_budgets", "finance_debts", "finance_savings_goals", "finance_investments",
+  "finance_external_sources", "finance_external_snapshots",
+  "journal_entries",
+  "shopping_lists", "shopping_items",
+  "alarms", "health_metrics", "medications", "medication_doses",
+  "relationships", "menstrual_profiles", "menstrual_records", "medical_appointments", "nutrition_logs",
+  "life_goals", "routines", "routine_logs", "checklists", "checklist_items", "bucket_list",
+  "learning_items", "learning_notes", "learning_sessions", "language_profiles",
+  "relationship_interactions", "work_items", "work_sessions",
+  "spiritual_entries", "spiritual_goals",
+  "life_events", "gamification_profiles", "gamification_xp_events", "gamification_achievements",
+  "notification_jobs", "ai_runs", "life_links",
 ];
 
 function ProfilePage() {
@@ -60,11 +67,11 @@ function ProfilePage() {
   const [order, setOrder] = useState<string[]>(DEFAULT_ORDER);
   const [hidden, setHidden] = useState<string[]>([]);
   const [features, setFeatures] = useState<Record<string, boolean>>({});
-  const [widgets, setWidgets] = useState<string[]>(["daily", "goals", "ai", "finance"]);
-  const [privacy, setPrivacy] = useState<boolean>(true);
+  const [widgets, setWidgets] = useState<string[]>([...DEFAULT_DASHBOARD_WIDGETS]);
   const [relationshipNotifications, setRelationshipNotifications] = useState<boolean>(true);
   const [importing, setImporting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
 
   const avatarInput = useRef<HTMLInputElement | null>(null);
   const backgroundInput = useRef<HTMLInputElement | null>(null);
@@ -76,11 +83,10 @@ function ProfilePage() {
     setName(p.display_name || p.full_name || "");
     setAvatar(p.avatar_url);
     setBackground(p.background_url);
-    setOrder(Array.isArray(p.module_order) && p.module_order.length ? p.module_order : DEFAULT_ORDER);
-    setHidden(Array.isArray(p.hidden_modules) ? p.hidden_modules : []);
+    setOrder(Array.isArray(p.module_order) && p.module_order.length ? [...new Set(p.module_order.filter((key) => SIDEBAR_ITEMS.some((item) => item.key === key)) as string[]), ...DEFAULT_ORDER.filter((key) => !p.module_order.includes(key))] : DEFAULT_ORDER);
+    setHidden(Array.isArray(p.hidden_modules) ? p.hidden_modules.filter((key) => key !== "perfil") : []);
     setFeatures(p.hidden_features || {});
-    setWidgets(Array.isArray(p.dashboard_widgets) && p.dashboard_widgets.length ? p.dashboard_widgets : ["daily","goals","ai","finance"]);
-    setPrivacy(p.notification_preferences?.privacy?.allow_external_ai !== false);
+    setWidgets(normalizeDashboardWidgets(p.dashboard_widgets));
     setRelationshipNotifications(p.notification_preferences?.relationships !== false);
   }, [p]);
 
@@ -94,6 +100,8 @@ function ProfilePage() {
       const path = await uploadMedia.mutateAsync({ file, kind });
       if (kind === "avatar") setAvatar(path);
       else setBackground(path);
+    } catch {
+      // The shared mutation reports the specific storage/validation error.
     } finally {
       setBusy(false);
     }
@@ -110,6 +118,7 @@ function ProfilePage() {
   };
 
   const saveAll = async () => {
+    const previousRelationshipNotifications = p?.notification_preferences?.relationships !== false;
     await save.mutateAsync({
       display_name: name.trim() || null,
       full_name: name.trim() || null,
@@ -121,29 +130,78 @@ function ProfilePage() {
       dashboard_widgets: widgets,
       notification_preferences: {
         ...(p?.notification_preferences || {}),
-        privacy: { allow_external_ai: privacy },
         relationships: relationshipNotifications,
       },
     });
+
+    if (previousRelationshipNotifications !== relationshipNotifications) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Inicia sesión para sincronizar los recordatorios.");
+        const response = await fetch("/api/notification-preferences", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: "Bearer " + session.access_token },
+          body: JSON.stringify({ relationships: relationshipNotifications }),
+        });
+        const result = await response.json().catch(() => ({})) as { error?: string; scheduled?: number };
+        if (!response.ok) throw new Error(result.error || "No se pudieron sincronizar los recordatorios.");
+        toast.success(relationshipNotifications
+          ? "Recordatorios de relaciones activados (" + (result.scheduled ?? 0) + " programados)."
+          : "Recordatorios de relaciones desactivados.");
+      } catch (error) {
+        toast.error(error instanceof Error
+          ? "Perfil guardado, pero no se pudieron sincronizar los recordatorios: " + error.message
+          : "Perfil guardado, pero no se pudieron sincronizar los recordatorios.");
+      }
+    }
+  };
+
+  const activateBackgroundNotifications = async () => {
+    setPushBusy(true);
+    try {
+      const result = await subscribeToBackgroundPush();
+      const messages = {
+        subscribed: ["Notificaciones en segundo plano activadas.", "success"],
+        unsupported: ["Este navegador no admite notificaciones push.", "error"],
+        "permission-denied": ["Permite las notificaciones del navegador para continuar.", "error"],
+        "missing-key": ["Falta configurar VAPID_PUBLIC_KEY en las variables de runtime de Cloudflare.", "error"],
+        "no-session": ["Tu sesión ha caducado. Inicia sesión y vuelve a intentarlo.", "error"],
+        failed: ["No se pudo registrar el dispositivo para notificaciones push.", "error"],
+      } as const;
+      const [message, kind] = messages[result];
+      if (kind === "success") toast.success(message);
+      else toast.error(message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudieron activar las notificaciones.");
+    } finally {
+      setPushBusy(false);
+    }
   };
 
   const exportBackup = async () => {
-    const entries = await Promise.all(
-      BACKUP_TABLES.map(async (table) => [table, await lifeGraphService.list(table as any)]),
-    );
-    const payload = {
-      format: "personal-os-backup-v1",
-      exported_at: new Date().toISOString(),
-      user_id: user?.id,
-      data: Object.fromEntries(entries),
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "personal-os-backup.json";
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const entries = await Promise.all(
+        BACKUP_TABLES.map(async (table) => [table, await lifeGraphService.list(table as any)] as const),
+      );
+      const payload = {
+        format: "personal-os-backup-v1",
+        exported_at: new Date().toISOString(),
+        user_id: user?.id,
+        data: Object.fromEntries(entries),
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "personal-os-backup.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("Respaldo generado con los datos accesibles de Personal OS.");
+    } catch (error) {
+      toast.error(error instanceof Error ? "No se pudo generar el respaldo: " + error.message : "No se pudo generar el respaldo.");
+    }
   };
 
   const importBackup = async (file: File | undefined) => {
@@ -151,19 +209,36 @@ function ProfilePage() {
     setImporting(true);
     try {
       const payload = JSON.parse(await file.text());
-      if (payload.user_id && payload.user_id !== user?.id) {
+      if (payload?.format !== "personal-os-backup-v1" || !payload?.data || typeof payload.data !== "object" || Array.isArray(payload.data)) {
+        throw new Error("El archivo no tiene el formato de respaldo de Personal OS.");
+      }
+      if (!user?.id) throw new Error("Inicia sesión para importar un respaldo.");
+      if (payload.user_id && payload.user_id !== user.id) {
         throw new Error("Este respaldo pertenece a otro usuario.");
       }
-      await lifeGraphService.importBackup(payload.data || {}, BACKUP_TABLES);
-      await profileQuery.refetch();
+      const imported = await lifeGraphService.importBackup(payload.data, BACKUP_TABLES);
+      await Promise.all([profileQuery.refetch()]);
+      if (imported.rebuiltTables.length) {
+        toast.success("Datos personales restaurados. Los eventos, XP/logros derivados y recordatorios pendientes se reconstruyen desde los registros importados.");
+      } else {
+        toast.success("Importación completada. Los registros se combinaron por ID; no se borraron datos que no estén en el archivo.");
+      }
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "No se pudo importar el respaldo");
+      toast.error(error instanceof Error ? error.message : "No se pudo importar el respaldo.");
     } finally {
       setImporting(false);
+      if (importInput.current) importInput.current.value = "";
     }
   };
 
   if (profileQuery.isLoading) return <Loader2 className="h-5 w-5 animate-spin" />;
+
+  if (profileQuery.isLoading) {
+    return <div className="space-y-4 p-4"><p className="text-sm text-muted-foreground">Cargando configuración de Perfil…</p></div>;
+  }
+  if (profileQuery.isError) {
+    return <div className="space-y-4 p-4"><ErrorState message={profileQuery.error instanceof Error ? profileQuery.error.message : "No se pudo cargar la configuración de Perfil."} /><Button variant="outline" onClick={() => void profileQuery.refetch()}>Reintentar</Button></div>;
+  }
 
   return (
     <div className="space-y-5 pb-24">
@@ -187,7 +262,7 @@ function ProfilePage() {
           <Button variant="outline" size="sm" disabled={busy} onClick={() => avatarInput.current?.click()}>
             <Upload className="mr-1 h-4 w-4" /> Foto
           </Button>
-          <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0], "avatar")} />
+          <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => { void pick(e.target.files?.[0], "avatar"); e.currentTarget.value = ""; }} />
         </div>
         <div className="space-y-1.5">
           <Label>Nombre</Label>
@@ -199,11 +274,11 @@ function ProfilePage() {
           <Button variant="outline" size="sm" disabled={busy} onClick={() => backgroundInput.current?.click()}>
             <Upload className="mr-1 h-4 w-4" /> Fondo
           </Button>
-          <input ref={backgroundInput} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0], "background")} />
+          <input ref={backgroundInput} type="file" accept="image/*" hidden onChange={(e) => { void pick(e.target.files?.[0], "background"); e.currentTarget.value = ""; }} />
           {backgroundUrl && <span className="self-center text-xs text-muted-foreground">Fondo cargado</span>}
         </div>
         <div className="flex items-center justify-between rounded-xl border p-3">
-          <span className="text-sm font-medium">Ayudas contextuales</span>
+          <span className="flex items-center gap-1 text-sm font-medium">Ayudas contextuales <HelpTip helpKey="settings.help" /></span>
           <Switch checked={help} onCheckedChange={(value) => setHelp.mutate(value)} />
         </div>
       </section>
@@ -212,7 +287,7 @@ function ProfilePage() {
         <h2 className="font-semibold">Sidebar: orden y visibilidad</h2>
         <p className="text-xs text-muted-foreground">La personalización se guarda por usuario.</p>
         {order.map((key, index) => {
-          const item = NAV_ITEMS.find((x) => x.key === key);
+          const item = SIDEBAR_ITEMS.find((x) => x.key === key);
           if (!item) return null;
           const visible = !hidden.includes(key);
           return (
@@ -242,10 +317,26 @@ function ProfilePage() {
 
       <section className="glass space-y-3 rounded-2xl p-4">
         <h2 className="font-semibold">Inicio y widgets</h2>
-        {WIDGETS.map(([key, label]) => (
+        <p className="text-xs text-muted-foreground">Solo aparecen aquí los bloques disponibles en Inicio. Mantén al menos uno visible para conservar una pantalla de entrada útil.</p>
+        {WIDGETS.map(({ key, label, description }) => (
           <div key={key} className="flex items-center justify-between rounded-xl border p-3">
-            <span className="text-sm">{label}</span>
-            <Switch checked={widgets.includes(key)} onCheckedChange={(value) => setWidgets((current) => value ? (current.includes(key) ? current : [...current, key]) : current.filter((x) => x !== key))} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm">{label}</span>
+              <span className="block text-xs text-muted-foreground">{description}</span>
+            </span>
+            <Switch
+              checked={widgets.includes(key)}
+              onCheckedChange={(value) => setWidgets((current) => {
+                const next = value
+                  ? (current.includes(key) ? current : [...current, key])
+                  : current.filter((x) => x !== key);
+                if (next.length === 0) {
+                  toast.info("Mantén al menos un bloque visible en Inicio.");
+                  return current;
+                }
+                return next;
+              })}
+            />
           </div>
         ))}
       </section>
@@ -253,18 +344,19 @@ function ProfilePage() {
       <section className="glass space-y-3 rounded-2xl p-4">
         <h2 className="font-semibold">Notificaciones y privacidad</h2>
         <div className="flex items-center justify-between rounded-xl border p-3">
-          <span className="text-sm">Cumpleaños, aniversarios y citas médicas</span>
+          <span className="text-sm">Cumpleaños, aniversarios y seguimientos de relaciones</span>
           <Switch checked={relationshipNotifications} onCheckedChange={setRelationshipNotifications} />
         </div>
-        <div className="flex items-center justify-between rounded-xl border p-3">
-          <span className="text-sm">Permitir análisis externo de datos</span>
-          <Switch checked={privacy} onCheckedChange={setPrivacy} />
+        <div className="rounded-xl border p-3">
+          <p className="text-sm font-medium">Privacidad de IA</p>
+          <p className="mt-1 text-xs text-muted-foreground">La IA Personal actual calcula señales con funciones internas y no envía tus registros a proveedores externos. El control para análisis externo aparecerá cuando exista esa integración.</p>
         </div>
         <p className="text-xs text-muted-foreground">
-          Los avisos locales requieren permiso del navegador. Los avisos cuando Personal OS está cerrado requieren las credenciales VAPID del servidor.
+          Este ajuste solo controla los recordatorios de relaciones. Medicamentos, alarmas y citas médicas se programan desde cada registro. Los avisos locales requieren permiso del navegador; los push cuando Personal OS está cerrado requieren credenciales VAPID en Cloudflare.
         </p>
-        <Button variant="outline" onClick={() => void requestNotificationPermission()}>
-          <RefreshCw className="mr-1 h-4 w-4" /> Activar notificaciones en segundo plano
+        <Button variant="outline" disabled={pushBusy} onClick={() => void activateBackgroundNotifications()}>
+          <RefreshCw className={cn("mr-1 h-4 w-4", pushBusy && "animate-spin")} />
+          {pushBusy ? "Activando…" : "Activar notificaciones en segundo plano"}
         </Button>
       </section>
 
@@ -282,6 +374,9 @@ function ProfilePage() {
 
       <section className="glass space-y-3 rounded-2xl p-4">
         <h2 className="font-semibold">Exportar / importar / backup</h2>
+        <p className="text-xs text-muted-foreground">
+          El JSON combina registros por ID y no borra datos que falten en el archivo; no es una restauración transaccional. Las fotos y otros archivos de Storage, así como las suscripciones push del navegador, no se copian al JSON. Conserva la misma cuenta de usuario y revisa cada resultado antes de usar la importación como recuperación.
+        </p>
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => void exportBackup()}><Download className="mr-1 h-4 w-4" /> Exportar JSON</Button>
           <Button variant="outline" disabled={importing} onClick={() => importInput.current?.click()}>
@@ -293,7 +388,7 @@ function ProfilePage() {
       </section>
 
       <div className="flex justify-end">
-        <Button onClick={() => void saveAll()} disabled={save.isPending}>
+        <Button onClick={() => void saveAll()} disabled={save.isPending || profileQuery.isLoading || profileQuery.isError}>
           <Save className="mr-1 h-4 w-4" /> {save.isPending ? "Guardando…" : "Guardar configuración"}
         </Button>
       </div>
