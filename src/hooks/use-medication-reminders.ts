@@ -76,7 +76,7 @@ export function useMedicationReminders() {
       .map((m) => JSON.stringify([m.id, m.active, m.name, m.dose, m.unit, m.start_date, m.end_date, m.frequency, m.times, m.remind_offset_min]))
       .sort()
       .join("|") + ":" + today,
-    [meds.data],
+    [today, meds.data],
   );
   const preparedSignature = useRef("");
 
