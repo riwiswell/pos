@@ -9,7 +9,7 @@ set search_path = public, pg_temp
 as $$
 declare
   reward integer;
-  recorded boolean;
+  rows_inserted integer;
 begin
   if new.status <> 'completed' then
     return new;
@@ -33,8 +33,8 @@ begin
   )
   on conflict (user_id, event_key) do nothing;
 
-  get diagnostics recorded = row_count;
-  if not recorded then
+  get diagnostics rows_inserted = row_count;
+  if rows_inserted = 0 then
     return new;
   end if;
 
