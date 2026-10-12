@@ -1,6 +1,35 @@
 -- Prevent repeat XP for edits to the same source record and calculate streaks
 -- from the record's real calendar date. Existing XP is not retroactively changed.
 
+create or replace function public.gamification_xp_for_event(p_entity_type text, p_payload jsonb)
+returns integer
+language sql
+immutable
+as $
+  select case
+    when p_entity_type = 'habit_logs'
+      and coalesce(p_payload->>'habit_kind', 'habit') <> 'habit' then 0
+    when p_entity_type = 'habit_logs' then 5
+    when p_entity_type = 'journal_entries' then 5
+    when p_entity_type = 'work_items' then 5
+    -- Starting a timer is not a completed work session and must not award XP.
+    when p_entity_type = 'work_sessions'
+      and coalesce(p_payload->>'status', 'completed') <> 'completed' then 0
+    when p_entity_type = 'work_sessions' then 10
+    when p_entity_type = 'health_metrics' then 5
+    when p_entity_type = 'finance_transactions' then 2
+    when p_entity_type = 'learning_sessions' then 10
+    when p_entity_type = 'relationship_interactions' then 8
+    when p_entity_type = 'spiritual_entries' then 5
+    when p_entity_type = 'life_goals' then 5
+    when p_entity_type = 'routine_logs'
+      and coalesce((p_payload->>'completed')::boolean, false) = false then 0
+    when p_entity_type = 'routine_logs' then 5
+    else 0
+  end
+$;
+
+
 create or replace function public.apply_gamification_for_life_event()
 returns trigger
 language plpgsql
