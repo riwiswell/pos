@@ -53,7 +53,7 @@ export const personalDomainsService={
  async upsertHealth(input:Record<string,unknown>){
   const {data:{user},error:authError}=await supabase.auth.getUser();
   if(authError||!user)throw authError??new Error("No hay sesión activa");
-  const payload={...input,user_id:user.id};
+  const payload:Record<string,unknown>={...input,user_id:user.id};
   let {data,error}=await db.from("health_metrics").upsert(payload,{onConflict:"user_id,metric_date"}).select("*").single();
   if(!error)return data;
   if(!["PGRST204","42703"].includes(String(error.code??"")))throw error;
