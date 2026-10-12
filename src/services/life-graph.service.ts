@@ -72,22 +72,27 @@ export const lifeGraphService={
  },
  async personalSnapshot(){
   const uidValue=await uid();
-  const names=["life_goals","health_metrics","learning_items","language_profiles","relationships","relationship_interactions","work_items","work_sessions","life_links","finance_transactions","finance_budgets","finance_debts","finance_savings_goals","menstrual_records","medical_appointments","notification_jobs"];
-  const entries=await Promise.all(names.map(async table=>{
-   if(table==="health_metrics"){
-    const{data,error}=await db.from(table).select("metric_date,weight_kg,sleep_hours,exercise_minutes,water_liters").order("metric_date",{ascending:false}).limit(30);
-    return {table,data:data??[],error};
-   }
-   const pageSize=1000;
-   const rows:Record<string,unknown>[]=[];
-   for(let from=0;;from+=pageSize){
-    const{data,error}=await db.from(table).select("*").order("created_at",{ascending:true}).order("id",{ascending:true}).range(from,from+pageSize-1);
-    if(error)return {table,data:rows,error};
-    const page=(data??[]) as Record<string,unknown>[];
-    rows.push(...page);
-    if(page.length<pageSize)break;
-   }
-   return {table,data:rows,error:null};
+  // Read only fields needed for the local analysis. Do not pull journal-like notes,
+  // relationship names, provider/location details, transaction amounts or notification bodies.
+  // Each source below is a bounded sample; the UI must not present it as a complete total.
+  const sources:Record<string,{columns:string;limit:number;order?:string}>={
+   life_goals:{columns:"id,status,progress,target_date",limit:50},
+   health_metrics:{columns:"metric_date,weight_kg,sleep_hours,exercise_minutes,water_liters",limit:30,order:"metric_date"},
+   learning_items:{columns:"id,kind,status,total_pages,current_page,progress",limit:50},
+   language_profiles:{columns:"id,active,level",limit:50},
+   relationships:{columns:"id,next_contact_on",limit:50},
+   work_items:{columns:"id,status,target_date",limit:50},
+   work_sessions:{columns:"id,status,started_at,minutes,session_date,target_minutes",limit:50},
+   finance_transactions:{columns:"id,occurred_on,type",limit:50},
+   finance_debts:{columns:"id,balance,status",limit:50},
+   medical_appointments:{columns:"id,status,appointment_at",limit:50},
+   notification_jobs:{columns:"id,status,fire_at,source_type",limit:50}
+  };
+  const entries=await Promise.all(Object.entries(sources).map(async([table,spec])=>{
+   let query=db.from(table).select(spec.columns);
+   if(spec.order)query=query.order(spec.order,{ascending:false});
+   const{data,error}=await query.limit(spec.limit);
+   return {table,data:data??[],error};
   }));
   const failed=entries.filter(entry=>entry.error);
   if(failed.length){const details=failed.map(entry=>entry.table).join(", ");throw new Error("No se pudo preparar la lectura completa para IA. Fallaron estas fuentes: "+details+". Revisa permisos y migraciones antes de interpretar los datos.");}
