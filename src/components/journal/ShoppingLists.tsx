@@ -37,7 +37,7 @@ export function ShoppingLists() {
         <Button onClick={addList} disabled={!newList.trim()}>
           <Plus className="mr-1 h-4 w-4" /> Crear
         </Button>
-        <HelpTip helpKey="journal.shopping" text="Las listas de compras son solo para marcar productos. No crean tareas en el Planeador." />
+        <HelpTip helpKey="life.shopping" text="Las listas de compras son solo para marcar productos. No crean tareas en el Planeador." />
       </div>
 
       {lists.isLoading ? (
