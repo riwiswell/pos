@@ -5,7 +5,7 @@ create or replace function public.gamification_xp_for_event(p_entity_type text, 
 returns integer
 language sql
 immutable
-as $
+as $$
   select case
     when p_entity_type = 'habit_logs'
       and coalesce(p_payload->>'habit_kind', 'habit') <> 'habit' then 0
