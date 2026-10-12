@@ -30,7 +30,7 @@ begin
      and source_id = new.id
      and status = 'pending';
 
-  select coalesce((p.notification_preferences->>'relationships')::boolean, true)
+  select coalesce(p.notification_preferences->>'relationships', 'true') <> 'false'
     into notifications_enabled
     from public.profiles p
    where p.id = new.user_id;
