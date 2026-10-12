@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+const db = supabase as any;
 
 /** Rebuild future reminder jobs after the source relationships change. */
 export async function syncRelationshipNotificationSchedule(): Promise<void> {
@@ -6,7 +7,7 @@ export async function syncRelationshipNotificationSchedule(): Promise<void> {
   if (sessionError) throw sessionError;
   if (!session) throw new Error("Tu sesión ha caducado. Inicia sesión de nuevo.");
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await db
     .from("profiles")
     .select("notification_preferences")
     .eq("id", session.user.id)
