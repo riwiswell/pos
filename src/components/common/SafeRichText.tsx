@@ -56,11 +56,11 @@ function sanitizeRichHtml(input: string): string {
 
 function plainFallback(input: string): string {
   return input
-    .replace(/<\\/ (p|li|h[1-6]|blockquote|pre)>/gi, "\\n")
-    .replace(/<\\/?br\\s*\\/?>/gi, "\\n")
+    .replace(/<\/(p|li|h[1-6]|blockquote|pre)>/gi, "\n")
+    .replace(/<\/?br\s*\/?>/gi, "\n")
     .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;/gi, " ")
-    .replace(/\\s+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
