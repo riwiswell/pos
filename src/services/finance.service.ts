@@ -209,33 +209,49 @@ export const financeService = {
 
   /* ------------------------------------------------------------ transactions */
   async listTransactions(filters: TransactionFilters): Promise<FinanceTransaction[]> {
-    let query = supabase
-      .from("finance_transactions")
-      .select("*")
-      .gte("occurred_on", filters.from)
-      .lte("occurred_on", filters.to);
+    const pageSize = 1000;
+    const rows: FinanceTransaction[] = [];
+    for (let from = 0; ; from += pageSize) {
+      let query = supabase
+        .from("finance_transactions")
+        .select("*")
+        .gte("occurred_on", filters.from)
+        .lte("occurred_on", filters.to);
 
-    if (filters.type && filters.type !== "all") query = query.eq("type", filters.type);
-    if (filters.accountId && filters.accountId !== "all") {
-      query = query.eq("account_id", filters.accountId);
+      if (filters.type && filters.type !== "all") query = query.eq("type", filters.type);
+      if (filters.accountId && filters.accountId !== "all") query = query.eq("account_id", filters.accountId);
+      if (filters.search?.trim()) query = query.ilike("note", `%${filters.search.trim()}%`);
+
+      const { data, error } = await query
+        .order("occurred_on", { ascending: false })
+        .order("occurred_time", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = (data ?? []) as FinanceTransaction[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
     }
-    if (filters.search?.trim()) query = query.ilike("note", `%${filters.search.trim()}%`);
-
-    const { data, error } = await query
-      .order("occurred_on", { ascending: false })
-      .order("occurred_time", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return (data ?? []) as FinanceTransaction[];
+    return rows;
   },
 
-  /** Minimal projection used to derive account balances from the ledger. */
+  /** Minimal projection used to derive account balances from the complete ledger. */
   async listBalanceRows(): Promise<BalanceRow[]> {
-    const { data, error } = await supabase
-      .from("finance_transactions")
-      .select("account_id, transfer_account_id, type, amount");
-    if (error) throw error;
-    return (data ?? []) as BalanceRow[];
+    const pageSize = 1000;
+    const rows: BalanceRow[] = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("finance_transactions")
+        .select("id,account_id,transfer_account_id,type,amount")
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = (data ?? []) as BalanceRow[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return rows;
   },
 
   async createTransaction(input: TransactionInput): Promise<FinanceTransaction> {
