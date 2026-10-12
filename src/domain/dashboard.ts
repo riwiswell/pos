@@ -9,11 +9,10 @@ export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetKey[] = ["planner", "focu
 
 /**
  * Normalize saved preferences from previous versions without silently enabling
- * nonexistent widgets. An empty array is a valid choice to show a clean home.
+ * nonexistent widgets. At least one real block stays enabled so a new profile never opens to an accidentally empty home.
  */
 export function normalizeDashboardWidgets(value: unknown): DashboardWidgetKey[] {
-  if (!Array.isArray(value)) return [...DEFAULT_DASHBOARD_WIDGETS];
-  if (value.length === 0) return [];
+  if (!Array.isArray(value) || value.length === 0) return [...DEFAULT_DASHBOARD_WIDGETS];
   const valid = value.filter((key): key is DashboardWidgetKey =>
     DASHBOARD_WIDGETS.some((widget) => widget.key === key),
   );
