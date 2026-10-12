@@ -684,6 +684,7 @@ export type Database = {
           id: string
           list_id: string
           name: string
+          note: string | null
           position: number
           updated_at: string
           user_id: string
@@ -694,6 +695,7 @@ export type Database = {
           id?: string
           list_id: string
           name: string
+          note?: string | null
           position?: number
           updated_at?: string
           user_id: string
@@ -704,6 +706,7 @@ export type Database = {
           id?: string
           list_id?: string
           name?: string
+          note?: string | null
           position?: number
           updated_at?: string
           user_id?: string
