@@ -4,7 +4,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
 import { HelpTip } from "@/components/common/HelpTip";
 import { EmptyState } from "@/components/common/EmptyState";
-import { LoadingState } from "@/components/common/States";
+import { ErrorState, LoadingState } from "@/components/common/States";
 import { Progress } from "@/components/ui/progress";
 import { DailyFocusPicker } from "@/components/common/DailyFocusPicker";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/inicio")({
       { property: "og:title", content: "Inicio — Personal OS" },
       {
         property: "og:description",
-        content: "Tu resumen del día en Personal OS: enfoque, hábitos, finanzas y actividad.",
+        content: "Tu resumen del día en Personal OS: agenda, enfoque y hábitos.",
       },
     ],
   }),
@@ -111,6 +111,8 @@ function HomePage() {
           </div>
           {plannerQuery.isLoading ? (
             <p className="mt-2 text-sm text-muted-foreground">Cargando…</p>
+          ) : plannerQuery.isError ? (
+            <ErrorState message={plannerQuery.error instanceof Error ? plannerQuery.error.message : "No se pudo cargar la agenda de esta fecha."} />
           ) : plannerItems.length === 0 ? (
             <p className="mt-2 text-sm text-muted-foreground">Nada agendado para esta fecha.</p>
           ) : (
@@ -131,8 +133,10 @@ function HomePage() {
 
       {showFocus && <DailyFocusPicker date={date} />}
 
-      {showHabits && (habitsQuery.isLoading ? (
+      {showHabits && (habitsQuery.isLoading || logsQuery.isLoading ? (
         <LoadingState />
+      ) : habitsQuery.isError || logsQuery.isError ? (
+        <ErrorState message={habitsQuery.error instanceof Error ? habitsQuery.error.message : logsQuery.error instanceof Error ? logsQuery.error.message : "No se pudieron cargar los hábitos y sus registros de esta fecha."} />
       ) : habits.length === 0 ? (
         <EmptyState
           title="Aún no tienes hábitos"
