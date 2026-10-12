@@ -86,15 +86,30 @@ async function dispatchDueNotifications(env:Env){
  for(const job of jobs){
    const subs=await supabaseFetch(env,"push_subscriptions?user_id=eq."+encodeURIComponent(job.user_id));if(!subs.ok)continue;
    const subscriptions=await subs.json() as any[];
+   if(subscriptions.length===0){
+    await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"failed"})});
+    console.warn("[push] No subscribed device; marking notification job as failed",job.id);
+    continue;
+   }
    const payload=job.payload&&typeof job.payload==="object"?job.payload as Record<string,unknown>:{};
    const targetByType:Record<string,string>={medication_dose:"/salud",medical_appointment:"/salud",relationship:"/relaciones",work_session:"/trabajo",alarm:"/alarmas"};
    const targetUrl=targetByType[job.source_type]??"/inicio";
    const notificationTag=job.source_type==="medication_dose"?`pos:medication:${job.source_id}`:job.source_type==="alarm"?`pos:alarm:${job.source_id}`:job.id;
    const notification={title:job.title,body:job.body??"",tag:notificationTag,data:{type:"scheduled-notification",url:targetUrl,...(job.source_type==="medication_dose"&&typeof payload.dose_id==="string"?{doseId:payload.dose_id}:{})}};
    let delivered=0;
-   for(const row of subscriptions){try{await webpush.sendNotification(row.subscription,JSON.stringify(notification));delivered+=1;}catch(e){const status=(e as any)?.statusCode;if(status===404||status===410)await supabaseFetch(env,"push_subscriptions?id=eq."+encodeURIComponent(row.id),{method:"DELETE"});}}
-   // Do not lose a scheduled notification because no device is subscribed or every send failed.
-   if(delivered===0){console.warn("[push] Notification job was not delivered; keeping pending",job.id);continue;}
+   let retryableFailure=false;
+   for(const row of subscriptions){try{await webpush.sendNotification(row.subscription,JSON.stringify(notification));delivered+=1;}catch(e){const status=(e as any)?.statusCode;if(status===404||status===410){await supabaseFetch(env,"push_subscriptions?id=eq."+encodeURIComponent(row.id),{method:"DELETE"});}else{retryableFailure=true;}}}
+   // Avoid leaving permanently undeliverable jobs at the head of the due queue.
+   if(delivered===0){
+    if(retryableFailure){
+     await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({fire_at:new Date(Date.now()+5*60_000).toISOString()})});
+     console.warn("[push] Temporary delivery failure; rescheduled for retry",job.id);
+    }else{
+     await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"failed"})});
+     console.warn("[push] All push subscriptions expired; marking job as failed",job.id);
+    }
+    continue;
+   }
    const marked=await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"sent",sent_at:new Date().toISOString()})});
    if(!marked.ok){console.error("[push] Delivered notification but could not mark job as sent",job.id);continue;}
    const repeat=job.payload?.repeat_rule; if(repeat==="daily"||repeat==="weekly"){const next=new Date(job.fire_at);next.setDate(next.getDate()+(repeat==="weekly"?7:1)); if(next.getTime()>Date.now()-60000) await supabaseFetch(env,"notification_jobs",{method:"POST",body:JSON.stringify({user_id:job.user_id,source_type:job.source_type,source_id:job.source_id,fire_at:next.toISOString(),title:job.title,body:job.body,payload:job.payload,status:"pending"})});}
