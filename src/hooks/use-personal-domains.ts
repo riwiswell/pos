@@ -1,12 +1,11 @@
 import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { personalDomainsService } from "@/services/personal-domains.service";
-import { useAuth } from "@/hooks/use-auth";
 export function usePersonalList<T>(table:Parameters<typeof personalDomainsService.list>[0],order="created_at"){return useQuery({queryKey:["personal-domain",table,order],queryFn:()=>personalDomainsService.list<T>(table,order)});}
 export function usePersonalRecentList<T>(table:Parameters<typeof personalDomainsService.listLatest>[0],order="created_at",limit=100){return useQuery({queryKey:["personal-domain",table,"latest",order,limit],queryFn:()=>personalDomainsService.listLatest<T>(table,order,limit)});}
 export function usePersonalDateList<T>(table:Parameters<typeof personalDomainsService.byDate>[0],column:string,date:string){return useQuery({queryKey:["personal-domain",table,column,date],queryFn:()=>personalDomainsService.byDate<T>(table,column,date)});}
 export function usePersonalMutations(table:Parameters<typeof personalDomainsService.create>[0]){const qc=useQueryClient();const invalidate=()=>void qc.invalidateQueries({queryKey:["personal-domain",table]});const onError=(error:unknown)=>toast.error(error instanceof Error?error.message:"No se pudo completar la operación.");return{create:useMutation({mutationFn:(input:Record<string,unknown>)=>personalDomainsService.create(table,input),onSuccess:invalidate,onError}),update:useMutation({mutationFn:({id,patch}:{id:string;patch:Record<string,unknown>})=>personalDomainsService.update(table,id,patch),onSuccess:invalidate,onError}),remove:useMutation({mutationFn:(id:string)=>personalDomainsService.remove(table,id),onSuccess:invalidate,onError})};}
 export function usePersonalInsights(){return useQuery({queryKey:["personal-domain","ai-insights"],queryFn:personalDomainsService.personalInsights});}
 export function usePersonalSummary(){return useQuery({queryKey:["personal-domain","summary"],queryFn:personalDomainsService.summary});}
-export function useShoppingItemMutation(){const qc=useQueryClient();const {user}=useAuth();return useMutation({mutationFn:(input:{name:string;note?:string|null})=>personalDomainsService.createShoppingItem(user!.id,input),onSuccess:()=>void qc.invalidateQueries({queryKey:["personal-domain","shopping_items"]})});}
+
 export function useHealthMetricMutation(){const qc=useQueryClient();return useMutation({mutationFn:(input:Record<string,unknown>)=>personalDomainsService.upsertHealth(input),onSuccess:()=>void qc.invalidateQueries({queryKey:["personal-domain","health_metrics"]})});}
