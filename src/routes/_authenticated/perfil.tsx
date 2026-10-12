@@ -358,6 +358,9 @@ function ProfilePage() {
 
       <section className="glass space-y-3 rounded-2xl p-4">
         <h2 className="font-semibold">Exportar / importar / backup</h2>
+        <p className="text-xs text-muted-foreground">
+          El JSON combina registros por ID y no borra datos que falten en el archivo; no es una restauración transaccional. Las fotos y otros archivos de Storage, así como las suscripciones push del navegador, no se copian al JSON. Conserva la misma cuenta de usuario y revisa cada resultado antes de usar la importación como recuperación.
+        </p>
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => void exportBackup()}><Download className="mr-1 h-4 w-4" /> Exportar JSON</Button>
           <Button variant="outline" disabled={importing} onClick={() => importInput.current?.click()}>
