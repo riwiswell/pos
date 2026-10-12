@@ -49,8 +49,12 @@ async function dispatchDueNotifications(env:Env){
  for(const job of jobs){
    const subs=await supabaseFetch(env,"push_subscriptions?user_id=eq."+encodeURIComponent(job.user_id));if(!subs.ok)continue;
    const subscriptions=await subs.json() as any[];
+   const payload=job.payload&&typeof job.payload==="object"?job.payload as Record<string,unknown>:{};
+   const targetByType:Record<string,string>={medication_dose:"/salud",medical_appointment:"/salud",relationship:"/relaciones",work_session:"/trabajo",alarm:"/alarmas"};
+   const targetUrl=targetByType[job.source_type]??"/inicio";
+   const notification={title:job.title,body:job.body??"",tag:job.id,data:{type:"scheduled-notification",url:targetUrl,...(job.source_type==="medication_dose"&&typeof payload.dose_id==="string"?{doseId:payload.dose_id}:{})}};
    let delivered=0;
-   for(const row of subscriptions){try{await webpush.sendNotification(row.subscription,JSON.stringify({title:job.title,body:job.body??"",tag:job.id,data:{type:"scheduled-notification",url:"/alarmas"}}));delivered+=1;}catch(e){const status=(e as any)?.statusCode;if(status===404||status===410)await supabaseFetch(env,"push_subscriptions?id=eq."+encodeURIComponent(row.id),{method:"DELETE"});}}
+   for(const row of subscriptions){try{await webpush.sendNotification(row.subscription,JSON.stringify(notification));delivered+=1;}catch(e){const status=(e as any)?.statusCode;if(status===404||status===410)await supabaseFetch(env,"push_subscriptions?id=eq."+encodeURIComponent(row.id),{method:"DELETE"});}}
    // Do not lose a scheduled notification because no device is subscribed or every send failed.
    if(delivered===0){console.warn("[push] Notification job was not delivered; keeping pending",job.id);continue;}
    const marked=await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"sent",sent_at:new Date().toISOString()})});
