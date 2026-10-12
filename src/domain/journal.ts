@@ -62,6 +62,7 @@ export interface ShoppingItem {
   user_id: string;
   list_id: string;
   name: string;
+  note: string | null;
   checked: boolean;
   position: number;
   created_at: string;
