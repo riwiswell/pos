@@ -169,7 +169,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <item.icon className="h-5 w-5 shrink-0" />
                 {!collapsed && <span className="truncate">{item.label}</span>}
               </Link>
-              <HelpTip helpKey={item.helpKey} />
+              {!collapsed && <HelpTip helpKey={item.helpKey} />}
             </div>
           ))}
         </nav>
