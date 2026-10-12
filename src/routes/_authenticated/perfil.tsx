@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { HelpTip } from "@/components/common/HelpTip";
+import { ErrorState } from "@/components/common/States";
 import { NAV_ITEMS } from "@/components/shell/nav-items";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -232,6 +233,13 @@ function ProfilePage() {
 
   if (profileQuery.isLoading) return <Loader2 className="h-5 w-5 animate-spin" />;
 
+  if (profileQuery.isLoading) {
+    return <div className="space-y-4 p-4"><p className="text-sm text-muted-foreground">Cargando configuración de Perfil…</p></div>;
+  }
+  if (profileQuery.isError) {
+    return <div className="space-y-4 p-4"><ErrorState message={profileQuery.error instanceof Error ? profileQuery.error.message : "No se pudo cargar la configuración de Perfil."} /><Button variant="outline" onClick={() => void profileQuery.refetch()}>Reintentar</Button></div>;
+  }
+
   return (
     <div className="space-y-5 pb-24">
       <header>
@@ -380,7 +388,7 @@ function ProfilePage() {
       </section>
 
       <div className="flex justify-end">
-        <Button onClick={() => void saveAll()} disabled={save.isPending}>
+        <Button onClick={() => void saveAll()} disabled={save.isPending || profileQuery.isLoading || profileQuery.isError}>
           <Save className="mr-1 h-4 w-4" /> {save.isPending ? "Guardando…" : "Guardar configuración"}
         </Button>
       </div>
