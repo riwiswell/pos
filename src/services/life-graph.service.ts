@@ -13,10 +13,15 @@ async function uid(){const{data,error}=await supabase.auth.getUser();if(error||!
 export const lifeGraphService={
  async list(table:LGTable,order="created_at",ascending=false):Promise<any[]>{
   // PostgREST caps response size; paginate so searches, histories and backups don't silently omit rows.
+  // These per-user singleton tables deliberately have user_id as their primary key, not id.
+  const singleton=table==="gamification_profiles";
+  const orderColumn=table==="gamification_profiles"&&order==="created_at"?"updated_at":order;
   const pageSize=1000;
   const rows:any[]=[];
   for(let from=0;;from+=pageSize){
-   const{data,error}=await db.from(table).select("*").order(order,{ascending}).order("id",{ascending:true}).range(from,from+pageSize-1);
+   let query=db.from(table).select("*").order(orderColumn,{ascending});
+   if(!singleton)query=query.order("id",{ascending:true});
+   const{data,error}=await query.range(from,from+pageSize-1);
    if(error)throw error;
    const page=(data??[]) as any[];
    rows.push(...page);
@@ -54,7 +59,7 @@ export const lifeGraphService={
   if(!out.length)out.push("Todavía no hay suficiente información cruzada para una señal prioritaria."); return {insights:out,snapshot:s};
  },
  async saveAiRun(kind:string,prompt:string,response:string,snapshot:unknown){return this.create("ai_runs",{kind,prompt,response,snapshot})},
- async importBackup(data:Record<string,unknown>,tables:string[]){const own=await uid();for(const table of tables){if(!Array.isArray(data[table])||!(data[table] as unknown[]).length)continue;const rows=(data[table] as Record<string,unknown>[]).map(r=>table==="profiles"?r:{...r,user_id:own});const{error}=await db.from(table).upsert(rows,{onConflict:"id"});if(error)throw new Error("Importación falló en "+table+": "+error.message)}},
+ async importBackup(data:Record<string,unknown>,tables:string[]){const own=await uid();for(const table of tables){if(!Array.isArray(data[table])||!(data[table] as unknown[]).length)continue;const rows=(data[table] as Record<string,unknown>[]).map(r=>table==="profiles"?r:{...r,user_id:own});const conflictColumn=table==="finance_settings"||table==="gamification_profiles"?"user_id":"id";const{error}=await db.from(table).upsert(rows,{onConflict:conflictColumn});if(error)throw new Error("Importación falló en "+table+": "+error.message)}},
  async calculateNextPeriod(profileId:string,startDate:string,cycleDays:number){return {profile_id:profileId,start_date:startDate,cycle_length_days:cycleDays,next_period_on:addCalendarDays(startDate,cycleDays)}}
 };
 function addCalendarDays(iso:string,days:number){const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)}
