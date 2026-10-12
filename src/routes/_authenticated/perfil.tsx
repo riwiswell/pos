@@ -21,7 +21,8 @@ import { DASHBOARD_WIDGETS, DEFAULT_DASHBOARD_WIDGETS, normalizeDashboardWidgets
 
 export const Route = createFileRoute("/_authenticated/perfil")({ component: ProfilePage });
 
-const DEFAULT_ORDER = NAV_ITEMS.map((x) => x.key);
+const SIDEBAR_ITEMS = NAV_ITEMS.filter((x) => x.key !== "perfil");
+const DEFAULT_ORDER = SIDEBAR_ITEMS.map((x) => x.key);
 const FEATURE_LABELS = [
   ["spirituality.fasting", "Espiritualidad → Ayuno"],
   ["health.cycle", "Salud → Registro menstrual"],
@@ -80,8 +81,8 @@ function ProfilePage() {
     setName(p.display_name || p.full_name || "");
     setAvatar(p.avatar_url);
     setBackground(p.background_url);
-    setOrder(Array.isArray(p.module_order) && p.module_order.length ? p.module_order : DEFAULT_ORDER);
-    setHidden(Array.isArray(p.hidden_modules) ? p.hidden_modules : []);
+    setOrder(Array.isArray(p.module_order) && p.module_order.length ? [...new Set(p.module_order.filter((key) => SIDEBAR_ITEMS.some((item) => item.key === key)) as string[]), ...DEFAULT_ORDER.filter((key) => !p.module_order.includes(key))] : DEFAULT_ORDER);
+    setHidden(Array.isArray(p.hidden_modules) ? p.hidden_modules.filter((key) => key !== "perfil") : []);
     setFeatures(p.hidden_features || {});
     setWidgets(normalizeDashboardWidgets(p.dashboard_widgets));
     setRelationshipNotifications(p.notification_preferences?.relationships !== false);
@@ -273,7 +274,7 @@ function ProfilePage() {
         <h2 className="font-semibold">Sidebar: orden y visibilidad</h2>
         <p className="text-xs text-muted-foreground">La personalización se guarda por usuario.</p>
         {order.map((key, index) => {
-          const item = NAV_ITEMS.find((x) => x.key === key);
+          const item = SIDEBAR_ITEMS.find((x) => x.key === key);
           if (!item) return null;
           const visible = !hidden.includes(key);
           return (
