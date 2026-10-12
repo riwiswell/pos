@@ -112,7 +112,32 @@ async function dispatchDueNotifications(env:Env){
    }
    const marked=await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"sent",sent_at:new Date().toISOString()})});
    if(!marked.ok){console.error("[push] Delivered notification but could not mark job as sent",job.id);continue;}
-   const repeat=job.payload?.repeat_rule; if(repeat==="daily"||repeat==="weekly"){const next=new Date(job.fire_at);next.setDate(next.getDate()+(repeat==="weekly"?7:1)); if(next.getTime()>Date.now()-60000) await supabaseFetch(env,"notification_jobs",{method:"POST",body:JSON.stringify({user_id:job.user_id,source_type:job.source_type,source_id:job.source_id,fire_at:next.toISOString(),title:job.title,body:job.body,payload:job.payload,status:"pending"})});}
+   const repeat=job.payload?.repeat_rule;
+   if(job.source_type==="alarm"){
+    // Keep the Alarm record and its push queue in sync, even when the app is closed.
+    const alarmRead=await supabaseFetch(env,"alarms?id=eq."+encodeURIComponent(job.source_id)+"&user_id=eq."+encodeURIComponent(job.user_id)+"&limit=1");
+    const alarmRows=alarmRead.ok?await alarmRead.json() as any[]:[];
+    const alarm=alarmRows[0];
+    if(!alarm||!alarm.enabled)continue;
+    const firedAt=new Date();
+    if(repeat==="daily"||repeat==="weekly"){
+     const next=new Date(job.fire_at);
+     const stepDays=repeat==="weekly"?7:1;
+     do{next.setDate(next.getDate()+stepDays)}while(next.getTime()<=firedAt.getTime());
+     const nextISO=next.toISOString();
+     const updatedAlarm=await supabaseFetch(env,"alarms?id=eq."+encodeURIComponent(job.source_id)+"&user_id=eq."+encodeURIComponent(job.user_id),{method:"PATCH",body:JSON.stringify({alarm_at:nextISO,last_fired_at:firedAt.toISOString(),snoozed_until:null})});
+     if(!updatedAlarm.ok){console.error("[push] Could not advance repeating alarm",job.source_id);continue;}
+     await supabaseFetch(env,"notification_jobs",{method:"POST",body:JSON.stringify({user_id:job.user_id,source_type:"alarm",source_id:job.source_id,fire_at:nextISO,title:job.title,body:job.body,payload:job.payload,status:"pending"})});
+    }else{
+     const disabled=await supabaseFetch(env,"alarms?id=eq."+encodeURIComponent(job.source_id)+"&user_id=eq."+encodeURIComponent(job.user_id),{method:"PATCH",body:JSON.stringify({enabled:false,last_fired_at:firedAt.toISOString(),snoozed_until:null})});
+     if(!disabled.ok)console.error("[push] Could not disable fired one-time alarm",job.source_id);
+    }
+   }else if(repeat==="daily"||repeat==="weekly"){
+    const next=new Date(job.fire_at);
+    const stepDays=repeat==="weekly"?7:1;
+    do{next.setDate(next.getDate()+stepDays)}while(next.getTime()<=Date.now());
+    await supabaseFetch(env,"notification_jobs",{method:"POST",body:JSON.stringify({user_id:job.user_id,source_type:job.source_type,source_id:job.source_id,fire_at:next.toISOString(),title:job.title,body:job.body,payload:job.payload,status:"pending"})});
+   }
  }
 }
 async function normalizeCatastrophicSsrResponse(response:Response){if(response.status<500)return response;const ct=response.headers.get("content-type")??"";if(!ct.includes("application/json"))return response;const body=await response.clone().text();try{const p=JSON.parse(body);if(p.unhandled===true&&p.message==="HTTPError"){console.error(consumeLastCapturedError()??new Error("h3 swallowed SSR error"));return new Response(renderErrorPage(),{status:500,headers:{"content-type":"text/html; charset=utf-8"}})}}catch{}return response}
