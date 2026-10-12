@@ -34,6 +34,16 @@ export const personalDomainsService={
   }
   return rows;
  },
+ async listLatest<T>(table:TableName,order="created_at",limit=100){
+  const singleton=table==="gamification_profiles";
+  const orderColumn=singleton&&order==="created_at"?"updated_at":order;
+  const safeLimit=Math.max(1,Math.min(1000,Math.floor(limit)||100));
+  let query=db.from(table).select("*").order(orderColumn,{ascending:false});
+  if(!singleton)query=query.order("id",{ascending:false});
+  const{data,error}=await query.limit(safeLimit);
+  if(error)throw error;
+  return (data??[]) as T[];
+ },
  async byDate<T>(table:TableName,column:string,date:string){const {data,error}=await db.from(table).select("*").eq(column,date).order("created_at",{ascending:false});if(error)throw error;return (data??[]) as T[];},
  async create<T>(table:TableName,input:Record<string,unknown>){const {data,error}=await db.from(table).insert(input).select("*").single();if(error)throw error;return data as T;},
  async update<T>(table:TableName,id:string,patch:Record<string,unknown>){const {data,error}=await db.from(table).update(patch).eq("id",id).select("*").single();if(error)throw error;return data as T;},
