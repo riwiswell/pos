@@ -73,7 +73,7 @@ export function useMedicationReminders() {
   const byId = useMemo(() => new Map((meds.data ?? []).map((m) => [m.id, m])), [meds.data]);
   const scheduleSignature = useMemo(
     () => (meds.data ?? [])
-      .map((m) => JSON.stringify([m.id, m.active, m.name, m.dose, m.unit, m.start_date, m.end_date, m.frequency, m.times, m.remind_offset_min]))
+      .map((m) => JSON.stringify([m.id, m.updated_at, m.active, m.name, m.dose, m.unit, m.total_quantity, m.notes, m.start_date, m.end_date, m.frequency, m.times, m.remind_offset_min]))
       .sort()
       .join("|") + ":" + today,
     [today, meds.data],
