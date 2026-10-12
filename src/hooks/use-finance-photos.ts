@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { financeService } from "@/services/finance.service";
+import { privateMediaService } from "@/services/private-media.service";
 
 /**
  * Resolves storage paths from the private `finance-photos` bucket into
@@ -14,7 +14,7 @@ export function useFinancePhotos(paths: string[], enabled = true) {
     queryFn: async () => {
       const urls: { path: string; url: string }[] = [];
       for (const path of paths) {
-        const url = await financeService.photoUrl(path);
+        const url = await privateMediaService.photoUrl(path);
         if (url) urls.push({ path, url });
       }
       return urls;
