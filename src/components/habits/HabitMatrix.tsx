@@ -209,7 +209,7 @@ export function HabitMatrix() {
   const requestedDayCount = differenceInCalendarDays(fromISODate(range.end), fromISODate(range.start)) + 1;
   const rangeTooLong = requestedDayCount > 400;
   const habitsQuery = useHabits();
-  const logsQuery = useLogsRange(range.start, range.end);
+  const logsQuery = useLogsRange(range.start, range.end, !rangeTooLong);
 
   const all = habitsQuery.data ?? [];
   const items = scope === "both" ? all : all.filter((item) => item.kind === scope);
