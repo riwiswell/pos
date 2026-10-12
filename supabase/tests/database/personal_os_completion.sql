@@ -1,6 +1,6 @@
 begin;
 
-select plan(36);
+select plan(37);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -28,6 +28,12 @@ select is(
   public.gamification_xp_for_event('habit_logs', '{"habit_kind":"habit"}'::jsonb),
   5,
   'habit logs retain their expected XP'
+);
+
+select is(
+  public.gamification_xp_for_event('habit_logs', '{"_operation":"UPDATE","habit_kind":"habit"}'::jsonb),
+  0,
+  'editing an existing habit log does not award XP again'
 );
 select is(
   public.gamification_xp_for_event('work_sessions', '{"status":"active"}'::jsonb),
