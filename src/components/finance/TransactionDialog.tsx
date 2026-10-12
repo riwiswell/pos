@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Clock, Loader2, Plus, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -195,11 +196,20 @@ export function TransactionDialog({
 
   const uploadPhotos = async (files: FileList | null) => {
     if (!files?.length) return;
+    const selectedFiles = Array.from(files);
     setUploading(true);
+    let added = 0;
     try {
-      const paths: string[] = [];
-      for (const file of Array.from(files)) paths.push(await privateMediaService.uploadPhoto(file));
-      setForm((prev) => ({ ...prev, photos: [...prev.photos, ...paths] }));
+      for (const file of selectedFiles) {
+        try {
+          const path = await privateMediaService.uploadPhoto(file);
+          setForm((prev) => ({ ...prev, photos: prev.photos.includes(path) ? prev.photos : [...prev.photos, path] }));
+          added += 1;
+        } catch (error) {
+          toast.error((file.name ? file.name + ": " : "") + (error instanceof Error ? error.message : "No se pudo subir la foto"));
+        }
+      }
+      if (added > 0) toast.success(added === 1 ? "Foto agregada" : "Fotos agregadas: " + added);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
