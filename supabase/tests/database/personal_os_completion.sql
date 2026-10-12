@@ -1,6 +1,6 @@
 begin;
 
-select plan(29);
+select plan(31);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -28,6 +28,16 @@ select is(
   public.gamification_xp_for_event('habit_logs', '{"habit_kind":"habit"}'::jsonb),
   5,
   'habit logs retain their expected XP'
+);
+select is(
+  public.gamification_xp_for_event('work_sessions', '{"status":"active"}'::jsonb),
+  0,
+  'starting a work session does not award XP'
+);
+select is(
+  public.gamification_xp_for_event('work_sessions', '{"status":"completed"}'::jsonb),
+  10,
+  'completing a work session awards XP once'
 );
 
 select results_eq(
