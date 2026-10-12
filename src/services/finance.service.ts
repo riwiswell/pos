@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { privateMediaService } from "@/services/private-media.service";
 import type { BalanceRow } from "@/lib/finance-math";
 import type {
   AccountInput,
@@ -11,7 +12,6 @@ import type {
   TransactionType,
 } from "@/domain/finance";
 
-const PHOTO_BUCKET = "finance-photos";
 
 /** "  Comida " and "COMIDA" must be treated as the same category name. */
 export function normalizeName(value: string): string {
@@ -315,28 +315,19 @@ export const financeService = {
     if (error) throw error;
   },
 
-  /* -------------------------------------------------------------------- fotos */
+  /* ----------------------------------------------------- legacy photo wrappers */
+  /** @deprecated Use privateMediaService from shared UI/domains. */
   async uploadPhoto(file: File): Promise<string> {
-    const user_id = await currentUserId();
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const path = `${user_id}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-    if (error) throw error;
-    return path;
+    return privateMediaService.uploadPhoto(file);
   },
 
+  /** @deprecated Use privateMediaService from shared UI/domains. */
   async photoUrl(path: string): Promise<string | null> {
-    const { data, error } = await supabase.storage
-      .from(PHOTO_BUCKET)
-      .createSignedUrl(path, 60 * 60);
-    if (error) return null;
-    return data?.signedUrl ?? null;
+    return privateMediaService.photoUrl(path);
   },
 
-  async removePhoto(path: string) {
-    await supabase.storage.from(PHOTO_BUCKET).remove([path]);
+  /** @deprecated Use privateMediaService from shared UI/domains. */
+  async removePhoto(path: string): Promise<void> {
+    return privateMediaService.removePhoto(path);
   },
 };
