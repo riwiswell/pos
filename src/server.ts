@@ -154,8 +154,9 @@ async function dispatchDueNotifications(env:Env){
    const subscriptions=await subs.json() as any[];
    if(subscriptions.length===0){
     await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"failed"})});
-    if(job.source_type==="alarm"){try{await finalizeAlarmOccurrence(env,job)}catch(error){console.error("[push] Could not advance undeliverable alarm",job.id,error)}}
-    console.warn("[push] No subscribed device; marking notification job as failed",job.id);
+    // Do not mark the source alarm as fired when no device received a notification.
+    // If the app is open, its local alarm can still ring and advance the occurrence.
+    console.warn("[push] No subscribed device; marking job failed without consuming the alarm occurrence",job.id);
     continue;
    }
    const payload=job.payload&&typeof job.payload==="object"?job.payload as Record<string,unknown>:{};
@@ -173,8 +174,9 @@ async function dispatchDueNotifications(env:Env){
      console.warn("[push] Temporary delivery failure; rescheduled for retry",job.id);
     }else{
      await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"failed"})});
-     if(job.source_type==="alarm"){try{await finalizeAlarmOccurrence(env,job)}catch(error){console.error("[push] Could not advance expired-subscription alarm",job.id,error)}}
-     console.warn("[push] All push subscriptions expired; marking job as failed",job.id);
+     // Expired endpoints are removed above; preserve the alarm itself because
+     // no device successfully received the reminder.
+     console.warn("[push] All push subscriptions expired; marking job failed without consuming the alarm occurrence",job.id);
     }
     continue;
    }
