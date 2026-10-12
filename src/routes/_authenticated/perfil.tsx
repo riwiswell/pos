@@ -16,6 +16,7 @@ import { subscribeToBackgroundPush } from "@/services/push.service";
 import { toast } from "sonner";
 import { lifeGraphService } from "@/services/life-graph.service";
 import { useTheme } from "@/hooks/use-theme";
+import { supabase } from "@/integrations/supabase/client";
 import { DASHBOARD_WIDGETS, DEFAULT_DASHBOARD_WIDGETS, normalizeDashboardWidgets } from "@/domain/dashboard";
 
 export const Route = createFileRoute("/_authenticated/perfil")({ component: ProfilePage });
@@ -56,7 +57,6 @@ function ProfilePage() {
   const [hidden, setHidden] = useState<string[]>([]);
   const [features, setFeatures] = useState<Record<string, boolean>>({});
   const [widgets, setWidgets] = useState<string[]>([...DEFAULT_DASHBOARD_WIDGETS]);
-  const [privacy, setPrivacy] = useState<boolean>(true);
   const [relationshipNotifications, setRelationshipNotifications] = useState<boolean>(true);
   const [importing, setImporting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -76,7 +76,6 @@ function ProfilePage() {
     setHidden(Array.isArray(p.hidden_modules) ? p.hidden_modules : []);
     setFeatures(p.hidden_features || {});
     setWidgets(normalizeDashboardWidgets(p.dashboard_widgets));
-    setPrivacy(p.notification_preferences?.privacy?.allow_external_ai !== false);
     setRelationshipNotifications(p.notification_preferences?.relationships !== false);
   }, [p]);
 
@@ -106,6 +105,7 @@ function ProfilePage() {
   };
 
   const saveAll = async () => {
+    const previousRelationshipNotifications = p?.notification_preferences?.relationships !== false;
     await save.mutateAsync({
       display_name: name.trim() || null,
       full_name: name.trim() || null,
@@ -117,10 +117,30 @@ function ProfilePage() {
       dashboard_widgets: widgets,
       notification_preferences: {
         ...(p?.notification_preferences || {}),
-        privacy: { allow_external_ai: privacy },
         relationships: relationshipNotifications,
       },
     });
+
+    if (previousRelationshipNotifications !== relationshipNotifications) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Inicia sesión para sincronizar los recordatorios.");
+        const response = await fetch("/api/notification-preferences", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: "Bearer " + session.access_token },
+          body: JSON.stringify({ relationships: relationshipNotifications }),
+        });
+        const result = await response.json().catch(() => ({})) as { error?: string; scheduled?: number };
+        if (!response.ok) throw new Error(result.error || "No se pudieron sincronizar los recordatorios.");
+        toast.success(relationshipNotifications
+          ? "Recordatorios de relaciones activados (" + (result.scheduled ?? 0) + " programados)."
+          : "Recordatorios de relaciones desactivados.");
+      } catch (error) {
+        toast.error(error instanceof Error
+          ? "Perfil guardado, pero no se pudieron sincronizar los recordatorios: " + error.message
+          : "Perfil guardado, pero no se pudieron sincronizar los recordatorios.");
+      }
+    }
   };
 
   const activateBackgroundNotifications = async () => {
@@ -303,9 +323,9 @@ function ProfilePage() {
           <span className="text-sm">Cumpleaños, aniversarios y citas médicas</span>
           <Switch checked={relationshipNotifications} onCheckedChange={setRelationshipNotifications} />
         </div>
-        <div className="flex items-center justify-between rounded-xl border p-3">
-          <span className="text-sm">Permitir análisis externo de datos</span>
-          <Switch checked={privacy} onCheckedChange={setPrivacy} />
+        <div className="rounded-xl border p-3">
+          <p className="text-sm font-medium">Privacidad de IA</p>
+          <p className="mt-1 text-xs text-muted-foreground">La IA Personal actual calcula señales con funciones internas y no envía tus registros a proveedores externos. El control para análisis externo aparecerá cuando exista esa integración.</p>
         </div>
         <p className="text-xs text-muted-foreground">
           Los avisos locales requieren permiso del navegador. Los avisos cuando Personal OS está cerrado requieren las credenciales VAPID del servidor.
