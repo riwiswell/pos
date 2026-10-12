@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PhotoStrip } from "@/components/finance/PhotoStrip";
+import { PhotoStrip } from "@/components/common/PhotoStrip";
 import { getIcon } from "@/lib/finance-icons";
 import { formatFullDate, formatTime } from "@/lib/period";
 import { formatMoney } from "@/lib/money";
