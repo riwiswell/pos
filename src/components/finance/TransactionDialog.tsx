@@ -153,8 +153,16 @@ export function TransactionDialog({
       .filter((category) => !preferredSet.has(category.id))
       .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "es"));
     const ordered = [...preferred, ...remainder];
-    return showAllCategories ? ordered : ordered.slice(0, 5);
-  }, [visibleCategories, preferredCategoryIds, showAllCategories]);
+    if (showAllCategories) return ordered;
+    const topFive = ordered.slice(0, 5);
+    const selectedCategory = byId.get(form.category_id ?? "");
+    // Editing a transaction with a rarely used category must still show its
+    // current selection; otherwise the form appears to have no category.
+    if (selectedCategory && !topFive.some((category) => category.id === selectedCategory.id)) {
+      return [selectedCategory, ...topFive.slice(0, 4)];
+    }
+    return topFive;
+  }, [visibleCategories, preferredCategoryIds, showAllCategories, form.category_id]);
 
   const isTransfer = form.type === "transfer";
   const canSave =
