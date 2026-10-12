@@ -44,7 +44,14 @@ async function handleApi(request:Request,env:Env):Promise<Response|null>{
 async function dispatchDueNotifications(env:Env){
  if(!env.SUPABASE_URL||!env.SUPABASE_SERVICE_ROLE_KEY||!env.VAPID_PUBLIC_KEY||!env.VAPID_PRIVATE_KEY||!env.VAPID_SUBJECT)return;
  webpush.setVapidDetails(env.VAPID_SUBJECT,env.VAPID_PUBLIC_KEY,env.VAPID_PRIVATE_KEY);
- const due=await supabaseFetch(env,"notification_jobs?status=eq.pending&fire_at=lte."+encodeURIComponent(new Date().toISOString())+"&order=fire_at.asc&limit=100");
+ // Only dequeue jobs for users who can receive them. Otherwise the first 100
+ // pending jobs belonging to unsubscribed users can starve every later job.
+ const subscriptionRows=await supabaseFetch(env,"push_subscriptions?select=user_id&limit=1000");
+ if(!subscriptionRows.ok)return;
+ const userIds=Array.from(new Set((await subscriptionRows.json() as {user_id:string}[]).map((row)=>row.user_id).filter(Boolean)));
+ if(userIds.length===0)return;
+ const userFilter=encodeURIComponent("in.("+userIds.join(",")+")");
+ const due=await supabaseFetch(env,"notification_jobs?status=eq.pending&fire_at=lte."+encodeURIComponent(new Date().toISOString())+"&user_id="+userFilter+"&order=fire_at.asc&limit=100");
  if(!due.ok)return;const jobs=await due.json() as any[];
  for(const job of jobs){
    const subs=await supabaseFetch(env,"push_subscriptions?user_id=eq."+encodeURIComponent(job.user_id));if(!subs.ok)continue;
