@@ -27,7 +27,7 @@ as $
     when p_entity_type = 'routine_logs' then 5
     else 0
   end
-$;
+$$;
 
 
 create or replace function public.apply_gamification_for_life_event()
