@@ -5,6 +5,7 @@ import { formatFullDate, formatTime } from "@/lib/period";
 import { groupByDay } from "@/lib/finance-math";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { richTextToPlainText } from "@/lib/rich-text";
 import type { FinanceAccount, FinanceCategory, FinanceTransaction } from "@/domain/finance";
 
 interface Props {
@@ -100,7 +101,7 @@ export function TransactionList({
                               ? `${account?.name ?? "—"} → ${target?.name ?? "—"}`
                               : account?.name,
                             time,
-                            isTransfer ? tx.note : category && tx.note ? tx.note : null,
+                            isTransfer ? richTextToPlainText(tx.note) : category && tx.note ? richTextToPlainText(tx.note) : null,
                           ]
                             .filter(Boolean)
                             .join(" · ")}
