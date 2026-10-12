@@ -234,7 +234,7 @@ function ProfilePage() {
           {backgroundUrl && <span className="self-center text-xs text-muted-foreground">Fondo cargado</span>}
         </div>
         <div className="flex items-center justify-between rounded-xl border p-3">
-          <span className="text-sm font-medium">Ayudas contextuales</span>
+          <span className="flex items-center gap-1 text-sm font-medium">Ayudas contextuales <HelpTip helpKey="settings.help" /></span>
           <Switch checked={help} onCheckedChange={(value) => setHelp.mutate(value)} />
         </div>
       </section>
