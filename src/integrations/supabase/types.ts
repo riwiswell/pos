@@ -651,6 +651,11 @@ export type Database = {
           full_name: string | null
           help_enabled: boolean
           id: string
+          module_order: string[]
+          hidden_modules: string[]
+          hidden_features: Json
+          dashboard_widgets: Json
+          notification_preferences: Json
           updated_at: string
         }
         Insert: {
@@ -662,6 +667,11 @@ export type Database = {
           full_name?: string | null
           help_enabled?: boolean
           id: string
+          module_order?: string[]
+          hidden_modules?: string[]
+          hidden_features?: Json
+          dashboard_widgets?: Json
+          notification_preferences?: Json
           updated_at?: string
         }
         Update: {
@@ -673,6 +683,11 @@ export type Database = {
           full_name?: string | null
           help_enabled?: boolean
           id?: string
+          module_order?: string[]
+          hidden_modules?: string[]
+          hidden_features?: Json
+          dashboard_widgets?: Json
+          notification_preferences?: Json
           updated_at?: string
         }
         Relationships: []
