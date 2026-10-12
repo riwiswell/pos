@@ -23,12 +23,19 @@ self.addEventListener("push", (event) => {
     // Fall back to the app home when the supplied URL is malformed.
   }
 
+  const isMedicationDose = typeof rawData.doseId === "string" && rawData.doseId.length > 0;
   const options = {
     body: typeof payload.body === "string" ? payload.body : "Tienes un recordatorio pendiente.",
     tag: typeof payload.tag === "string" ? payload.tag : "personal-os",
     icon: "/favicon.ico",
     data: { ...rawData, url: safeUrl },
     requireInteraction: true,
+    ...(isMedicationDose
+      ? { actions: [
+          { action: "take", title: "Tomada" },
+          { action: "snooze", title: "Posponer" },
+        ] }
+      : {}),
   };
 
   event.waitUntil(
