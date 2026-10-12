@@ -163,7 +163,7 @@ function ProfilePage() {
         subscribed: ["Notificaciones en segundo plano activadas.", "success"],
         unsupported: ["Este navegador no admite notificaciones push.", "error"],
         "permission-denied": ["Permite las notificaciones del navegador para continuar.", "error"],
-        "missing-key": ["Falta configurar VITE_VAPID_PUBLIC_KEY en la compilación de Cloudflare.", "error"],
+        "missing-key": ["Falta configurar VAPID_PUBLIC_KEY en las variables de runtime de Cloudflare.", "error"],
         "no-session": ["Tu sesión ha caducado. Inicia sesión y vuelve a intentarlo.", "error"],
         failed: ["No se pudo registrar el dispositivo para notificaciones push.", "error"],
       } as const;
