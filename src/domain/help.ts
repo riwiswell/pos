@@ -34,6 +34,7 @@ export const HELP: Record<string, HelpEntry> = {
       "Los vasos de agua que tomaste con esta dosis. Puedes cambiarlo en cada toma; se cuenta aparte del agua normal.",
   },
   // Hidratación
+  "hydration.daily": { title: "Hidratación diaria", description: "El agua manual se registra por fecha en litros (1 vaso equivale a 250 ml); el agua de las tomas de medicamentos se suma por separado. La meta de 9 vasos es orientativa y puedes corregir el registro con −/+ vaso." },
   "hydration.medication": {
     title: "Agua con medicamentos",
     description:
