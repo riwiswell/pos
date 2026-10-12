@@ -214,9 +214,13 @@ function ProfilePage() {
       if (payload.user_id && payload.user_id !== user.id) {
         throw new Error("Este respaldo pertenece a otro usuario.");
       }
-      await lifeGraphService.importBackup(payload.data, BACKUP_TABLES);
+      const imported = await lifeGraphService.importBackup(payload.data, BACKUP_TABLES);
       await Promise.all([profileQuery.refetch()]);
-      toast.success("Importación completada. Los registros se combinaron por ID; no se borraron datos que no estén en el archivo.");
+      if (imported.rebuiltTables.length) {
+        toast.success("Datos personales restaurados. Los eventos, XP/logros derivados y recordatorios pendientes se reconstruyen desde los registros importados.");
+      } else {
+        toast.success("Importación completada. Los registros se combinaron por ID; no se borraron datos que no estén en el archivo.");
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo importar el respaldo.");
     } finally {
