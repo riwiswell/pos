@@ -31,15 +31,23 @@ const FEATURE_LABELS = [
 ] as const;
 const WIDGETS = DASHBOARD_WIDGETS;
 const BACKUP_TABLES = [
-  "profiles","habits","habit_logs","habit_categories","planner_items","planner_categories",
-  "finance_accounts","finance_categories","finance_transactions","finance_settings","journal_entries","alarms",
-  "health_metrics","medications","medication_doses","shopping_lists","shopping_items","life_goals","routines",
-  "routine_logs","checklists","checklist_items","bucket_list","menstrual_profiles","menstrual_records",
-  "medical_appointments","nutrition_logs","learning_items","learning_notes","learning_sessions","language_profiles",
-  "relationships","relationship_interactions","work_items","work_sessions","spiritual_entries",
-  "gamification_profiles","gamification_xp_events","gamification_achievements","gamification_challenges","spiritual_goals","life_events","notification_jobs","ai_runs",
-  "finance_budgets","finance_debts","finance_savings_goals","finance_investments","finance_external_sources",
-  "finance_external_snapshots","life_links",
+  // Parents and lookup rows first, then their dependent records.
+  "profiles",
+  "habit_categories", "habits", "habit_logs",
+  "planner_categories", "planner_items", "daily_focus",
+  "finance_accounts", "finance_categories", "finance_settings", "finance_transactions",
+  "finance_budgets", "finance_debts", "finance_savings_goals", "finance_investments",
+  "finance_external_sources", "finance_external_snapshots",
+  "journal_entries",
+  "shopping_lists", "shopping_items",
+  "alarms", "health_metrics", "medications", "medication_doses",
+  "relationships", "menstrual_profiles", "menstrual_records", "medical_appointments", "nutrition_logs",
+  "life_goals", "routines", "routine_logs", "checklists", "checklist_items", "bucket_list",
+  "learning_items", "learning_notes", "learning_sessions", "language_profiles",
+  "relationship_interactions", "work_items", "work_sessions",
+  "spiritual_entries", "spiritual_goals",
+  "life_events", "gamification_profiles", "gamification_xp_events", "gamification_achievements", "gamification_challenges",
+  "notification_jobs", "ai_runs", "life_links",
 ];
 
 function ProfilePage() {
