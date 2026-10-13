@@ -6,7 +6,7 @@ type ChatRole="system"|"user"|"assistant";
 type WorkersAiBinding={
  run:(model:string,input:{messages:Array<{role:ChatRole;content:string}>;max_tokens?:number;temperature?:number})=>Promise<unknown>;
 };
-type Env={SUPABASE_URL?:string;SUPABASE_SERVICE_ROLE_KEY?:string;SUPABASE_PUBLISHABLE_KEY?:string;VITE_SUPABASE_PUBLISHABLE_KEY?:string;VAPID_PUBLIC_KEY?:string;VAPID_PRIVATE_KEY?:string;VAPID_SUBJECT?:string;WISWELLART_WEBHOOK_SECRET?:string;WISWELLART_USER_ID?:string;AI?:WorkersAiBinding};
+type Env={SUPABASE_URL?:string;SUPABASE_SERVICE_ROLE_KEY?:string;SUPABASE_PUBLISHABLE_KEY?:string;VITE_SUPABASE_PUBLISHABLE_KEY?:string;VAPID_PUBLIC_KEY?:string;VAPID_PRIVATE_KEY?:string;VAPID_SUBJECT?:string;AI?:WorkersAiBinding};
 type ServerEntry={fetch:(request:Request,env:unknown,ctx:unknown)=>Promise<Response>|Response};
 const ALLOWED_PUSH_HOSTS = [
  "fcm.googleapis.com",
@@ -68,7 +68,7 @@ const ASSISTANT_SOURCES:AssistantSource[]=[
  {table:"habit_categories",order:"position.asc",group:"habits"},{table:"habits",order:"position.asc",group:"habits"},{table:"habit_logs",order:"date.desc",group:"habits"},{table:"daily_focus",order:"focus_date.desc",group:"habits"},
  {table:"planner_categories",order:"position.asc",group:"planning"},{table:"planner_items",order:"scheduled_on.desc",group:"planning"},{table:"medical_appointments",order:"appointment_at.desc",group:"planning"},{table:"notification_jobs",order:"fire_at.desc",group:"planning"},{table:"alarms",order:"alarm_at.desc",group:"planning"},
  {table:"health_metrics",order:"metric_date.desc",group:"health"},{table:"medications",order:"updated_at.desc",group:"health"},{table:"medication_doses",order:"scheduled_at.desc",group:"health"},{table:"nutrition_logs",order:"created_at.desc",group:"health"},{table:"menstrual_profiles",order:"updated_at.desc",group:"health"},{table:"menstrual_records",order:"created_at.desc",group:"health"},
- {table:"finance_accounts",order:"position.asc",group:"finance"},{table:"finance_categories",order:"position.asc",group:"finance"},{table:"finance_settings",group:"finance"},{table:"finance_transactions",order:"occurred_on.desc",group:"finance"},{table:"finance_budgets",order:"created_at.desc",group:"finance"},{table:"finance_debts",order:"created_at.desc",group:"finance"},{table:"finance_savings_goals",order:"created_at.desc",group:"finance"},{table:"finance_investments",order:"created_at.desc",group:"finance"},{table:"finance_external_sources",order:"created_at.desc",group:"finance"},{table:"finance_external_snapshots",order:"period_start.desc",group:"finance"},
+ {table:"finance_accounts",order:"position.asc",group:"finance"},{table:"finance_categories",order:"position.asc",group:"finance"},{table:"finance_settings",group:"finance"},{table:"finance_transactions",order:"occurred_on.desc",group:"finance"},{table:"finance_budgets",order:"created_at.desc",group:"finance"},{table:"finance_debts",order:"created_at.desc",group:"finance"},{table:"finance_savings_goals",order:"created_at.desc",group:"finance"},{table:"finance_investments",order:"created_at.desc",group:"finance"},
  {table:"journal_entries",order:"entry_date.desc",group:"diary"},{table:"shopping_lists",order:"position.asc",group:"diary"},{table:"shopping_items",order:"position.asc",group:"diary"},
  {table:"life_goals",order:"updated_at.desc",group:"life"},{table:"routines",order:"updated_at.desc",group:"life"},{table:"routine_logs",order:"created_at.desc",group:"life"},{table:"checklists",order:"updated_at.desc",group:"life"},{table:"checklist_items",order:"position.asc",group:"life"},{table:"bucket_list",order:"created_at.desc",group:"life"},{table:"life_links",order:"created_at.desc",group:"life"},{table:"life_events",order:"occurred_at.desc",group:"life"},
  {table:"learning_items",order:"updated_at.desc",group:"learning"},{table:"learning_notes",order:"created_at.desc",group:"learning"},{table:"learning_sessions",order:"created_at.desc",group:"learning"},{table:"language_profiles",order:"updated_at.desc",group:"learning"},
@@ -219,32 +219,6 @@ async function handleApi(request:Request,env:Env):Promise<Response|null>{
   try{body=await request.json() as typeof body}catch{return json({error:"Invalid JSON body"},400)}
   if(typeof body.relationships!=="boolean")return json({error:"relationships must be boolean"},400);
   try{return json(await syncRelationshipJobs(env,u.id,body.relationships))}catch(error){return json({error:error instanceof Error?error.message:"Could not sync relationship notifications"},500)}
- }
- if(url.pathname==="/api/integrations/wiswellart"&&request.method==="POST"){
-  if(!env.WISWELLART_WEBHOOK_SECRET||request.headers.get("x-pos-integration-secret")!==env.WISWELLART_WEBHOOK_SECRET)return json({error:"Unauthorized"},401);
-  if(!env.WISWELLART_USER_ID)return json({error:"WISWELLART_USER_ID not configured"},500);
-  const b=await request.json() as {period_start:string;period_end:string;income:number;expense:number;raw_payload?:unknown};
-  if(!b.period_start||!b.period_end)return json({error:"period_start and period_end are required"},400);
-  const qs="finance_external_sources?user_id=eq."+encodeURIComponent(env.WISWELLART_USER_ID)+"&source_key=eq.wiswellart&limit=1";
-  const sourceRead=await supabaseFetch(env,qs);
-  if(!sourceRead.ok)return new Response(await sourceRead.text(),{status:sourceRead.status,headers:{"content-type":"application/json"}});
-  const existing=await sourceRead.json() as any[];
-  let sourceId=existing?.[0]?.id;
-  if(!sourceId){
-    const sourceCreate=await supabaseFetch(env,"finance_external_sources",{method:"POST",body:JSON.stringify({user_id:env.WISWELLART_USER_ID,source_key:"wiswellart",name:"WíswellArt · Tienda",active:true})});
-    if(!sourceCreate.ok)return new Response(await sourceCreate.text(),{status:sourceCreate.status,headers:{"content-type":"application/json"}});
-    sourceId=(await sourceCreate.json() as any[])?.[0]?.id;
-  }
-  if(!sourceId)return json({error:"Could not resolve WíswellArt source"},500);
-  const lookup="finance_external_snapshots?source_id=eq."+encodeURIComponent(sourceId)+"&period_start=eq."+encodeURIComponent(b.period_start)+"&period_end=eq."+encodeURIComponent(b.period_end)+"&limit=1";
-  const snapRead=await supabaseFetch(env,lookup);
-  if(!snapRead.ok)return new Response(await snapRead.text(),{status:snapRead.status,headers:{"content-type":"application/json"}});
-  const snap=await snapRead.json() as any[];
-  const payload={user_id:env.WISWELLART_USER_ID,source_id:sourceId,period_start:b.period_start,period_end:b.period_end,income:Number(b.income)||0,expense:Number(b.expense)||0,raw_payload:b.raw_payload??{}};
-  const snapWrite=snap?.[0]?.id
-    ? await supabaseFetch(env,"finance_external_snapshots?id=eq."+encodeURIComponent(snap[0].id),{method:"PATCH",body:JSON.stringify(payload)})
-    : await supabaseFetch(env,"finance_external_snapshots",{method:"POST",body:JSON.stringify(payload)});
-  return new Response(await snapWrite.text(),{status:snapWrite.status,headers:{"content-type":"application/json"}});
  }
  return null;
 }
