@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { decodeHtmlEntities, richTextToPlainText } from "@/lib/html-text";
 
 const ALLOWED_TAGS = new Set([
   "P", "BR", "STRONG", "B", "EM", "I", "U", "S", "UL", "OL", "LI",
@@ -21,7 +22,7 @@ function safeHref(value: string): string | null {
 }
 
 function sanitizeRichHtml(input: string): string {
-  const document = new DOMParser().parseFromString(input, "text/html");
+  const document = new DOMParser().parseFromString(decodeHtmlEntities(input), "text/html");
   document.querySelectorAll(REMOVE_WITH_CONTENT).forEach((node) => node.remove());
 
   const elements = Array.from(document.body.querySelectorAll("*")).reverse();
@@ -55,13 +56,7 @@ function sanitizeRichHtml(input: string): string {
 }
 
 function plainFallback(input: string): string {
-  return input
-    .replace(/<\/(p|li|h[1-6]|blockquote|pre)>/gi, "\n")
-    .replace(/<\/?br\s*\/?>/gi, "\n")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return richTextToPlainText(input);
 }
 
 /**

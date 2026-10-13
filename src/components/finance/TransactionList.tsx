@@ -5,6 +5,7 @@ import { formatFullDate, formatTime } from "@/lib/period";
 import { groupByDay } from "@/lib/finance-math";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { richTextToPlainText } from "@/lib/html-text";
 import type { FinanceAccount, FinanceCategory, FinanceTransaction } from "@/domain/finance";
 
 interface Props {
@@ -65,6 +66,7 @@ export function TransactionList({
                   ? accountById.get(tx.transfer_account_id)
                   : undefined;
                 const isTransfer = tx.type === "transfer";
+                const noteText = richTextToPlainText(tx.note);
                 const Icon = isTransfer
                   ? ArrowLeftRight
                   : getIcon(category?.icon ?? account?.icon ?? "Circle");
@@ -91,8 +93,7 @@ export function TransactionList({
                           {isTransfer
                             ? "Transferencia"
                             : (category?.name ??
-                              tx.note ??
-                              (tx.type === "income" ? "Ingreso" : "Gasto"))}
+                              (noteText || (tx.type === "income" ? "Ingreso" : "Gasto")))}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
                           {[
@@ -100,7 +101,7 @@ export function TransactionList({
                               ? `${account?.name ?? "—"} → ${target?.name ?? "—"}`
                               : account?.name,
                             time,
-                            isTransfer ? tx.note : category && tx.note ? tx.note : null,
+                            isTransfer ? noteText : category && noteText ? noteText : null,
                           ]
                             .filter(Boolean)
                             .join(" · ")}

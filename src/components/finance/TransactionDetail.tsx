@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PhotoStrip } from "@/components/common/PhotoStrip";
+import { SafeRichText } from "@/components/common/SafeRichText";
 import { getIcon } from "@/lib/finance-icons";
 import { formatFullDate, formatTime } from "@/lib/period";
 import { formatMoney } from "@/lib/money";
@@ -147,7 +148,7 @@ export function TransactionDetail({
           {transaction.note && (
             <div className="space-y-1.5">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">Nota</p>
-              <p className="whitespace-pre-wrap text-sm">{transaction.note}</p>
+              <SafeRichText html={transaction.note} className="prose prose-sm dark:prose-invert max-w-none break-words [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1" />
             </div>
           )}
 

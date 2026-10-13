@@ -213,6 +213,7 @@ function CategoryExplorer({
       <div className="grid gap-3 sm:grid-cols-2">
         {visibleRows.map((row) => {
           const Icon = getIcon(row.icon);
+          const countLabel = row.count === 1 ? "1 registro" : `${row.count} registros`;
           return (
             <button
               key={row.id}
@@ -229,7 +230,7 @@ function CategoryExplorer({
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold">{row.name}</span>
                 <span className="block text-xs text-muted-foreground">
-                  {row.count} registro{row.count === 1 ? "" : "s"}
+                  {countLabel}
                 </span>
               </span>
               <span className="text-right text-sm font-semibold tabular-nums">
