@@ -115,9 +115,18 @@ async function assistantReadTable(env:Env,authHeader:string,userId:string,spec:A
  url.searchParams.set(spec.ownerColumn??"user_id","eq."+userId);
  url.searchParams.set("limit",String(limit));
  if(spec.order)url.searchParams.set("order",spec.order);
- const response=await fetch(url.toString(),{headers:{apikey:key,Authorization:authHeader,Accept:"application/json"}});
- const raw=await response.text();
+ const headers={apikey:key,Authorization:authHeader,Accept:"application/json"};
+ let response=await fetch(url.toString(),{headers});
+ let raw=await response.text();
  let parsed:any=null;try{parsed=raw?JSON.parse(raw):[]}catch{}
+ // A sort column can differ between schema versions. Retry an otherwise
+ // valid read without ordering instead of marking the entire source unavailable.
+ if(!response.ok&&spec.order&&[400,422].includes(response.status)){
+  url.searchParams.delete("order");
+  response=await fetch(url.toString(),{headers});
+  raw=await response.text();
+  parsed=null;try{parsed=raw?JSON.parse(raw):[]}catch{}
+ }
  if(!response.ok){
   const code=String(parsed?.code??"");
   if(response.status===404||["42P01","PGRST204","PGRST205"].includes(code))return {table:spec.table,rows:[],unavailable:"La tabla no existe o no está publicada en el esquema."};
