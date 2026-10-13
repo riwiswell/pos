@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Eye, EyeOff, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
+import { Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -106,6 +106,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [menuEditing, setMenuEditing] = useState(false);
   const [menuSaving, setMenuSaving] = useState(false);
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null);
+  const dragState = useRef<{ key: string; pointerId: number; startY: number; active: boolean; changed: boolean; order: string[] } | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const signOut = useSignOut();
   const { data: profile } = useProfile();
@@ -116,9 +118,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   useAppointmentReminders();
 
   const allItems = useMemo(() => orderedAllItems(profile?.module_order), [profile?.module_order]);
+  const orderedItems = useMemo(() => {
+    const byKey = new Map(allItems.map((item) => [item.key, item]));
+    const order = dragOrder ?? allItems.map((item) => item.key);
+    return order.map((key) => byKey.get(key)).filter((item): item is (typeof allItems)[number] => Boolean(item));
+  }, [allItems, dragOrder]);
   const hiddenModules = profile?.hidden_modules ?? [];
-  const items = useMemo(() => allItems.filter((item) => !hiddenModules.includes(item.key)), [allItems, profile?.hidden_modules]);
-  const menuItems = menuEditing ? allItems : items;
+  const items = useMemo(() => orderedItems.filter((item) => !hiddenModules.includes(item.key)), [orderedItems, profile?.hidden_modules]);
+  const menuItems = menuEditing ? orderedItems : items;
 
   const persistMenu = async (order: string[], hidden: string[]) => {
     if (!user?.id || menuSaving) return;
@@ -126,21 +133,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     try {
       const saved = await profileService.upsert(user.id, { module_order: order, hidden_modules: hidden });
       queryClient.setQueryData(profileKeys.profile(user.id), saved);
+      setDragOrder(null);
       toast.success("Menú guardado", { duration: 1300 });
     } catch (error) {
       toast.error(error instanceof Error ? "No se pudo guardar el menú: " + error.message : "No se pudo guardar el menú.");
     } finally {
       setMenuSaving(false);
     }
-  };
-
-  const moveMenuItem = (key: string, delta: number) => {
-    const order = allItems.map((item) => item.key);
-    const index = order.indexOf(key);
-    const target = index + delta;
-    if (index < 0 || target < 0 || target >= order.length) return;
-    [order[index], order[target]] = [order[target], order[index]];
-    void persistMenu(order, hiddenModules);
   };
 
   const toggleMenuItem = (key: string, visible: boolean) => {
@@ -201,26 +200,95 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3">
-          <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Editar orden y visibilidad del menú">
+          <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Mostrar u ocultar módulos">
             <SlidersHorizontal className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>{menuEditing ? "Terminar de editar" : "Editar menú"}</span>}
+            {!collapsed && <span>{menuEditing ? "Terminar de editar" : "Mostrar / ocultar módulos"}</span>}
           </Button>
-          {menuEditing && !collapsed && <p className="px-2 pb-1 text-xs text-muted-foreground">Los cambios se guardan al instante. Usa las flechas para mover y el ojo para mostrar u ocultar.</p>}
-          {menuItems.map((item, index) => {
+          {menuEditing && !collapsed && <p className="px-2 pb-1 text-xs text-muted-foreground">Para reordenar, arrastra un módulo por el tirador del sidebar. Aquí puedes mostrar u ocultar módulos.</p>}
+          {menuItems.map((item) => {
             const visible = !hiddenModules.includes(item.key);
             if (menuEditing) return (
               <div key={item.key} className={cn("flex items-center gap-1 rounded-xl border border-sidebar-border px-1.5 py-1", !visible && "opacity-55")}>
                 <item.icon className="h-5 w-5 shrink-0 text-sidebar-foreground" />
                 {!collapsed && <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-sidebar-foreground">{item.label}</span>}
                 <div className="flex shrink-0 items-center gap-0">
-                  <Button type="button" size="icon" variant="ghost" className="h-7 w-7" disabled={menuSaving || index===0} title={"Subir "+item.label} aria-label={"Subir "+item.label} onClick={() => moveMenuItem(item.key,-1)}><ArrowUp className="h-3.5 w-3.5"/></Button>
-                  <Button type="button" size="icon" variant="ghost" className="h-7 w-7" disabled={menuSaving || index===menuItems.length-1} title={"Bajar "+item.label} aria-label={"Bajar "+item.label} onClick={() => moveMenuItem(item.key,1)}><ArrowDown className="h-3.5 w-3.5"/></Button>
                   <Button type="button" size="icon" variant="ghost" className="h-7 w-7" disabled={menuSaving} title={(visible ? "Ocultar " : "Mostrar ")+item.label} aria-label={(visible ? "Ocultar " : "Mostrar ")+item.label} onClick={() => toggleMenuItem(item.key,!visible)}>{visible?<Eye className="h-3.5 w-3.5"/>:<EyeOff className="h-3.5 w-3.5"/>}</Button>
                 </div>
               </div>
             );
             return (
-              <div key={item.key} className="flex items-center gap-1">
+              <div
+                key={item.key}
+                data-sidebar-item-key={item.key}
+                className={cn(
+                  "flex items-center gap-1 rounded-xl transition-colors",
+                  dragState.current?.key === item.key && dragState.current.active && "bg-sidebar-accent/50 ring-1 ring-sidebar-primary/50",
+                )}
+              >
+                {!collapsed && (
+                  <button
+                    type="button"
+                    aria-label={"Arrastrar para reordenar " + item.label}
+                    title="Arrastra para cambiar de posición"
+                    className="flex h-10 w-4 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:text-sidebar-primary active:cursor-grabbing"
+                    onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
+                      if (event.button !== 0) return;
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      dragState.current = {
+                        key: item.key,
+                        pointerId: event.pointerId,
+                        startY: event.clientY,
+                        active: false,
+                        changed: false,
+                        order: orderedItems.map((entry) => entry.key),
+                      };
+                    }}
+                    onPointerMove={(event: PointerEvent<HTMLButtonElement>) => {
+                      const current = dragState.current;
+                      if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
+                      if (!current.active && Math.abs(event.clientY - current.startY) < 8) return;
+                      current.active = true;
+                      event.preventDefault();
+                      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-sidebar-item-key]");
+                      const targetKey = target?.dataset.sidebarItemKey;
+                      if (!targetKey || targetKey === current.key) {
+                        setDragOrder([...current.order]);
+                        return;
+                      }
+                      const next = [...current.order];
+                      const from = next.indexOf(current.key);
+                      const to = next.indexOf(targetKey);
+                      if (from < 0 || to < 0 || from === to) {
+                        setDragOrder([...current.order]);
+                        return;
+                      }
+                      next.splice(from, 1);
+                      next.splice(to, 0, current.key);
+                      current.order = next;
+                      current.changed = true;
+                      setDragOrder(next);
+                    }}
+                    onPointerUp={(event: PointerEvent<HTMLButtonElement>) => {
+                      const current = dragState.current;
+                      if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
+                      dragState.current = null;
+                      if (current.active && current.changed) {
+                        setDragOrder(current.order);
+                        void persistMenu(current.order, hiddenModules);
+                      } else {
+                        setDragOrder(null);
+                      }
+                    }}
+                    onPointerCancel={(event: PointerEvent<HTMLButtonElement>) => {
+                      const current = dragState.current;
+                      if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
+                      dragState.current = null;
+                      setDragOrder(null);
+                    }}
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </button>
+                )}
                 <Link to={item.to} search={(p: Record<string, unknown>) => p} title={item.label} className={cn(
                   "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-sidebar-accent",
                   collapsed && "flex-none justify-center px-0",
