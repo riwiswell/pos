@@ -51,13 +51,13 @@ export function RichTextEditor({
 
   useEffect(() => {
     if (!editor) return;
-    editor.view.dom.style.minHeight = `${Math.max(140, minHeight)}px`;
+    editor.view.dom.style.minHeight = `${Math.max(64, minHeight)}px`;
   }, [editor, minHeight]);
 
   if (!editor) {
     return (
       <div
-        style={{ minHeight: Math.max(140, minHeight) }}
+        style={{ minHeight: Math.max(64, minHeight) }}
         className={cn("min-h-[140px] rounded-xl border border-input bg-background", className)}
       />
     );

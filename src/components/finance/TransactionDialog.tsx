@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Clock, Loader2, Plus, X } from "lucide-react";
+import { Check, Clock, ImagePlus, Loader2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -98,7 +98,6 @@ export function TransactionDialog({
 }: Props) {
   const mutations = useFinanceMutations();
   const [form, setForm] = useState<TransactionInput>(() => emptyInput(date, null));
-  const [showDetails, setShowDetails] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [isNow, setIsNow] = useState(false);
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
@@ -124,12 +123,10 @@ export function TransactionDialog({
         counts_for_tithe: transaction.counts_for_tithe,
         is_tithe_payment: transaction.is_tithe_payment,
       });
-      setShowDetails(true);
       setShowAllCategories(false);
       setIsNow(false);
     } else {
       setForm(emptyInput(date, accounts[0]?.id ?? null));
-      setShowDetails(false);
       setShowAllCategories(false);
       setIsNow(false);
     }
@@ -462,7 +459,7 @@ export function TransactionDialog({
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Nota <span className="normal-case tracking-normal">(opcional)</span>
               </Label>
-              <RichTextEditor value={form.note ?? ""} onChange={(value) => setForm((prev) => ({ ...prev, note: value || null }))} placeholder="¿En qué fue?" />
+              <RichTextEditor value={form.note ?? ""} onChange={(value) => setForm((prev) => ({ ...prev, note: value || null }))} placeholder="¿En qué fue?" minHeight={76} />
             </div>
 
             {/* El diezmo nunca se infiere del nombre de la categoría: se marca aquí. */}
@@ -498,76 +495,63 @@ export function TransactionDialog({
               </div>
             )}
 
-            {!showDetails && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
-                onClick={() => setShowDetails(true)}
-              >
-                Más detalles
-              </Button>
-            )}
-
-            {showDetails && (
-              <div className="space-y-4 rounded-xl border border-border p-3">
-                {form.type === "income" && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Costo asociado (opcional)</Label>
-                    <AmountInput
-                      value={form.cost_amount}
-                      onChange={(cost_amount) => setForm((prev) => ({ ...prev, cost_amount }))}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Se usa para calcular la ganancia real del ingreso.
-                    </p>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Fotos</Label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {form.photos.map((path) => (
-                      <span
-                        key={path}
-                        className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs"
-                      >
-                        {path.split("/").pop()?.slice(0, 8)}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              photos: prev.photos.filter((item) => item !== path),
-                            }))
-                          }
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={uploading}
-                      onClick={() => fileRef.current?.click()}
-                    >
-                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adjuntar"}
-                    </Button>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      hidden
-                      onChange={(event) => void uploadPhotos(event.target.files)}
-                    />
-                  </div>
-                </div>
+            {form.type === "income" && (
+              <div className="space-y-1.5 rounded-xl border border-border p-3">
+                <Label className="text-xs">Costo asociado (opcional)</Label>
+                <AmountInput
+                  value={form.cost_amount}
+                  onChange={(cost_amount) => setForm((prev) => ({ ...prev, cost_amount }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Se usa para calcular la ganancia real del ingreso.
+                </p>
               </div>
             )}
+
+            <div className="space-y-2 rounded-xl border border-border p-3">
+              <Label className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <ImagePlus className="h-4 w-4" /> Fotos (Adjuntar)
+              </Label>
+              <div className="flex flex-wrap items-center gap-2">
+                {form.photos.map((path) => (
+                  <span
+                    key={path}
+                    className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs"
+                  >
+                    {path.split("/").pop()?.slice(0, 8)}
+                    <button
+                      type="button"
+                      aria-label="Quitar foto adjunta"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          photos: prev.photos.filter((item) => item !== path),
+                        }))
+                      }
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-1 h-4 w-4" /> Adjuntar</>}
+                </Button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={(event) => void uploadPhotos(event.target.files)}
+                />
+              </div>
+            </div>
 
           </div>
 
