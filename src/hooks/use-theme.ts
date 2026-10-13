@@ -47,6 +47,14 @@ export function applyAccentColor(value: string) {
   root.style.setProperty("--ring", value);
   root.style.setProperty("--sidebar-primary", value);
   root.style.setProperty("--sidebar-ring", value);
+  // Apply the chosen hue to the workspace itself, not only to buttons and focus rings.
+  // These mixes stay subtle in both dark and light modes and update with the theme.
+  root.style.setProperty("--sidebar", `color-mix(in oklab, var(--background) 86%, ${value} 14%)`);
+  root.style.setProperty("--sidebar-accent", `color-mix(in oklab, var(--background) 72%, ${value} 28%)`);
+  root.style.setProperty("--sidebar-border", `color-mix(in oklab, var(--sidebar) 76%, ${value} 24%)`);
+  root.style.setProperty("--surface", `color-mix(in oklab, var(--surface-base) 91%, ${value} 9%)`);
+  root.style.setProperty("--card", `color-mix(in oklab, var(--card-base) 92%, ${value} 8%)`);
+  root.style.setProperty("--input", `color-mix(in oklab, var(--background) 82%, ${value} 18%)`);
   root.style.setProperty("--primary-foreground", foreground);
   root.style.setProperty("--sidebar-primary-foreground", foreground);
 }
