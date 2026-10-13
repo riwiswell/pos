@@ -37,9 +37,13 @@ function createSupabaseClient() {
     import.meta.env['VITE_SUPABASE_URL'] ||
     runtimeProcessEnv?.['SUPABASE_URL'] ||
     'https://eutrhjvdyrakrxmjemut.supabase.co';
+  // The publishable key is intentionally public. Keep a last-resort
+  // client fallback so all modules can still connect when a deployment misses
+  // the Vite build variable; access remains protected by Supabase Auth + RLS.
   const SUPABASE_PUBLISHABLE_KEY =
     import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
-    runtimeProcessEnv?.['SUPABASE_PUBLISHABLE_KEY'];
+    runtimeProcessEnv?.['SUPABASE_PUBLISHABLE_KEY'] ||
+    'sb_publishable_BUpXOvkLY8cJFamCN5rFqQ_hza14pTZ';
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
