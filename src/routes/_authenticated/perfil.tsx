@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, ChevronUp, Download, GripVertical, Loader2, RefreshCw, RotateCcw, Save, Upload } from "lucide-react";
+import { Download, Loader2, RefreshCw, Save, Upload } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { HelpTip } from "@/components/common/HelpTip";
 import { ErrorState } from "@/components/common/States";
-import { NAV_ITEMS } from "@/components/shell/nav-items";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useProfileMediaUrl, useProfileMutations } from "@/hooks/use-profile";
@@ -22,8 +21,6 @@ import { DASHBOARD_WIDGETS, DEFAULT_DASHBOARD_WIDGETS, normalizeDashboardWidgets
 
 export const Route = createFileRoute("/_authenticated/perfil")({ component: ProfilePage });
 
-const SIDEBAR_ITEMS = NAV_ITEMS.filter((x) => x.key !== "perfil");
-const DEFAULT_ORDER = SIDEBAR_ITEMS.map((x) => x.key);
 const FEATURE_LABELS = [
   ["spirituality.fasting", "Espiritualidad → Ayuno"],
   ["health.cycle", "Salud → Registro menstrual"],
@@ -40,7 +37,6 @@ const BACKUP_TABLES = [
   "planner_categories", "planner_items", "daily_focus",
   "finance_accounts", "finance_categories", "finance_settings", "finance_transactions",
   "finance_budgets", "finance_debts", "finance_savings_goals", "finance_investments",
-  "finance_external_sources", "finance_external_snapshots",
   "journal_entries",
   "shopping_lists", "shopping_items",
   "alarms", "health_metrics", "medications", "medication_doses",
@@ -59,13 +55,11 @@ function ProfilePage() {
   const { save, uploadMedia } = useProfileMutations();
   const help = useHelpEnabled();
   const setHelp = useSetHelpEnabled();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, accentColor, setAccentColor, accentOptions } = useTheme();
 
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [background, setBackground] = useState<string | null>(null);
-  const [order, setOrder] = useState<string[]>(DEFAULT_ORDER);
-  const [hidden, setHidden] = useState<string[]>([]);
   const [features, setFeatures] = useState<Record<string, boolean>>({});
   const [widgets, setWidgets] = useState<string[]>([...DEFAULT_DASHBOARD_WIDGETS]);
   const [relationshipNotifications, setRelationshipNotifications] = useState<boolean>(true);
@@ -83,8 +77,6 @@ function ProfilePage() {
     setName(p.display_name || p.full_name || "");
     setAvatar(p.avatar_url);
     setBackground(p.background_url);
-    setOrder(Array.isArray(p.module_order) && p.module_order.length ? [...new Set(p.module_order.filter((key) => SIDEBAR_ITEMS.some((item) => item.key === key)) as string[]), ...DEFAULT_ORDER.filter((key) => !p.module_order.includes(key))] : DEFAULT_ORDER);
-    setHidden(Array.isArray(p.hidden_modules) ? p.hidden_modules.filter((key) => key !== "perfil") : []);
     setFeatures(p.hidden_features || {});
     setWidgets(normalizeDashboardWidgets(p.dashboard_widgets));
     setRelationshipNotifications(p.notification_preferences?.relationships !== false);
@@ -107,16 +99,6 @@ function ProfilePage() {
     }
   };
 
-  const move = (index: number, delta: number) => {
-    setOrder((current) => {
-      const next = [...current];
-      const target = index + delta;
-      if (target < 0 || target >= next.length) return current;
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
-  };
-
   const saveAll = async () => {
     const previousRelationshipNotifications = p?.notification_preferences?.relationships !== false;
     await save.mutateAsync({
@@ -124,8 +106,6 @@ function ProfilePage() {
       full_name: name.trim() || null,
       avatar_url: avatar,
       background_url: background,
-      module_order: order,
-      hidden_modules: hidden,
       hidden_features: features,
       dashboard_widgets: widgets,
       notification_preferences: {
@@ -248,7 +228,7 @@ function ProfilePage() {
           <HelpTip helpKey="profile" />
         </div>
         <p className="text-sm text-muted-foreground">
-          Identidad, apariencia, orden del sistema, funciones, notificaciones, privacidad y respaldo.
+          Identidad, apariencia, preferencias, notificaciones, privacidad y respaldo.
         </p>
       </header>
 
@@ -277,32 +257,19 @@ function ProfilePage() {
           <input ref={backgroundInput} type="file" accept="image/*" hidden onChange={(e) => { void pick(e.target.files?.[0], "background"); e.currentTarget.value = ""; }} />
           {backgroundUrl && <span className="self-center text-xs text-muted-foreground">Fondo cargado</span>}
         </div>
+        <div className="space-y-2">
+          <Label>Color de la aplicación</Label>
+          <div className="flex flex-wrap items-center gap-2">
+            {accentOptions.map((option) => (
+              <button key={option.value} type="button" title={option.label} aria-label={"Usar color "+option.label} aria-pressed={accentColor===option.value} onClick={() => setAccentColor(option.value)} className={cn("h-9 w-9 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",accentColor===option.value?"scale-110 border-foreground ring-2 ring-primary ring-offset-2 ring-offset-background":"border-border hover:scale-105")} style={{backgroundColor:option.value}} />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">El color elegido se guarda en tu perfil y se mantiene al volver a entrar.</p>
+        </div>
         <div className="flex items-center justify-between rounded-xl border p-3">
           <span className="flex items-center gap-1 text-sm font-medium">Ayudas contextuales <HelpTip helpKey="settings.help" /></span>
           <Switch checked={help} onCheckedChange={(value) => setHelp.mutate(value)} />
         </div>
-      </section>
-
-      <section className="glass space-y-3 rounded-2xl p-4">
-        <h2 className="font-semibold">Sidebar: orden y visibilidad</h2>
-        <p className="text-xs text-muted-foreground">La personalización se guarda por usuario.</p>
-        {order.map((key, index) => {
-          const item = SIDEBAR_ITEMS.find((x) => x.key === key);
-          if (!item) return null;
-          const visible = !hidden.includes(key);
-          return (
-            <div key={key} className={cn("flex items-center gap-2 rounded-xl border p-2", !visible && "opacity-50")}>
-              <GripVertical className="h-4 w-4 text-muted-foreground" />
-              <span className="flex-1 text-sm">{item.label}</span>
-              <Switch checked={visible} onCheckedChange={(value) => setHidden((current) => value ? current.filter((x) => x !== key) : [...current, key])} />
-              <Button size="icon" variant="ghost" disabled={index === 0} onClick={() => move(index, -1)}><ChevronUp className="h-4 w-4" /></Button>
-              <Button size="icon" variant="ghost" disabled={index === order.length - 1} onClick={() => move(index, 1)}><ChevronDown className="h-4 w-4" /></Button>
-            </div>
-          );
-        })}
-        <Button variant="outline" onClick={() => { setOrder(DEFAULT_ORDER); setHidden([]); }}>
-          <RotateCcw className="mr-1 h-4 w-4" /> Restablecer
-        </Button>
       </section>
 
       <section className="glass space-y-3 rounded-2xl p-4">
