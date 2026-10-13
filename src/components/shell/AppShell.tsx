@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ArrowDown, ArrowUp, Eye, EyeOff, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,7 +10,10 @@ import { HelpTip } from "@/components/common/HelpTip";
 import { PersonalAssistant } from "@/components/assistant/PersonalAssistant";
 import { NAV_ITEMS } from "@/components/shell/nav-items";
 import { useAuth } from "@/hooks/use-auth";
-import { useProfile, useProfileMediaUrl } from "@/hooks/use-profile";
+import { profileKeys, useProfile, useProfileMediaUrl } from "@/hooks/use-profile";
+import { profileService } from "@/services/profile.service";
+import { useAppointmentReminders } from "@/hooks/use-appointment-reminders";
+import { toast } from "sonner";
 import { useTheme } from "@/hooks/use-theme";
 import { useMedicationReminders } from "@/hooks/use-medication-reminders";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +32,10 @@ function useCollapsed() {
 
   return {
     collapsed,
+    expand: () => {
+      setCollapsed(false);
+      localStorage.setItem(STORAGE_KEY, "0");
+    },
     toggle: () =>
       setCollapsed((value) => {
         const next = !value;
@@ -38,12 +45,11 @@ function useCollapsed() {
   };
 }
 
-function orderedItems(order: string[] | undefined, hidden: string[] | undefined) {
-  const rank = new Map((order?.length ? order : NAV_ITEMS.map((item) => item.key)).map((key, i) => [key, i]));
-  return NAV_ITEMS
-    // Profile is already a permanent destination in the shell footer/header.
-    // Showing it again in the module list creates duplicate navigation.
-    .filter((item) => item.key !== "perfil" && !(hidden ?? []).includes(item.key))
+function orderedAllItems(order: string[] | undefined) {
+  const keys = [...(order ?? []), ...NAV_ITEMS.map((item) => item.key)];
+  const rank = new Map<string, number>();
+  keys.forEach((key, index) => { if (!rank.has(key)) rank.set(key, index); });
+  return NAV_ITEMS.filter((item) => item.key !== "perfil")
     .sort((a, b) => (rank.get(a.key) ?? 999) - (rank.get(b.key) ?? 999));
 }
 
@@ -96,18 +102,56 @@ function useSignOut() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { collapsed, toggle } = useCollapsed();
+  const { collapsed, toggle, expand } = useCollapsed();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [menuEditing, setMenuEditing] = useState(false);
+  const [menuSaving, setMenuSaving] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const signOut = useSignOut();
   const { data: profile } = useProfile();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   useTheme();
   useMedicationReminders();
+  useAppointmentReminders();
 
-  const items = useMemo(
-    () => orderedItems(profile?.module_order, profile?.hidden_modules),
-    [profile?.module_order, profile?.hidden_modules],
-  );
+  const allItems = useMemo(() => orderedAllItems(profile?.module_order), [profile?.module_order]);
+  const hiddenModules = profile?.hidden_modules ?? [];
+  const items = useMemo(() => allItems.filter((item) => !hiddenModules.includes(item.key)), [allItems, profile?.hidden_modules]);
+  const menuItems = menuEditing ? allItems : items;
+
+  const persistMenu = async (order: string[], hidden: string[]) => {
+    if (!user?.id || menuSaving) return;
+    setMenuSaving(true);
+    try {
+      const saved = await profileService.upsert(user.id, { module_order: order, hidden_modules: hidden });
+      queryClient.setQueryData(profileKeys.profile(user.id), saved);
+      toast.success("Menú guardado", { duration: 1300 });
+    } catch (error) {
+      toast.error(error instanceof Error ? "No se pudo guardar el menú: " + error.message : "No se pudo guardar el menú.");
+    } finally {
+      setMenuSaving(false);
+    }
+  };
+
+  const moveMenuItem = (key: string, delta: number) => {
+    const order = allItems.map((item) => item.key);
+    const index = order.indexOf(key);
+    const target = index + delta;
+    if (index < 0 || target < 0 || target >= order.length) return;
+    [order[index], order[target]] = [order[target], order[index]];
+    void persistMenu(order, hiddenModules);
+  };
+
+  const toggleMenuItem = (key: string, visible: boolean) => {
+    const hidden = visible ? hiddenModules.filter((item) => item !== key) : Array.from(new Set([...hiddenModules, key]));
+    void persistMenu(allItems.map((item) => item.key), hidden);
+  };
+
+  const beginMenuEdit = () => {
+    if (collapsed) expand();
+    setMenuEditing((current) => !current);
+  };
   const mobilePrimaryItems = items.filter((item) => MOBILE_PRIMARY_KEYS.has(item.key));
   const mobileMoreItems = items.filter((item) => !MOBILE_PRIMARY_KEYS.has(item.key));
   const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
@@ -132,7 +176,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border bg-sidebar md:flex",
-          collapsed ? "w-[72px]" : "w-64",
+          collapsed ? "w-[80px]" : "w-[272px]",
         )}
       >
         <div
@@ -156,25 +200,39 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-          {items.map((item) => (
-            <div key={item.key} className={cn("flex items-center gap-1", collapsed && "justify-center")}>
-              <Link
-                to={item.to}
-                search={(p: Record<string, unknown>) => p}
-                title={item.label}
-                className={cn(
-                  "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent",
+        <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3">
+          <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Editar orden y visibilidad del menú">
+            <SlidersHorizontal className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>{menuEditing ? "Terminar de editar" : "Editar menú"}</span>}
+          </Button>
+          {menuEditing && !collapsed && <p className="px-2 pb-1 text-xs text-muted-foreground">Los cambios se guardan al instante. Usa las flechas para mover y el ojo para mostrar u ocultar.</p>}
+          {menuItems.map((item, index) => {
+            const visible = !hiddenModules.includes(item.key);
+            if (menuEditing) return (
+              <div key={item.key} className={cn("flex items-center gap-1 rounded-xl border border-sidebar-border px-1.5 py-1", !visible && "opacity-55")}>
+                <item.icon className="h-5 w-5 shrink-0 text-sidebar-foreground" />
+                {!collapsed && <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-sidebar-foreground">{item.label}</span>}
+                <div className="flex shrink-0 items-center gap-0">
+                  <Button type="button" size="icon" variant="ghost" className="h-7 w-7" disabled={menuSaving || index===0} title={"Subir "+item.label} aria-label={"Subir "+item.label} onClick={() => moveMenuItem(item.key,-1)}><ArrowUp className="h-3.5 w-3.5"/></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-7 w-7" disabled={menuSaving || index===menuItems.length-1} title={"Bajar "+item.label} aria-label={"Bajar "+item.label} onClick={() => moveMenuItem(item.key,1)}><ArrowDown className="h-3.5 w-3.5"/></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-7 w-7" disabled={menuSaving} title={(visible ? "Ocultar " : "Mostrar ")+item.label} aria-label={(visible ? "Ocultar " : "Mostrar ")+item.label} onClick={() => toggleMenuItem(item.key,!visible)}>{visible?<Eye className="h-3.5 w-3.5"/>:<EyeOff className="h-3.5 w-3.5"/>}</Button>
+                </div>
+              </div>
+            );
+            return (
+              <div key={item.key} className="flex items-center gap-1">
+                <Link to={item.to} search={(p: Record<string, unknown>) => p} title={item.label} className={cn(
+                  "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-sidebar-accent",
                   collapsed && "flex-none justify-center px-0",
                   pathname.startsWith(item.to) && "bg-sidebar-accent",
-                )}
-              >
-                <item.icon className="h-5 w-5 shrink-0" />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-              </Link>
-              {!collapsed && <HelpTip helpKey={item.helpKey} />}
-            </div>
-          ))}
+                )}>
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                </Link>
+                {!collapsed && <HelpTip helpKey={item.helpKey} />}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
@@ -206,8 +264,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         className={cn(
           "w-full px-4 pb-28 pt-4 md:pb-10 md:pt-8 md:px-8",
           collapsed
-            ? "md:ml-[72px] md:w-[calc(100%_-_72px)]"
-            : "md:ml-64 md:w-[calc(100%_-_16rem)]",
+            ? "md:ml-[80px] md:w-[calc(100%_-_80px)]"
+            : "md:ml-[272px] md:w-[calc(100%_-_272px)]",
         )}
       >
         <div className="mx-auto w-full max-w-6xl">{children}</div>
