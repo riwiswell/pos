@@ -260,10 +260,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                       dragState.current = null;
                       setDraggingKey(null);
                       setDragTarget(null);
-                      if (!current.active || !current.targetKey) return;
+                      const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-sidebar-item-key]");
+                      const hitKey = hit?.dataset.sidebarItemKey;
+                      const targetKey = hitKey ?? current.targetKey;
+                      if (!current.active || !targetKey) return;
                       const next = [...current.order];
                       const from = next.indexOf(current.key);
-                      const to = next.indexOf(current.targetKey);
+                      const to = next.indexOf(targetKey);
                       if (from < 0 || to < 0 || from === to) return;
                       next.splice(from, 1);
                       next.splice(to, 0, current.key);
