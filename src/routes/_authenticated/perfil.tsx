@@ -328,18 +328,6 @@ function ProfilePage() {
       </section>
 
       <section className="glass space-y-3 rounded-2xl p-4">
-        <h2 className="font-semibold">WíswellArt → Finanzas</h2>
-        <p className="text-sm text-muted-foreground">
-          La integración recibe exactamente dos métricas por período: ingresos y egresos. Se guardan como snapshot externo y no contaminan el libro mayor personal.
-        </p>
-        <div className="rounded-xl border p-3 font-mono text-xs break-all">
-          POST /api/integrations/wiswellart<br />
-          x-pos-integration-secret<br />
-          {"{period_start, period_end, income, expense}"}
-        </div>
-      </section>
-
-      <section className="glass space-y-3 rounded-2xl p-4">
         <h2 className="font-semibold">Exportar / importar / backup</h2>
         <p className="text-xs text-muted-foreground">
           El JSON combina registros por ID y no borra datos que falten en el archivo; no es una restauración transaccional. Las fotos y otros archivos de Storage, así como las suscripciones push del navegador, no se copian al JSON. Conserva la misma cuenta de usuario y revisa cada resultado antes de usar la importación como recuperación.
