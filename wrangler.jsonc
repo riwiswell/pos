@@ -6,8 +6,10 @@
   "main":"src/server.ts",
   "vars":{
     "SUPABASE_URL":"https://eutrhjvdyrakrxmjemut.supabase.co",
-    "SUPABASE_PROJECT_ID":"eutrhjvdyrakrxmjemut"
+    "SUPABASE_PROJECT_ID":"eutrhjvdyrakrxmjemut",
+    "SUPABASE_PUBLISHABLE_KEY":"sb_publishable_BUpXOvkLY8cJFamCN5rFqQ_hza14pTZ"
   },
+  "ai":{"binding":"AI"},
   "triggers":{"crons":["* * * * *"]},
   "observability":{"enabled":true}
 }

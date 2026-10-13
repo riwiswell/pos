@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { HelpTip } from "@/components/common/HelpTip";
+import { PersonalAssistant } from "@/components/assistant/PersonalAssistant";
 import { NAV_ITEMS } from "@/components/shell/nav-items";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useProfileMediaUrl } from "@/hooks/use-profile";
@@ -274,6 +275,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </SheetContent>
       </Sheet>
+      <PersonalAssistant />
     </div>
   );
 }
