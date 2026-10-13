@@ -79,7 +79,7 @@ export function useMedicationMutations() {
     mutationFn: (id: string) => medicationsService.discontinue(id),
     onSuccess: () => {
       refresh();
-      toast.success("Medicamento eliminado");
+      toast.success("Medicamento suspendido. El historial se conserva.");
     },
     onError,
   });

@@ -24,7 +24,7 @@ interface Props {
 function focusLabel(focus: DailyFocus | null, habits: Habit[], plannerItems: PlannerItem[]) {
   if (!focus) return null;
   if (focus.source === "free") return focus.text?.trim() || "Enfoque libre";
-  if (focus.source === "habit") return habits.find((habit) => habit.id === focus.habit_id)?.name ?? focus.text ?? "Hábito";
+  if (focus.source === "habit") return habits.find((habit) => habit.id === focus.habit_id)?.name ?? focus.text ?? "Registro diario";
   const item = plannerItems.find((entry) => entry.id === focus.planner_item_id);
   return item ? (item.start_time ? `${shortTime(item.start_time)} · ${item.title}` : item.title) : focus.text ?? "Actividad del planeador";
 }
@@ -39,10 +39,7 @@ export function DailyFocusPicker({ date }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [text, setText] = useState("");
 
-  const habits = useMemo(
-    () => (habitsQuery.data ?? []).filter((item) => item.kind === "habit"),
-    [habitsQuery.data],
-  );
+  const habits = useMemo(() => habitsQuery.data ?? [], [habitsQuery.data]);
   const plannerItems = useMemo(
     () => (plannerQuery.data ?? []).filter((item) => item.status !== "done"),
     [plannerQuery.data],
@@ -107,7 +104,7 @@ export function DailyFocusPicker({ date }: Props) {
           <p className="mt-3 text-base font-medium">{currentLabel}</p>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
-            Elige una sola prioridad para hoy. Puede ser un hábito, algo del Planeador o una frase libre.
+            Elige una sola prioridad para esta fecha. Puede ser cualquier elemento de tu registro unificado (hábito o actividad), algo del Planeador o una frase libre.
           </p>
         )}
       </section>
@@ -118,9 +115,9 @@ export function DailyFocusPicker({ date }: Props) {
             <DialogTitle>Enfoque del {date}</DialogTitle>
           </DialogHeader>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {([
-              ["habit", "Hábito", Target],
+              ["habit", "Hábitos y actividades", Target],
               ["planner", "Planeador", ListTodo],
               ["free", "Libre", Crosshair],
             ] as const).map(([key, label, Icon]) => (
@@ -148,7 +145,7 @@ export function DailyFocusPicker({ date }: Props) {
               ) : habitsQuery.isLoading ? (
                 <p className="p-3 text-sm text-muted-foreground">Cargando hábitos…</p>
               ) : habits.length === 0 ? (
-                <p className="p-3 text-sm text-muted-foreground">No tienes hábitos disponibles.</p>
+                <p className="p-3 text-sm text-muted-foreground">No tienes hábitos ni actividades disponibles.</p>
               ) : (
                 habits.map((habit) => (
                   <button
@@ -160,7 +157,7 @@ export function DailyFocusPicker({ date }: Props) {
                       selectedId === habit.id ? "bg-primary/10 text-foreground" : "hover:bg-accent",
                     )}
                   >
-                    <span>{habit.name}</span>
+                    <span className="min-w-0 flex-1">{habit.name}{habit.kind === "activity" && <span className="ml-2 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">Actividad</span>}</span>
                     {selectedId === habit.id && <Check className="h-4 w-4 text-primary" />}
                   </button>
                 ))

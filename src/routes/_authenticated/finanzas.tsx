@@ -120,6 +120,9 @@ function CategoryExplorer({
     return categoryRows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   }, [categories, transactions, type]);
 
+  const [categoryQuery, setCategoryQuery] = useState("");
+  const normalizedCategoryQuery = categoryQuery.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es").trim();
+  const visibleRows = normalizedCategoryQuery ? rows.filter((row) => row.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es").includes(normalizedCategoryQuery)) : rows;
   const selected = rows.find((row) => row.id === selectedId);
   const detailItems = selectedId
     ? transactions.filter(
@@ -205,8 +208,10 @@ function CategoryExplorer({
           Toca una categoría para entrar y ver solamente sus registros.
         </p>
       </div>
+      <div className="relative max-w-lg"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"/><Input value={categoryQuery} onChange={(event) => setCategoryQuery(event.target.value)} placeholder="Buscar categoría, por ejemplo Mercado…" aria-label="Buscar categoría" className="pl-8"/></div>
+      {visibleRows.length === 0 && <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No hay categorías que coincidan con «{categoryQuery}».</p>}
       <div className="grid gap-3 sm:grid-cols-2">
-        {rows.map((row) => {
+        {visibleRows.map((row) => {
           const Icon = getIcon(row.icon);
           return (
             <button
