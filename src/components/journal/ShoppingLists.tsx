@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { ListChecks, Plus, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,16 +39,17 @@ export function ShoppingLists({ query = "" }: { query?: string }) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <header className="space-y-1"><h2 className="text-lg font-semibold">Tus listas</h2><p className="text-sm text-muted-foreground">Cada lista puede tener el nombre y los elementos que necesites: mercado, materiales, viaje, regalos o pendientes.</p></header>
       <div className="flex items-center gap-2">
         <Input
           value={newList}
           onChange={(e) => setNewList(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addList()}
-          placeholder="Nueva lista (ej. Mercado)"
+          placeholder="Nombre de la lista (ej. Mercado, materiales, viaje…)"
         />
         <Button onClick={addList} disabled={!newList.trim()}>
-          <Plus className="mr-1 h-4 w-4" /> Crear
+          <Plus className="mr-1 h-4 w-4" /> Crear lista
         </Button>
         <HelpTip helpKey="life.shopping" text="Las listas de compras son solo para marcar productos. No crean tareas en el Planeador." />
       </div>
@@ -60,7 +61,7 @@ export function ShoppingLists({ query = "" }: { query?: string }) {
       ) : lists.isLoading || items.isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>
       ) : allLists.length === 0 ? (
-        <p className="glass rounded-2xl p-4 text-sm text-muted-foreground">Aún no tienes listas de compras.</p>
+        <p className="glass rounded-2xl p-4 text-sm text-muted-foreground">Aún no tienes listas. Crea una para comenzar.</p>
       ) : filteredLists.length === 0 ? (
         <p className="glass rounded-2xl p-4 text-sm text-muted-foreground" role="status">
           No hay listas ni productos que coincidan con «{query.trim()}».
@@ -120,7 +121,7 @@ function ListCard({
   return (
     <section className="glass rounded-2xl p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold">🛒 {list.name}</h3>
+        <h3 className="flex min-w-0 items-center gap-2 font-semibold"><ListChecks className="h-4 w-4 shrink-0 text-primary"/><span className="break-words">{list.name}</span></h3>
         <div className="flex items-center gap-1">
           <span className="text-xs text-muted-foreground">{isFiltered ? items.length + " encontrados" : done + "/" + totalItems}</span>
           <Button size="icon" variant="ghost" onClick={onDelete} aria-label="Eliminar lista">
