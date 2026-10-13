@@ -258,13 +258,13 @@ function ProfilePage() {
           {backgroundUrl && <span className="self-center text-xs text-muted-foreground">Fondo cargado</span>}
         </div>
         <div className="space-y-2">
-          <Label>Color de la aplicación</Label>
+          <Label>Color de la pantalla</Label>
           <div className="flex flex-wrap items-center gap-2">
             {accentOptions.map((option) => (
               <button key={option.value} type="button" title={option.label} aria-label={"Usar color "+option.label} aria-pressed={accentColor===option.value} onClick={() => setAccentColor(option.value)} className={cn("h-9 w-9 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",accentColor===option.value?"scale-110 border-foreground ring-2 ring-primary ring-offset-2 ring-offset-background":"border-border hover:scale-105")} style={{backgroundColor:option.value}} />
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">El color elegido se guarda en tu perfil y se mantiene al volver a entrar.</p>
+          <p className="text-xs text-muted-foreground">Tiñe el sidebar y, de forma suave, las tarjetas y superficies donde registras datos. También cambia los botones y los indicadores de selección. Se guarda en tu perfil.</p>
         </div>
         <div className="flex items-center justify-between rounded-xl border p-3">
           <span className="flex items-center gap-1 text-sm font-medium">Ayudas contextuales <HelpTip helpKey="settings.help" /></span>
