@@ -117,7 +117,8 @@ function CategoryExplorer({
       });
     }
 
-    return categoryRows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+    // Do not clutter the explorer with categories that have no movements in this period.
+    return categoryRows.filter((row) => row.count > 0).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   }, [categories, transactions, type]);
 
   const [categoryQuery, setCategoryQuery] = useState("");
