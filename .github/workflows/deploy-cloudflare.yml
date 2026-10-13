@@ -1,18 +1,12 @@
-name: Deploy Personal OS to Cloudflare Workers
+name: Verify Personal OS build (production deploy handled by Cloudflare Builds)
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      confirm_production:
-        description: "Type DEPLOY to confirm a production deployment"
-        required: true
-        type: string
 
 jobs:
-  deploy:
-    if: ${{ github.event_name == 'push' || inputs.confirm_production == 'DEPLOY' }}
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,9 +21,3 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Verify build
         run: bun run build
-      - name: Deploy Worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
