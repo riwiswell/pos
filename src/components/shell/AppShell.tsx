@@ -106,8 +106,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [menuEditing, setMenuEditing] = useState(false);
   const [menuSaving, setMenuSaving] = useState(false);
-  const [dragOrder, setDragOrder] = useState<string[] | null>(null);
-  const dragState = useRef<{ key: string; pointerId: number; startY: number; active: boolean; changed: boolean; order: string[] } | null>(null);
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const [dragTarget, setDragTarget] = useState<string | null>(null);
+  const dragState = useRef<{ key: string; pointerId: number; startY: number; active: boolean; targetKey: string | null; order: string[] } | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const signOut = useSignOut();
   const { data: profile } = useProfile();
@@ -118,11 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useAppointmentReminders();
 
   const allItems = useMemo(() => orderedAllItems(profile?.module_order), [profile?.module_order]);
-  const orderedItems = useMemo(() => {
-    const byKey = new Map(allItems.map((item) => [item.key, item]));
-    const order = dragOrder ?? allItems.map((item) => item.key);
-    return order.map((key) => byKey.get(key)).filter((item): item is (typeof allItems)[number] => Boolean(item));
-  }, [allItems, dragOrder]);
+  const orderedItems = allItems;
   const hiddenModules = profile?.hidden_modules ?? [];
   const items = useMemo(() => orderedItems.filter((item) => !hiddenModules.includes(item.key)), [orderedItems, profile?.hidden_modules]);
   const menuItems = menuEditing ? orderedItems : items;
@@ -133,7 +130,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     try {
       const saved = await profileService.upsert(user.id, { module_order: order, hidden_modules: hidden });
       queryClient.setQueryData(profileKeys.profile(user.id), saved);
-      setDragOrder(null);
       toast.success("Menú guardado", { duration: 1300 });
     } catch (error) {
       toast.error(error instanceof Error ? "No se pudo guardar el menú: " + error.message : "No se pudo guardar el menú.");
@@ -222,7 +218,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 data-sidebar-item-key={item.key}
                 className={cn(
                   "flex items-center gap-1 rounded-xl transition-colors",
-                  dragState.current?.key === item.key && dragState.current.active && "bg-sidebar-accent/50 ring-1 ring-sidebar-primary/50",
+                  draggingKey === item.key && "opacity-45",
+                  dragTarget === item.key && "bg-sidebar-accent ring-2 ring-sidebar-primary/60",
                 )}
               >
                 {!collapsed && (
@@ -239,7 +236,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         pointerId: event.pointerId,
                         startY: event.clientY,
                         active: false,
-                        changed: false,
+                        targetKey: null,
                         order: orderedItems.map((entry) => entry.key),
                       };
                     }}
@@ -247,43 +244,37 @@ export function AppShell({ children }: { children: ReactNode }) {
                       const current = dragState.current;
                       if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
                       if (!current.active && Math.abs(event.clientY - current.startY) < 8) return;
-                      current.active = true;
+                      if (!current.active) {
+                        current.active = true;
+                        setDraggingKey(current.key);
+                      }
                       event.preventDefault();
                       const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-sidebar-item-key]");
                       const targetKey = target?.dataset.sidebarItemKey;
-                      if (!targetKey || targetKey === current.key) {
-                        setDragOrder([...current.order]);
-                        return;
-                      }
-                      const next = [...current.order];
-                      const from = next.indexOf(current.key);
-                      const to = next.indexOf(targetKey);
-                      if (from < 0 || to < 0 || from === to) {
-                        setDragOrder([...current.order]);
-                        return;
-                      }
-                      next.splice(from, 1);
-                      next.splice(to, 0, current.key);
-                      current.order = next;
-                      current.changed = true;
-                      setDragOrder(next);
+                      current.targetKey = targetKey && targetKey !== current.key ? targetKey : null;
+                      setDragTarget(current.targetKey);
                     }}
                     onPointerUp={(event: PointerEvent<HTMLButtonElement>) => {
                       const current = dragState.current;
                       if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
                       dragState.current = null;
-                      if (current.active && current.changed) {
-                        setDragOrder(current.order);
-                        void persistMenu(current.order, hiddenModules);
-                      } else {
-                        setDragOrder(null);
-                      }
+                      setDraggingKey(null);
+                      setDragTarget(null);
+                      if (!current.active || !current.targetKey) return;
+                      const next = [...current.order];
+                      const from = next.indexOf(current.key);
+                      const to = next.indexOf(current.targetKey);
+                      if (from < 0 || to < 0 || from === to) return;
+                      next.splice(from, 1);
+                      next.splice(to, 0, current.key);
+                      void persistMenu(next, hiddenModules);
                     }}
                     onPointerCancel={(event: PointerEvent<HTMLButtonElement>) => {
                       const current = dragState.current;
                       if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
                       dragState.current = null;
-                      setDragOrder(null);
+                      setDraggingKey(null);
+                      setDragTarget(null);
                     }}
                   >
                     <GripVertical className="h-4 w-4" />
