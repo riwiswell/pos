@@ -155,6 +155,20 @@ export const habitsService = {
       .select()
       .single();
     if (error) throw error;
+    const { error: linkError } = await (supabase as any).from("life_links").upsert(
+      {
+        user_id,
+        from_type: "habit_log",
+        from_id: data.id,
+        to_type: "habit",
+        to_id: habitId,
+        relation: "tracks_habit",
+      },
+      { onConflict: "user_id,from_type,from_id,to_type,to_id,relation", ignoreDuplicates: true },
+    );
+    if (linkError) {
+      console.warn("[life-graph] Habit log saved but its connection could not be created:", linkError.message);
+    }
     return data as HabitLog;
   },
 

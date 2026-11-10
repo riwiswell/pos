@@ -2,9 +2,9 @@ name: verify
 
 on:
   push:
-    branches: [main]
+    branches: [main, pos/01-perla-claro, pos/02-inicio-visual]
   pull_request:
-    branches: [main]
+    branches: [main, pos/01-perla-claro]
   workflow_dispatch:
 
 jobs:

@@ -18,9 +18,23 @@ export function useJournalEntries() {
   return useQuery({ queryKey: journalKeys.entries, queryFn: journalService.listEntries, staleTime: 15_000 });
 }
 
+export function useJournalEntriesByDate(date: string) {
+  return useQuery({
+    queryKey: [...journalKeys.entries, date],
+    queryFn: () => journalService.listEntriesByDate(date),
+    staleTime: 15_000,
+  });
+}
+
 export function useJournalMutations() {
   const qc = useQueryClient();
-  const invalidate = () => qc.invalidateQueries({ queryKey: journalKeys.entries });
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: journalKeys.entries });
+    void qc.invalidateQueries({ queryKey: ["lg", "life_links"] });
+    for (const key of ["gamification_profiles", "gamification_xp_events", "gamification_achievements", "gamification_challenges"]) {
+      void qc.invalidateQueries({ queryKey: ["lg", key] });
+    }
+  };
   return {
     create: useMutation({
       mutationFn: (input: JournalEntryInput) => journalService.createEntry(input),

@@ -191,6 +191,115 @@ async function handleAssistantChat(request:Request,env:Env):Promise<Response>{
  }
 }
 
+
+type HydrationSchedule = {
+ enabled: boolean;
+ start_time: string;
+ end_time: string;
+ interval_minutes: number;
+ amount_ml: number;
+};
+const DEFAULT_HYDRATION_SCHEDULE: HydrationSchedule = {
+ enabled: true, start_time: "08:00", end_time: "21:30", interval_minutes: 90, amount_ml: 250
+};
+function validClockTime(value:unknown): value is string {
+ return typeof value === "string" && /^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(value);
+}
+function clockMinutes(value:string) {
+ const [hours,minutes]=value.split(":").map(Number);
+ return hours*60+minutes;
+}
+function bogotaDate(now:Date) {
+ const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(now);
+ const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));
+ return `${values.year}-${values.month}-${values.day}`;
+}
+function addIsoDays(iso:string,days:number) {
+ const [year,month,day]=iso.split("-").map(Number);
+ const date=new Date(Date.UTC(year,month-1,day+days));
+ return [date.getUTCFullYear(),String(date.getUTCMonth()+1).padStart(2,"0"),String(date.getUTCDate()).padStart(2,"0")].join("-");
+}
+function normalizeHydrationSchedule(input:unknown, fallback:HydrationSchedule):HydrationSchedule {
+ const value=input&&typeof input==="object"?input as Record<string,unknown>:{};
+ const next:HydrationSchedule={
+  enabled:typeof value.enabled==="boolean"?value.enabled:fallback.enabled,
+  start_time:validClockTime(value.start_time)?value.start_time:fallback.start_time,
+  end_time:validClockTime(value.end_time)?value.end_time:fallback.end_time,
+  interval_minutes:typeof value.interval_minutes==="number"&&Number.isInteger(value.interval_minutes)?value.interval_minutes:fallback.interval_minutes,
+  amount_ml:typeof value.amount_ml==="number"&&Number.isInteger(value.amount_ml)?value.amount_ml:fallback.amount_ml
+ };
+ if(clockMinutes(next.end_time)<=clockMinutes(next.start_time))throw new Error("La hora final debe ser posterior a la hora inicial.");
+ if(![30,45,60,90,120,180].includes(next.interval_minutes))throw new Error("Selecciona un intervalo de hidratación válido.");
+ if(next.amount_ml<100||next.amount_ml>1000)throw new Error("La cantidad del recordatorio debe estar entre 100 y 1000 ml.");
+ return next;
+}
+async function syncHydrationJobs(env:Env,userId:string,input?:unknown) {
+ // The browser saves the schedule in the user's profile. Without server-only
+ // Supabase credentials we keep the in-app reminder path available and report
+ // that background push cannot be provisioned yet.
+ if(!env.SUPABASE_SERVICE_ROLE_KEY){
+  const schedule=normalizeHydrationSchedule(input&&typeof input==="object"&&(input as Record<string,unknown>).sync===true?DEFAULT_HYDRATION_SCHEDULE:input??DEFAULT_HYDRATION_SCHEDULE,DEFAULT_HYDRATION_SCHEDULE);
+  return {enabled:schedule.enabled,scheduled:0,pushRequired:schedule.enabled};
+ }
+ const profilePath="profiles?id=eq."+encodeURIComponent(userId)+"&select=id,notification_preferences&limit=1";
+ const profileRead=await supabaseFetch(env,profilePath);
+ if(!profileRead.ok)throw new Error("No se pudo leer la configuración de notificaciones.");
+ const profileRows=await profileRead.json() as any[];
+ const currentPreferences=profileRows[0]?.notification_preferences&&typeof profileRows[0].notification_preferences==="object"
+  ? profileRows[0].notification_preferences as Record<string,unknown>:{};
+ const currentSchedule=currentPreferences.hydration??DEFAULT_HYDRATION_SCHEDULE;
+ const isSync=input&&typeof input==="object"&&(input as Record<string,unknown>).sync===true;
+ const schedule=normalizeHydrationSchedule(isSync?currentSchedule:input??currentSchedule,DEFAULT_HYDRATION_SCHEDULE);
+ const nextPreferences={...currentPreferences,hydration:schedule};
+ const profileWrite=await supabaseFetch(env,profileRows.length
+  ?"profiles?id=eq."+encodeURIComponent(userId)
+  :"profiles",{method:profileRows.length?"PATCH":"POST",body:JSON.stringify(profileRows.length
+   ?{notification_preferences:nextPreferences}
+   :{id:userId,notification_preferences:nextPreferences})});
+ if(!profileWrite.ok)throw new Error("No se pudo guardar la configuración de hidratación.");
+ const jobFilter="notification_jobs?user_id=eq."+encodeURIComponent(userId)+"&source_type=eq.hydration&status=eq.pending";
+ if(!schedule.enabled){
+  const cancelled=await supabaseFetch(env,jobFilter,{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
+  if(!cancelled.ok)throw new Error("No se pudieron cancelar los recordatorios de hidratación.");
+  return {enabled:false,scheduled:0,pushRequired:false};
+ }
+ const subscriptionRead=await supabaseFetch(env,"push_subscriptions?user_id=eq."+encodeURIComponent(userId)+"&select=id&limit=1");
+ if(!subscriptionRead.ok)throw new Error("No se pudo comprobar la suscripción de notificaciones.");
+ const subscriptions=await subscriptionRead.json() as any[];
+ const preferenceWithPush={...nextPreferences,hydration:{...schedule,background_push:subscriptions.length>0}};
+ const pushPreferenceWrite=await supabaseFetch(env,"profiles?id=eq."+encodeURIComponent(userId),{method:"PATCH",body:JSON.stringify({notification_preferences:preferenceWithPush})});
+ if(!pushPreferenceWrite.ok)throw new Error("No se pudo guardar el estado de notificaciones.");
+ const cancelled=await supabaseFetch(env,jobFilter,{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
+ if(!cancelled.ok)throw new Error("No se pudieron actualizar los recordatorios anteriores.");
+ if(!subscriptions.length)return {enabled:true,scheduled:0,pushRequired:true};
+ const now=new Date();
+ const today=bogotaDate(now);
+ const start=clockMinutes(schedule.start_time);
+ const end=clockMinutes(schedule.end_time);
+ const jobs=[];
+ for(let minute=start;minute<=end;minute+=schedule.interval_minutes){
+  const time=String(Math.floor(minute/60)).padStart(2,"0")+":"+String(minute%60).padStart(2,"0");
+  let date=today;
+  let fireAt=new Date(`${date}T${time}:00-05:00`);
+  if(fireAt.getTime()<=now.getTime()){
+   date=addIsoDays(today,1);
+   fireAt=new Date(`${date}T${time}:00-05:00`);
+  }
+  jobs.push({
+   user_id:userId,source_type:"hydration",source_id:userId,fire_at:fireAt.toISOString(),
+   title:"💧 Pausa de hidratación",
+   body:`Tómate ${schedule.amount_ml} ml de agua y registra la cantidad en Salud.`,
+   payload:{kind:"hydration",repeat_rule:"daily",local_time:time,amount_ml:schedule.amount_ml,timezone:"America/Bogota"},
+   status:"pending"
+  });
+ }
+ if(jobs.length){
+  const created=await supabaseFetch(env,"notification_jobs",{method:"POST",body:JSON.stringify(jobs)});
+  if(!created.ok)throw new Error("No se pudieron programar los avisos de hidratación.");
+ }
+ return {enabled:true,scheduled:jobs.length,pushRequired:false};
+}
+
 async function handleApi(request:Request,env:Env):Promise<Response|null>{
  const url=new URL(request.url);
  if(url.pathname==="/api/assistant/chat")return handleAssistantChat(request,env);
@@ -210,9 +319,22 @@ async function handleApi(request:Request,env:Env):Promise<Response|null>{
     headers:{Prefer:"resolution=merge-duplicates,return=representation"},
     body:JSON.stringify({user_id:u.id,endpoint:body.endpoint,subscription:body.subscription,expiration_time:body.expiration_time??null})
   });
-  return new Response(await r.text(),{status:r.status,headers:{"content-type":"application/json"}});
+  const responseBody=await r.text();
+  if(r.ok){
+   try{await syncHydrationJobs(env,u.id,{sync:true})}
+   catch(error){console.error("[push] Could not sync hydration reminders after subscription",error)}
+  }
+  return new Response(responseBody,{status:r.status,headers:{"content-type":"application/json"}});
  }
 
+ if(url.pathname==="/api/hydration-preferences"&&request.method==="POST"){
+  const u=await userFromBearer(request,env);if(!u)return json({error:"Unauthorized"},401);
+  let body:unknown;
+  try{body=await request.json()}catch{return json({error:"Invalid JSON body"},400)}
+  try{return json(await syncHydrationJobs(env,u.id,body))}catch(error){
+   return json({error:error instanceof Error?error.message:"Could not sync hydration reminders"},500)
+  }
+ }
  if(url.pathname==="/api/notification-preferences"&&request.method==="POST"){
   const u=await userFromBearer(request,env);if(!u)return json({error:"Unauthorized"},401);
   let body:{relationships?:unknown};

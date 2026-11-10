@@ -197,3 +197,86 @@
 .theme-light .glass {
   background-color: color-mix(in oklab, var(--surface) 88%, transparent);
 }
+
+/*
+ * Inicio is a single-screen desktop dashboard. This rule deliberately targets
+ * only the Inicio route; all other modules keep their natural size and scroll.
+ */
+@media (min-width: 1280px) {
+  body:has(.inicio-dashboard) {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-shell-main:has(.inicio-dashboard) {
+    box-sizing: border-box;
+    height: 100dvh;
+    overflow: hidden;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .app-shell-main:has(.inicio-dashboard) > div {
+    height: 100%;
+    max-width: 1600px;
+    min-width: 0;
+  }
+
+  .inicio-dashboard {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 0.875rem;
+    overflow: hidden;
+  }
+
+  .inicio-dashboard-grid {
+    display: grid;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1.12fr) minmax(280px, 0.9fr) minmax(300px, 0.98fr);
+    align-items: start;
+    overflow: hidden;
+  }
+
+  .inicio-habits-column,
+  .inicio-planner-column,
+  .inicio-wellbeing-column {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .inicio-habits-card {
+    min-height: 0;
+  }
+
+  .inicio-wellbeing-column {
+    display: grid;
+    grid-template-rows: auto auto auto;
+    align-content: start;
+    gap: 0.75rem;
+  }
+
+  .inicio-wellbeing-column > section {
+    min-width: 0;
+  }
+
+  .inicio-hero {
+    min-height: 0;
+  }
+}
+
+/* A shorter laptop still gets readable cards; only spacing changes slightly. */
+@media (min-width: 1280px) and (max-height: 820px) {
+  .inicio-dashboard {
+    gap: 0.625rem;
+  }
+
+  .inicio-dashboard-grid {
+    gap: 0.625rem;
+  }
+
+  .inicio-wellbeing-column {
+    gap: 0.625rem;
+  }
+}

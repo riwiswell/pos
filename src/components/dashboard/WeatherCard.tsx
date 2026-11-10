@@ -79,7 +79,7 @@ function WeatherIcon({ code, isDay }: { code: number; isDay: boolean }) {
   return <Cloud className={className} />;
 }
 
-export function WeatherCard() {
+export function WeatherCard({ compact = false }: { compact?: boolean } = {}) {
   const [location, setLocation] = useState<LocationChoice>(readLocation);
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,7 +157,7 @@ export function WeatherCard() {
   const rainChance = weather?.daily?.precipitation_probability_max?.[0];
 
   return (
-    <section className="glass overflow-hidden rounded-2xl border border-border/70 p-4 sm:p-5">
+    <section className={`glass overflow-hidden rounded-2xl border border-border/70 ${compact ? "p-3" : "p-4 sm:p-5"}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><CloudSun className="h-5 w-5" /></span>
@@ -176,8 +176,8 @@ export function WeatherCard() {
             <option value="current" disabled>Mi ubicación</option>
             {CITIES.map((city) => <option key={city.id} value={city.id}>{city.label}</option>)}
           </select>
-          <Button type="button" size="sm" variant="outline" className="h-9 gap-1.5" onClick={useCurrentLocation} disabled={locating}>
-            <LocateFixed className="h-3.5 w-3.5" />{locating ? "Ubicando…" : "Dónde estoy"}
+          <Button type="button" size={compact ? "icon" : "sm"} variant="outline" className={compact ? "h-8 w-8" : "h-9 gap-1.5"} onClick={useCurrentLocation} disabled={locating} aria-label="Usar mi ubicación actual" title="Usar mi ubicación actual">
+            <LocateFixed className="h-3.5 w-3.5" />{!compact && (locating ? "Ubicando…" : "Dónde estoy")}
           </Button>
         </div>
       </div>
@@ -189,31 +189,47 @@ export function WeatherCard() {
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button type="button" size="sm" variant="ghost" className="mt-1 px-0" onClick={() => setLocation((value) => ({ ...value }))}>Intentar de nuevo</Button>
         </div>
-      ) : current ? (
-        <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-[1.25fr_1fr_1fr_1fr] sm:items-center">
-          <div className="col-span-2 flex items-center gap-4 sm:col-span-1">
+      ) : current ? (compact ? (
+          <div className="mt-3 flex items-center gap-3">
             <WeatherIcon code={current.weather_code} isDay={current.is_day === 1} />
-            <div>
-              <p className="text-4xl font-semibold tracking-tight tabular-nums">{Math.round(current.temperature_2m)}°</p>
-              <p className="text-sm text-muted-foreground">{weatherDescription(current.weather_code)}</p>
-              <p className="text-xs text-muted-foreground">Sensación {Math.round(current.apparent_temperature)}°</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-3xl font-semibold tracking-tight tabular-nums">{Math.round(current.temperature_2m)}°</p>
+              <p className="truncate text-xs text-muted-foreground">{weatherDescription(current.weather_code)} · sensación {Math.round(current.apparent_temperature)}°</p>
+            </div>
+            <div className="shrink-0 rounded-xl bg-background/55 px-3 py-2">
+              <p className="text-[10px] text-muted-foreground">Lluvia</p>
+              <p className="text-lg font-semibold tabular-nums">{rainChance ?? "—"}{rainChance == null ? "" : "%"}</p>
+            </div>
+            <div className="shrink-0 rounded-xl bg-background/55 px-3 py-2">
+              <p className="text-[10px] text-muted-foreground">Humedad</p>
+              <p className="text-lg font-semibold tabular-nums">{Math.round(current.relative_humidity_2m)}%</p>
             </div>
           </div>
-          <div className="rounded-xl bg-background/55 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Droplets className="h-3.5 w-3.5" />Prob. de lluvia</div>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{rainChance ?? "—"}{rainChance == null ? "" : "%"}</p>
+        ) : (
+          <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-[1.25fr_1fr_1fr_1fr] sm:items-center">
+            <div className="col-span-2 flex items-center gap-4 sm:col-span-1">
+              <WeatherIcon code={current.weather_code} isDay={current.is_day === 1} />
+              <div>
+                <p className="text-4xl font-semibold tracking-tight tabular-nums">{Math.round(current.temperature_2m)}°</p>
+                <p className="text-sm text-muted-foreground">{weatherDescription(current.weather_code)}</p>
+                <p className="text-xs text-muted-foreground">Sensación {Math.round(current.apparent_temperature)}°</p>
+              </div>
+            </div>
+            <div className="rounded-xl bg-background/55 p-3">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Droplets className="h-3.5 w-3.5" />Prob. de lluvia</div>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{rainChance ?? "—"}{rainChance == null ? "" : "%"}</p>
+            </div>
+            <div className="rounded-xl bg-background/55 p-3">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wind className="h-3.5 w-3.5" />Viento</div>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{Math.round(current.wind_speed_10m)} <span className="text-xs font-normal">km/h</span></p>
+            </div>
+            <div className="rounded-xl bg-background/55 p-3">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Droplets className="h-3.5 w-3.5" />Humedad</div>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{Math.round(current.relative_humidity_2m)}%</p>
+            </div>
           </div>
-          <div className="rounded-xl bg-background/55 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wind className="h-3.5 w-3.5" />Viento</div>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{Math.round(current.wind_speed_10m)} <span className="text-xs font-normal">km/h</span></p>
-          </div>
-          <div className="rounded-xl bg-background/55 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Droplets className="h-3.5 w-3.5" />Humedad</div>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{Math.round(current.relative_humidity_2m)}%</p>
-          </div>
-        </div>
-      ) : null}
-      {weather?.daily?.time && (
+        )) : null}
+      {!compact && weather?.daily?.time && (
         <div className="mt-5 grid grid-cols-5 gap-2 border-t border-border/70 pt-4">
           {weather.daily.time.map((day, index) => (
             <div key={day} className="min-w-0 rounded-xl bg-background/45 px-1.5 py-2 text-center">
@@ -234,7 +250,7 @@ export function WeatherCard() {
           ))}
         </div>
       )}
-      <p className="mt-4 border-t border-border/70 pt-3 text-[11px] text-muted-foreground">Datos meteorológicos de Open-Meteo. La ubicación del dispositivo solo se consulta cuando pulsas «Dónde estoy».</p>
+      {!compact && <p className="mt-4 border-t border-border/70 pt-3 text-[11px] text-muted-foreground">Datos meteorológicos de Open-Meteo. La ubicación del dispositivo solo se consulta cuando pulsas «Dónde estoy».</p>}
     </section>
   );
 }
