@@ -11,6 +11,15 @@ export type LGTable =
  "ai_runs"|"gamification_profiles"|"gamification_xp_events"|"gamification_achievements"|"gamification_challenges";
 async function uid(){const{data,error}=await supabase.auth.getUser();if(error||!data.user)throw error??new Error("No hay sesión activa");return data.user.id}
 export const lifeGraphService={
+ async recentEvents(limit=8):Promise<any[]>{
+  const safeLimit=Math.min(20,Math.max(1,Math.floor(limit)));
+  const{data,error}=await db.from("life_events")
+   .select("id,event_type,entity_type,entity_id,event_at,payload")
+   .order("event_at",{ascending:false})
+   .limit(safeLimit);
+  if(error)throw error;
+  return (data??[]) as any[];
+ },
  async list(table:LGTable,order="created_at",ascending=false):Promise<any[]>{
   // PostgREST caps response size; paginate so searches, histories and backups don't silently omit rows.
   // These per-user singleton tables deliberately have user_id as their primary key, not id.
