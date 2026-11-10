@@ -48,6 +48,18 @@ export const journalService = {
     return rows;
   },
 
+  async listEntriesByDate(date: string): Promise<JournalEntry[]> {
+    const { data, error } = await supabase
+      .from("journal_entries")
+      .select("*")
+      .eq("entry_date", date)
+      .order("entry_time", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(4);
+    if (error) throw error;
+    return (data ?? []) as JournalEntry[];
+  },
+
   async createEntry(input: JournalEntryInput): Promise<JournalEntry> {
     const user_id = await currentUserId();
     const { data, error } = await supabase
