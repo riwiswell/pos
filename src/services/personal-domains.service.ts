@@ -79,7 +79,14 @@ export const personalDomainsService={
   const body=Object.fromEntries(bodyKeys.map(k=>[k,payload[k]!==undefined?payload[k]:(previousBody[k]??null)]));
   for(const k of bodyKeys)delete fallback[k];
   const userNotes=payload["notes"]!==undefined?(typeof payload["notes"]==="string"?String(payload["notes"]):""):previousNotes;
-  fallback["notes"]=JSON.stringify({marker,body,notes:userNotes,sleep:previousSleep});
+  let sleepToSave=previousSleep;
+  if(typeof payload["notes"]==="string"){
+    try{
+      const incoming=JSON.parse(String(payload["notes"]));
+      if(incoming?.marker===marker&&incoming.sleep&&typeof incoming.sleep==="object")sleepToSave=incoming.sleep;
+    }catch{}
+  }
+  fallback["notes"]=JSON.stringify({marker,body,notes:userNotes,sleep:sleepToSave});
   const retry=await db.from("health_metrics").upsert(fallback,{onConflict:"user_id,metric_date"}).select("*").single();
   if(retry.error)throw retry.error;
   return retry.data;
