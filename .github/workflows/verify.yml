@@ -2,7 +2,7 @@ name: verify
 
 on:
   push:
-    branches: [main]
+    branches: [main, pos/01-perla-claro]
   pull_request:
     branches: [main]
   workflow_dispatch:
