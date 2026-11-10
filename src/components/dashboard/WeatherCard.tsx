@@ -20,6 +20,8 @@ type WeatherResponse = {
     is_day: number;
   };
   daily?: {
+    time?: string[];
+    weather_code?: number[];
     precipitation_probability_max?: number[];
     temperature_2m_max?: number[];
     temperature_2m_min?: number[];
@@ -94,7 +96,7 @@ export function WeatherCard() {
       longitude: String(location.longitude),
       current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day",
       daily: "precipitation_probability_max,temperature_2m_max,temperature_2m_min",
-      forecast_days: "1",
+      forecast_days: "5",
       timezone: "auto",
     });
     fetch("https://api.open-meteo.com/v1/forecast?" + params.toString(), { signal: controller.signal })
@@ -211,6 +213,27 @@ export function WeatherCard() {
           </div>
         </div>
       ) : null}
+      {weather?.daily?.time && (
+        <div className="mt-5 grid grid-cols-5 gap-2 border-t border-border/70 pt-4">
+          {weather.daily.time.map((day, index) => (
+            <div key={day} className="min-w-0 rounded-xl bg-background/45 px-1.5 py-2 text-center">
+              <p className="text-[10px] capitalize text-muted-foreground">
+                {index === 0 ? "Hoy" : new Intl.DateTimeFormat("es-CO", { weekday: "short" }).format(new Date(day + "T12:00:00"))}
+              </p>
+              <p className="my-1 text-base" aria-label={weatherDescription(weather.daily?.weather_code?.[index] ?? 0)}>
+                {([0, 1, 2].includes(weather.daily?.weather_code?.[index] ?? -1) ? "🌤️" :
+                  [61, 63, 65, 80, 81, 82, 95, 96, 99].includes(weather.daily?.weather_code?.[index] ?? -1) ? "🌧️" : "☁️")}
+              </p>
+              <p className="text-xs font-semibold tabular-nums">
+                {Math.round(weather.daily?.temperature_2m_max?.[index] ?? 0)}° <span className="font-normal text-muted-foreground">{Math.round(weather.daily?.temperature_2m_min?.[index] ?? 0)}°</span>
+              </p>
+              <p className="mt-1 text-[10px] text-muted-foreground tabular-nums">
+                {weather.daily?.precipitation_probability_max?.[index] ?? "—"}%
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
       <p className="mt-4 border-t border-border/70 pt-3 text-[11px] text-muted-foreground">Datos meteorológicos de Open-Meteo. La ubicación del dispositivo solo se consulta cuando pulsas «Dónde estoy».</p>
     </section>
   );
