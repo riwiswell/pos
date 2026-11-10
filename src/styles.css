@@ -214,3 +214,37 @@
     overflow: visible !important;
   }
 }
+
+/* Keep the complete module menu visible on shorter desktop displays. */
+@media (min-width: 768px) and (max-height: 720px) {
+  .app-shell-nav {
+    gap: 0 !important;
+    padding: 0.25rem !important;
+  }
+
+  .app-shell-nav-link {
+    gap: 0.4rem !important;
+    padding-block: 0.25rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .app-shell-nav-link > span:first-child {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    border-radius: 0.5rem !important;
+  }
+
+  .app-shell-nav-link > span:first-child svg {
+    width: 1rem !important;
+    height: 1rem !important;
+  }
+
+  .app-shell-nav-description {
+    display: none !important;
+  }
+
+  .app-shell-main {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+}
