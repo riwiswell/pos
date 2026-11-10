@@ -97,6 +97,8 @@ function HomePage() {
   const gamificationLevel = Number(gamification?.level ?? Math.floor(gamificationXp / 100) + 1);
   const gamificationStreak = Number(gamification?.current_streak ?? 0);
   const activeChallenge = (challengesQuery.data ?? []).find((challenge: any) => challenge.status === "active");
+  const connectionsQuery = useLGList("life_links");
+  const levelProgress = gamificationXp % 100;
 
   const habits = habitsQuery.data ?? [];
   const logs = logsQuery.data ?? [];
@@ -196,7 +198,8 @@ function HomePage() {
               <div className="flex items-center gap-2 text-xs text-slate-300"><Trophy className="h-4 w-4 text-amber-300" /> Nivel personal</div>
               <p className="mt-2 text-xl font-semibold tabular-nums text-white">{gamificationQuery.isLoading ? "…" : `Nv. ${gamificationLevel}`}</p>
               <p className="mt-0.5 text-[11px] text-slate-400">{gamificationXp} XP · {gamificationStreak} días de racha</p>
-              {activeChallenge && <p className="mt-1 truncate text-[10px] text-amber-200/80"><Zap className="mr-1 inline h-3 w-3"/>{activeChallenge.title}</p>}
+              <Progress value={levelProgress} className="mt-2 h-1.5 bg-white/10"/>
+              <p className="mt-1 truncate text-[10px] text-slate-300">{connectionsQuery.isLoading ? "…" : `${connectionsQuery.data?.length ?? 0} conexiones activas`}{activeChallenge ? ` · Reto: ${activeChallenge.title} (${activeChallenge.progress}/${activeChallenge.target})` : ""}</p>
             </Link>
           </div>
         </div>
