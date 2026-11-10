@@ -189,8 +189,7 @@ export function WeatherCard({ compact = false }: { compact?: boolean } = {}) {
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button type="button" size="sm" variant="ghost" className="mt-1 px-0" onClick={() => setLocation((value) => ({ ...value }))}>Intentar de nuevo</Button>
         </div>
-      ) : current ? (
-        {compact ? (
+      ) : current ? (compact ? (
           <div className="mt-3 flex items-center gap-3">
             <WeatherIcon code={current.weather_code} isDay={current.is_day === 1} />
             <div className="min-w-0 flex-1">
@@ -229,8 +228,7 @@ export function WeatherCard({ compact = false }: { compact?: boolean } = {}) {
               <p className="mt-1 text-xl font-semibold tabular-nums">{Math.round(current.relative_humidity_2m)}%</p>
             </div>
           </div>
-        )}
-      ) : null}
+        )) : null}
       {!compact && weather?.daily?.time && (
         <div className="mt-5 grid grid-cols-5 gap-2 border-t border-border/70 pt-4">
           {weather.daily.time.map((day, index) => (
