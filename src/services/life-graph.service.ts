@@ -29,7 +29,33 @@ export const lifeGraphService={
   }
   return rows
  },
- async create(table:LGTable,input:Record<string,unknown>){const user_id=await uid();const{data,error}=await db.from(table).insert({...input,user_id}).select("*").single();if(error)throw error;return data},
+ async create(table:LGTable,input:Record<string,unknown>){
+  const user_id=await uid();
+  const{data,error}=await db.from(table).insert({...input,user_id}).select("*").single();
+  if(error)throw error;
+  const id=String(data.id);
+  const links:Array<{user_id:string;from_type:string;from_id:string;to_type:string;to_id:string;relation:string}>=[];
+  const add=(from_type:string,from_id:string,to_type:string,to_id:unknown,relation:string)=>{
+   if(typeof to_id==="string"&&to_id.length>0&&to_id!==from_id)links.push({user_id,from_type,from_id,to_type,to_id,relation});
+  };
+  if(table==="routine_logs")add("routine_log",id,"routine",input.routine_id,"logs_routine");
+  if(table==="work_sessions")add("work_session",id,"work_item",input.work_item_id,"worked_on");
+  if(table==="learning_sessions")add("learning_session",id,"learning_item",input.learning_item_id,"studied_item");
+  if(table==="learning_notes")add("learning_note",id,"learning_item",input.learning_item_id,"belongs_to");
+  if(table==="relationship_interactions")add("relationship_interaction",id,"relationship",input.relationship_id,"interaction_with");
+  if(table==="checklist_items")add("checklist_item",id,"checklist",input.checklist_id,"belongs_to");
+  if(table==="menstrual_records")add("menstrual_record",id,"menstrual_profile",input.profile_id,"belongs_to");
+  if(table==="work_items"){
+   add("work_item",id,"work_item",input.parent_work_item_id,"subtask_of");
+   add("journal_entry",String(input.source_journal_entry_id??""),"work_item",id,"became_project");
+  }
+  if(table==="life_goals")add("life_goal",id,"life_goal",input.parent_goal_id,"subgoal_of");
+  if(links.length){
+   const{error:linkError}=await db.from("life_links").upsert(links,{onConflict:"user_id,from_type,from_id,to_type,to_id,relation",ignoreDuplicates:true});
+   if(linkError)console.warn("[life-graph] Record saved but an automatic connection could not be written:",linkError.message);
+  }
+  return data
+ },
  async update(table:LGTable,id:string,input:Record<string,unknown>){const{data,error}=await db.from(table).update(input).eq("id",id).select("*").single();if(error)throw error;return data},
  async remove(table:LGTable,id:string){const{error}=await db.from(table).delete().eq("id",id);if(error)throw error},
  async cancelPendingNotifications(sourceType:string,sourceId:string){const user_id=await uid();const{error}=await db.from("notification_jobs").update({status:"cancelled"}).eq("user_id",user_id).eq("source_type",sourceType).eq("source_id",sourceId).eq("status","pending");if(error)throw error},
