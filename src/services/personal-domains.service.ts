@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-type TableName="alarms"|"health_metrics"|"shopping_items"|"learning_items"|"relationships"|"work_items"|"spiritual_entries"|"ai_insights"|"gamification_profiles"|"shopping_lists";
+type TableName="alarms"|"health_metrics"|"journal_entries"|"shopping_items"|"learning_items"|"relationships"|"work_items"|"spiritual_entries"|"ai_insights"|"gamification_profiles"|"shopping_lists";
 const db=supabase as any;
 export const personalDomainsService={
  async personalInsights(){const optional=async(q:any)=>{const r=await q;return r.error&&["42P01","PGRST205"].includes(r.error.code)?{data:[],error:null}:r};const [health,goals,learning,relations,work,alarms]=await Promise.all([
