@@ -89,14 +89,33 @@ function HomePage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold">
-          {greeting()}
-          {name ? `, ${name}` : ""}
-          <HelpTip helpKey="dashboard" />
-        </h1>
-        <p className="text-sm text-muted-foreground">Tu día en Personal OS</p>
-      </div>
+      <section className="relative overflow-hidden rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/15 via-card to-card p-5 shadow-[0_16px_40px_-28px_var(--primary)] sm:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Tu espacio personal</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+            {greeting()}{name ? `, ${name}` : ""}
+            <HelpTip helpKey="dashboard" />
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">Una vista conectada de tu día. Avanza a tu ritmo.</p>
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:max-w-md">
+            {showHabits && (
+              <div className="rounded-2xl border border-border/70 bg-background/65 p-3">
+                <p className="text-xs text-muted-foreground">Hábitos de hoy</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{done}<span className="text-sm font-normal text-muted-foreground"> / {total}</span></p>
+                <p className="text-[11px] text-muted-foreground">{percent}% completado</p>
+              </div>
+            )}
+            {showPlanner && (
+              <div className="rounded-2xl border border-border/70 bg-background/65 p-3">
+                <p className="text-xs text-muted-foreground">Agenda de hoy</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{pendingCount}<span className="text-sm font-normal text-muted-foreground"> pendientes</span></p>
+                <p className="text-[11px] text-muted-foreground">{eventCount} evento{eventCount === 1 ? "" : "s"}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       <GlobalDateHeader />
 
