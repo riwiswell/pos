@@ -5,11 +5,12 @@ import { CheckSquare,Flag,ListTodo,Plus,Trash2,GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { ErrorState } from "@/components/common/States"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor";
 import { useGlobalDate } from "@/hooks/use-global-date"; import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { useAuth } from "@/hooks/use-auth";
+import { useHabits } from "@/hooks/use-habits";
+import { usePersonalRecentList } from "@/hooks/use-personal-domains";
 export const Route=createFileRoute("/_authenticated/vida")({component:LifePage});
 type Tab="goals"|"routines"|"checklists"|"bucket"|"connections";
 function LifePage(){const[tab,setTab]=useState<Tab>("goals");return <div className="space-y-5 pb-24"><GlobalDateHeader/><div><h1 className="flex items-center gap-2 text-xl font-semibold">Vida <HelpTip helpKey="life" /></h1><p className="text-sm text-muted-foreground">Metas, rutinas, listas, experiencias y conexiones entre tus áreas.</p></div><div className="flex flex-wrap gap-1.5">{([["goals","Metas",Flag],["routines","Rutinas",ListTodo],["checklists","Checklists",CheckSquare],["bucket","Bucket List",Flag],["connections","Conexiones",GitBranch]] as const).map(([id,label,I])=><button key={id} type="button" onClick={()=>setTab(id)} className={"rounded-full border px-3 py-1.5 text-xs "+(tab===id?"border-primary bg-primary/10":"border-border") }><I className="mr-1 inline h-3.5 w-3.5"/>{label}</button>)}</div>{tab==="goals"?<Goals/>:tab==="routines"?<Routines/>:tab==="checklists"?<Checklists/>:tab==="connections"?<Connections/>:<Bucket/>}</div>}
 
-type ConnectionRecord = { id:string; title:string };
 function Connections(){
  const goals=useLGList("life_goals");
  const routines=useLGList("routines");
@@ -17,6 +18,10 @@ function Connections(){
  const learning=useLGList("learning_items");
  const relationships=useLGList("relationships");
  const spiritual=useLGList("spiritual_goals");
+ const spiritualEntries=useLGList("spiritual_entries","entry_date");
+ const habits=useHabits(false);
+ const health=usePersonalRecentList<any>("health_metrics","metric_date",40);
+ const diary=usePersonalRecentList<any>("journal_entries","entry_date",40);
  const links=useLGList("life_links");
  const mutations=useLGMutations("life_links");
  const [fromType,setFromType]=useState("life_goal");
@@ -31,7 +36,11 @@ function Connections(){
   {type:"learning_item",label:"Libro o aprendizaje",items:(learning.data??[]).map((x:any)=>({id:x.id,title:x.title}))},
   {type:"relationship",label:"Relación",items:(relationships.data??[]).map((x:any)=>({id:x.id,title:x.name}))},
   {type:"spiritual_goal",label:"Meta espiritual",items:(spiritual.data??[]).map((x:any)=>({id:x.id,title:x.title}))},
- ],[goals.data,routines.data,work.data,learning.data,relationships.data,spiritual.data]);
+  {type:"spiritual_entry",label:"Registro espiritual",items:(spiritualEntries.data??[]).map((x:any)=>({id:x.id,title:x.title||"Reflexión · "+x.entry_date}))},
+  {type:"habit",label:"Hábito",items:(habits.data??[]).map((x:any)=>({id:x.id,title:x.name}))},
+  {type:"health_metric",label:"Registro de Salud",items:(health.data??[]).map((x:any)=>({id:x.id,title:"Salud · "+x.metric_date}))},
+  {type:"journal_entry",label:"Entrada del Diario",items:(diary.data??[]).map((x:any)=>({id:x.id,title:x.title||"Diario · "+x.entry_date}))},
+ ],[goals.data,routines.data,work.data,learning.data,relationships.data,spiritual.data,spiritualEntries.data,habits.data,health.data,diary.data]);
  const fromGroup=groups.find(x=>x.type===fromType);
  const toGroup=groups.find(x=>x.type===toType);
  const fromRecords=fromGroup?.items??[];
@@ -46,8 +55,8 @@ function Connections(){
   toast.success("Conexión guardada en el Life Graph.");
   setFromId("");setToId("");
  };
- const loading=goals.isLoading||routines.isLoading||work.isLoading||learning.isLoading||relationships.isLoading||spiritual.isLoading;
- const failed=goals.isError||routines.isError||work.isError||learning.isError||relationships.isError||spiritual.isError||links.isError;
+ const loading=goals.isLoading||routines.isLoading||work.isLoading||learning.isLoading||relationships.isLoading||spiritual.isLoading||spiritualEntries.isLoading||habits.isLoading||health.isLoading||diary.isLoading;
+ const failed=goals.isError||routines.isError||work.isError||learning.isError||relationships.isError||spiritual.isError||spiritualEntries.isError||habits.isError||health.isError||diary.isError||links.isError;
  return <div className="space-y-4">
   <section className="glass space-y-3 rounded-2xl p-4">
    <div className="flex items-center gap-2"><GitBranch className="h-4 w-4 text-primary"/><h2 className="font-semibold">Conectar áreas de tu vida</h2></div>
