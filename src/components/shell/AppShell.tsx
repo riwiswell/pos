@@ -110,7 +110,59 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [dragTarget, setDragTarget] = useState<string | null>(null);
   const dragState = useRef<{ key: string; pointerId: number; startY: number; active: boolean; targetKey: string | null; order: string[] } | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const desktopFrameRef = useRef<HTMLDivElement>(null);
+  const desktopContentRef = useRef<HTMLDivElement>(null);
+  const [desktopScale, setDesktopScale] = useState(1);
   const signOut = useSignOut();
+
+  useEffect(() => {
+    const frame = desktopFrameRef.current;
+    const content = desktopContentRef.current;
+    if (!frame || !content) return;
+
+    const desktop = window.matchMedia("(min-width: 768px)");
+    let frameRequest = 0;
+
+    const measure = () => {
+      window.cancelAnimationFrame(frameRequest);
+      frameRequest = window.requestAnimationFrame(() => {
+        if (!desktop.matches) {
+          setDesktopScale(1);
+          return;
+        }
+
+        const availableWidth = frame.clientWidth;
+        const availableHeight = frame.clientHeight;
+        const contentWidth = content.scrollWidth;
+        const contentHeight = content.scrollHeight;
+        if (!availableWidth || !availableHeight || !contentWidth || !contentHeight) return;
+
+        const nextScale = Math.min(
+          1,
+          availableWidth / contentWidth,
+          availableHeight / contentHeight,
+        );
+        setDesktopScale((current) =>
+          Math.abs(current - nextScale) < 0.002 ? current : nextScale,
+        );
+      });
+    };
+
+    const observer =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    observer?.observe(frame);
+    observer?.observe(content);
+    window.addEventListener("resize", measure);
+    desktop.addEventListener("change", measure);
+    measure();
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      desktop.removeEventListener("change", measure);
+      window.cancelAnimationFrame(frameRequest);
+    };
+  }, [collapsed, menuEditing, pathname]);
   const { data: profile } = useProfile();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -167,7 +219,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       };
 
   return (
-    <div className="min-h-screen bg-background text-foreground" style={style}>
+    <div className="min-h-screen bg-background text-foreground md:h-dvh md:min-h-0 md:overflow-hidden" style={style}>
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border bg-sidebar md:flex",
@@ -195,7 +247,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3">
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-hidden p-2">
           <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Mostrar u ocultar módulos">
             <SlidersHorizontal className="h-4 w-4 shrink-0" />
             {!collapsed && <span>{menuEditing ? "Terminar de editar" : "Mostrar / ocultar módulos"}</span>}
@@ -227,7 +279,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     type="button"
                     aria-label={"Arrastrar para reordenar " + item.label}
                     title="Arrastra para cambiar de posición"
-                    className="flex h-10 w-4 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:text-sidebar-primary active:cursor-grabbing"
+                    className="flex h-9 w-4 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:text-sidebar-primary active:cursor-grabbing"
                     onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
                       if (event.button !== 0) return;
                       event.currentTarget.setPointerCapture(event.pointerId);
@@ -284,7 +336,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </button>
                 )}
                 <Link to={item.to} search={(p: Record<string, unknown>) => p} title={item.label} className={cn(
-                  "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-sidebar-accent",
+                  "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-1.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent",
                   collapsed && "flex-none justify-center px-0",
                   pathname.startsWith(item.to) && "bg-sidebar-accent",
                 )}>
@@ -324,13 +376,28 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main
         className={cn(
-          "w-full px-4 pb-28 pt-4 md:pb-10 md:pt-8 md:px-8",
+          "app-shell-main w-full min-w-0 px-4 pb-28 pt-4 md:box-border md:h-dvh md:overflow-hidden md:pb-8 md:pt-8 md:px-8",
           collapsed
             ? "md:ml-[80px] md:w-[calc(100%_-_80px)]"
             : "md:ml-[272px] md:w-[calc(100%_-_272px)]",
         )}
       >
-        <div className="mx-auto w-full max-w-6xl">{children}</div>
+        <div
+          ref={desktopFrameRef}
+          className="mx-auto w-full max-w-6xl md:flex md:h-full md:min-h-0 md:items-start md:justify-center md:overflow-hidden"
+        >
+          <div
+            ref={desktopContentRef}
+            className="app-shell-content w-full min-w-0 md:shrink-0"
+            style={
+              desktopScale < 0.999
+                ? { transform: `scale(${desktopScale})`, transformOrigin: "top center" }
+                : undefined
+            }
+          >
+            {children}
+          </div>
+        </div>
       </main>
 
       {/* Five frequent destinations plus a compact drawer for the remaining modules. */}
