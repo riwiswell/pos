@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
+import { WeatherCard } from "@/components/dashboard/WeatherCard";
 import { HelpTip } from "@/components/common/HelpTip";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState, LoadingState } from "@/components/common/States";
@@ -98,6 +99,8 @@ function HomePage() {
       </div>
 
       <GlobalDateHeader />
+
+      <WeatherCard />
 
       {showPlanner && (
         <section className="glass rounded-2xl p-4">
