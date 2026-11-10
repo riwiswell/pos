@@ -155,7 +155,7 @@ export const habitsService = {
       .select()
       .single();
     if (error) throw error;
-    const { error: linkError } = await supabase.from("life_links").upsert(
+    const { error: linkError } = await (supabase as any).from("life_links").upsert(
       {
         user_id,
         from_type: "habit_log",
