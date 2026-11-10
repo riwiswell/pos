@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowUpRight,
+  BookOpen,
   CalendarDays,
   Check,
   Clock3,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
+import { JournalEntryDialog } from "@/components/journal/JournalEntryDialog";
 import { WeatherCard } from "@/components/dashboard/WeatherCard";
 import { HelpTip } from "@/components/common/HelpTip";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -24,6 +26,8 @@ import { useGlobalDate } from "@/hooks/use-global-date";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { useHabits, useLogs, useLogsRange, useHabitMutations } from "@/hooks/use-habits";
+import { useJournalEntriesByDate } from "@/hooks/use-journal";
+import { JOURNAL_META, entrySnippet, type JournalEntry } from "@/domain/journal";
 import { usePersonalDateList } from "@/hooks/use-personal-domains";
 import { useDoses } from "@/hooks/use-medications";
 import { medicationWater } from "@/domain/health";
@@ -71,6 +75,9 @@ function HomePage() {
   const weekStart = useMemo(() => addDaysISO(date, -6), [date]);
   const weekLogsQuery = useLogsRange(weekStart, date, showHabits);
   const habitMutations = useHabitMutations(date);
+  const journalQuery = useJournalEntriesByDate(date);
+  const [journalDialogOpen, setJournalDialogOpen] = useState(false);
+  const [editingJournalEntry, setEditingJournalEntry] = useState<JournalEntry | null>(null);
   const plannerQuery = usePlannerItems(date, showPlanner);
   const plannerItems = plannerQuery.data ?? [];
   const sortedPlanner = useMemo(
@@ -316,6 +323,19 @@ function HomePage() {
 
         <aside className="space-y-4">
           <HydrationOverview date={date} />
+          <DiaryOverview
+            entries={journalQuery.data ?? []}
+            loading={journalQuery.isLoading}
+            error={journalQuery.isError}
+            onCreate={() => {
+              setEditingJournalEntry(null);
+              setJournalDialogOpen(true);
+            }}
+            onOpen={(entry) => {
+              setEditingJournalEntry(entry);
+              setJournalDialogOpen(true);
+            }}
+          />
           <WeatherCard />
         </aside>
       </div>
@@ -326,10 +346,106 @@ function HomePage() {
           description="No hay bloques visibles. Puedes elegir Agenda, Enfoque o Hábitos desde Perfil y configuración."
         />
       )}
+
+      <JournalEntryDialog
+        open={journalDialogOpen}
+        onOpenChange={(open) => {
+          setJournalDialogOpen(open);
+          if (!open) setEditingJournalEntry(null);
+        }}
+        entry={editingJournalEntry}
+        defaultDate={date}
+        initialType="thought"
+      />
     </div>
   );
 }
 
+
+
+function DiaryOverview({
+  entries,
+  loading,
+  error,
+  onCreate,
+  onOpen,
+}: {
+  entries: JournalEntry[];
+  loading: boolean;
+  error: boolean;
+  onCreate: () => void;
+  onOpen: (entry: JournalEntry) => void;
+}) {
+  return (
+    <section className="glass space-y-3 rounded-[26px] p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-400/10 text-sky-300">
+            <BookOpen className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-semibold">Diario del día</h2>
+            <p className="text-[11px] text-muted-foreground">Tus capturas en esta fecha</p>
+          </div>
+        </div>
+        <Button type="button" size="sm" variant="outline" className="shrink-0 rounded-xl" onClick={onCreate}>
+          <Plus className="mr-1 h-3.5 w-3.5" /> Anotar
+        </Button>
+      </div>
+
+      {error ? (
+        <p className="rounded-xl bg-muted/45 px-3 py-3 text-xs text-muted-foreground">
+          No se pudo cargar el Diario para esta fecha.
+        </p>
+      ) : loading ? (
+        <div className="space-y-2">
+          <div className="h-11 animate-pulse rounded-xl bg-muted/65" />
+          <div className="h-11 animate-pulse rounded-xl bg-muted/65" />
+        </div>
+      ) : entries.length === 0 ? (
+        <p className="rounded-xl bg-muted/45 px-3 py-3 text-xs text-muted-foreground">
+          Aún no has guardado capturas para esta fecha. Puedes anotar una idea, pensamiento o reflexión.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {entries.slice(0, 3).map((entry) => {
+            const meta = JOURNAL_META[entry.type];
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => onOpen(entry)}
+                className="flex w-full min-w-0 items-start gap-3 rounded-xl border border-border/60 bg-background/45 px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-accent/50"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-lg">
+                  {meta.emoji}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="truncate text-xs font-semibold">{entry.title || meta.label}</span>
+                    {entry.entry_time && (
+                      <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{entry.entry_time.slice(0, 5)}</span>
+                    )}
+                  </span>
+                  <span className="mt-1 block line-clamp-2 text-[11px] leading-4 text-muted-foreground">
+                    {entrySnippet(entry, 110) || meta.label}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+          <Link
+            to="/diario"
+            search={(prev: Record<string, unknown>) => prev}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+          >
+            Abrir Diario <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+    </section>
+  );
+}
 
 type WeeklyHabitDay = {
   date: string;
