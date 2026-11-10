@@ -247,7 +247,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-hidden p-2">
+        <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden p-2">
           <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Mostrar u ocultar módulos">
             <SlidersHorizontal className="h-4 w-4 shrink-0" />
             {!collapsed && <span>{menuEditing ? "Terminar de editar" : "Mostrar / ocultar módulos"}</span>}
