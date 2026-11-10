@@ -13,6 +13,9 @@ import { useGlobalDate } from "@/hooks/use-global-date";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { useHabits, useLogs } from "@/hooks/use-habits";
+import { usePersonalDateList } from "@/hooks/use-personal-domains";
+import { useDoses } from "@/hooks/use-medications";
+import { medicationWater } from "@/domain/health";
 import { usePlannerItems } from "@/hooks/use-planner";
 import { compareChronologically, shortTime } from "@/domain/planner";
 import { greeting } from "@/lib/date";
@@ -121,6 +124,8 @@ function HomePage() {
 
       <WeatherCard />
 
+      <HydrationOverview date={date} />
+
       {showPlanner && (
         <section className="glass rounded-2xl p-4">
           <div className="flex items-center justify-between">
@@ -189,5 +194,39 @@ function HomePage() {
         />
       )}
     </div>
+  );
+}
+
+function HydrationOverview({ date }: { date: string }) {
+  const metrics = usePersonalDateList<any>("health_metrics", "metric_date", date);
+  const doses = useDoses(date);
+  const manualLiters = Number(metrics.data?.[0]?.water_liters ?? 0) || 0;
+  const totalLiters = manualLiters + (medicationWater(doses.data ?? []) / 4);
+  const targetLiters = 2.25;
+  const percent = Math.min(100, Math.round((totalLiters / targetLiters) * 100));
+  const amount = totalLiters.toLocaleString("es-CO", { maximumFractionDigits: 2 });
+  return (
+    <section className="glass rounded-2xl p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold">💧 Hidratación de hoy</h2>
+          <p className="mt-1 text-xs text-muted-foreground">El mismo registro de Salud, visible desde Inicio.</p>
+        </div>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/salud" search={(prev: Record<string, unknown>) => prev}>Registrar agua</Link>
+        </Button>
+      </div>
+      {metrics.isError || doses.isError ? (
+        <p className="mt-3 text-xs text-muted-foreground">No se pudo cargar el resumen de hidratación.</p>
+      ) : (
+        <>
+          <div className="mt-3 flex items-baseline justify-between gap-3">
+            <p className="text-2xl font-semibold tabular-nums">{metrics.isLoading || doses.isLoading ? "…" : amount}<span className="ml-1 text-sm font-normal text-muted-foreground">/ {targetLiters} L</span></p>
+            <span className="text-sm font-medium text-primary tabular-nums">{metrics.isLoading || doses.isLoading ? " " : percent + "%"}</span>
+          </div>
+          <Progress value={metrics.isLoading || doses.isLoading ? 0 : percent} className="mt-2 h-2" />
+        </>
+      )}
+    </section>
   );
 }
