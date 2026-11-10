@@ -103,7 +103,8 @@ function HomePage() {
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
   const activitiesDone = activities.filter((habit) => isDone(habit, logByHabit.get(habit.id))).length;
   const weeklyRhythm = useMemo(() => {
-    const habitById = new Map(onlyHabits.map((habit) => [habit.id, habit]));
+    const habitById = new Map<string, Habit>();
+    for (const habit of onlyHabits) habitById.set(habit.id, habit);
     const logsByDate = new Map<string, HabitLog[]>();
     for (const log of weekLogsQuery.data ?? []) {
       if (!habitById.has(log.habit_id)) continue;
