@@ -58,6 +58,7 @@ export function useHabitMutations(date: string) {
   const invalidateLogs = () => {
     void qc.invalidateQueries({ queryKey: habitKeys.logs(date) });
     void qc.invalidateQueries({ queryKey: habitKeys.recent });
+    void qc.invalidateQueries({ queryKey: ["habit_logs", "range"] });
   };
 
   const createCategory = useMutation({
