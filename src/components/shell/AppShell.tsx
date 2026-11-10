@@ -384,7 +384,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div
           ref={desktopFrameRef}
-          className="mx-auto w-full max-w-6xl md:flex md:h-full md:min-h-0 md:items-start md:justify-center md:overflow-hidden"
+          className="mx-auto w-full max-w-[1600px] md:flex md:h-full md:min-h-0 md:items-start md:justify-center md:overflow-hidden"
         >
           <div
             ref={desktopContentRef}
