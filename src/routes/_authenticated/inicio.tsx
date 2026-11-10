@@ -6,6 +6,7 @@ import {
   Check,
   Clock3,
   Droplets,
+  Plus,
   Sparkles,
   Target,
   TrendingUp,
@@ -22,13 +23,13 @@ import { Button } from "@/components/ui/button";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
-import { useHabits, useLogs } from "@/hooks/use-habits";
+import { useHabits, useLogs, useLogsRange, useHabitMutations } from "@/hooks/use-habits";
 import { usePersonalDateList } from "@/hooks/use-personal-domains";
 import { useDoses } from "@/hooks/use-medications";
 import { medicationWater } from "@/domain/health";
 import { usePlannerItems } from "@/hooks/use-planner";
 import { compareChronologically, shortTime } from "@/domain/planner";
-import { greeting } from "@/lib/date";
+import { addDaysISO, greeting } from "@/lib/date";
 import { normalizeDashboardWidgets } from "@/domain/dashboard";
 import type { Habit, HabitLog } from "@/domain/types";
 
@@ -67,6 +68,9 @@ function HomePage() {
   const showHabits = dashboardWidgets.includes("habits");
   const habitsQuery = useHabits(false, showHabits);
   const logsQuery = useLogs(date, showHabits);
+  const weekStart = useMemo(() => addDaysISO(date, -6), [date]);
+  const weekLogsQuery = useLogsRange(weekStart, date, showHabits);
+  const habitMutations = useHabitMutations(date);
   const plannerQuery = usePlannerItems(date, showPlanner);
   const plannerItems = plannerQuery.data ?? [];
   const sortedPlanner = useMemo(
@@ -91,6 +95,34 @@ function HomePage() {
   const total = onlyHabits.length;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
   const activitiesDone = activities.filter((habit) => isDone(habit, logByHabit.get(habit.id))).length;
+  const weeklyRhythm = useMemo(() => {
+    const habitById = new Map(onlyHabits.map((habit) => [habit.id, habit]));
+    const logsByDate = new Map<string, HabitLog[]>();
+    for (const log of weekLogsQuery.data ?? []) {
+      if (!habitById.has(log.habit_id)) continue;
+      const dayLogs = logsByDate.get(log.date) ?? [];
+      dayLogs.push(log);
+      logsByDate.set(log.date, dayLogs);
+    }
+
+    const days: { date: string; label: string; dayNumber: number; recorded: number; completed: number; percent: number | null }[] = [];
+    for (let day = weekStart; day <= date; day = addDaysISO(day, 1)) {
+      const dayLogs = logsByDate.get(day) ?? [];
+      const completed = dayLogs.filter((log) => {
+        const habit = habitById.get(log.habit_id);
+        return habit ? isDone(habit, log) : false;
+      }).length;
+      days.push({
+        date: day,
+        label: new Intl.DateTimeFormat("es-CO", { weekday: "short" }).format(new Date(day + "T12:00:00")).replace(".", ""),
+        dayNumber: Number(day.slice(-2)),
+        recorded: dayLogs.length,
+        completed,
+        percent: dayLogs.length ? Math.round((completed / dayLogs.length) * 100) : null,
+      });
+    }
+    return days;
+  }, [date, onlyHabits, weekLogsQuery.data, weekStart]);
 
   const name =
     profileQuery.data?.display_name ??
@@ -179,20 +211,71 @@ function HomePage() {
                         {activities.length > 0 && <div className="text-right"><p className="text-lg font-semibold tabular-nums">{activitiesDone}/{activities.length}</p><p className="text-[11px] text-muted-foreground">actividades</p></div>}
                       </div>
                       <Progress value={percent} className="h-2.5" />
-                      <div className="mt-4 grid grid-cols-2 gap-2">
-                        {onlyHabits.slice(0, 4).map((habit) => {
-                          const complete = isDone(habit, logByHabit.get(habit.id));
+                      <div className="mt-4 grid grid-cols-1 gap-2 xl:grid-cols-2">
+                        {onlyHabits.slice(0, 6).map((habit) => {
+                          const habitLog = logByHabit.get(habit.id);
+                          const complete = isDone(habit, habitLog);
+                          const value = habitLog?.value ?? 0;
+                          const nextValue = value + 1;
                           return (
                             <div key={habit.id} className="flex min-w-0 items-center gap-2 rounded-xl bg-muted/55 px-3 py-2">
-                              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${complete ? "bg-emerald-500/15 text-emerald-500" : "bg-background text-muted-foreground"}`}>
+                              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${complete ? "bg-emerald-500/15 text-emerald-500" : "bg-background text-muted-foreground"}`}>
                                 {complete ? <Check className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                               </span>
-                              <span className="truncate text-xs">{habit.name}</span>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-medium">{habit.name}</p>
+                                {habit.type === "counter" && (
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {value}{habit.target ? ` / ${habit.target}` : ""} {habit.unit ?? ""}
+                                  </p>
+                                )}
+                              </div>
+                              {habit.type === "check" ? (
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant={complete ? "default" : "outline"}
+                                  className="h-7 w-7 shrink-0 rounded-full"
+                                  aria-label={complete ? `Desmarcar ${habit.name}` : `Completar ${habit.name}`}
+                                  title={complete ? "Desmarcar" : "Completar"}
+                                  disabled={habitMutations.saveLog.isPending}
+                                  onClick={() => habitMutations.saveLog.mutate({
+                                    habitId: habit.id,
+                                    patch: { completed: !complete, value },
+                                  })}
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-7 w-7 shrink-0 rounded-full"
+                                  aria-label={`Sumar a ${habit.name}`}
+                                  title="Sumar uno"
+                                  disabled={habitMutations.saveLog.isPending}
+                                  onClick={() => habitMutations.saveLog.mutate({
+                                    habitId: habit.id,
+                                    patch: {
+                                      value: nextValue,
+                                      completed: habit.target ? nextValue >= habit.target : nextValue > 0,
+                                    },
+                                  })}
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                             </div>
                           );
                         })}
                       </div>
                     </div>
+                  </div>
+                )}
+                {habits.length > 0 && (
+                  <div className="border-t border-border/70 px-5 py-4">
+                    <WeeklyHabitRhythm days={weeklyRhythm} loading={weekLogsQuery.isLoading} error={weekLogsQuery.isError} />
                   </div>
                 )}
               </section>
@@ -244,6 +327,88 @@ function HomePage() {
         />
       )}
     </div>
+  );
+}
+
+
+type WeeklyHabitDay = {
+  date: string;
+  label: string;
+  dayNumber: number;
+  recorded: number;
+  completed: number;
+  percent: number | null;
+};
+
+function WeeklyHabitRhythm({
+  days,
+  loading,
+  error,
+}: {
+  days: WeeklyHabitDay[];
+  loading: boolean;
+  error: boolean;
+}) {
+  const activeDays = days.filter((day) => day.recorded > 0);
+  const average = activeDays.length
+    ? Math.round(activeDays.reduce((sum, day) => sum + (day.percent ?? 0), 0) / activeDays.length)
+    : null;
+
+  return (
+    <section>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold">Ritmo de los últimos 7 días</h3>
+          <p className="text-[11px] text-muted-foreground">Solo cuenta los hábitos que registraste</p>
+        </div>
+        {average !== null && (
+          <div className="text-right">
+            <p className="text-lg font-semibold tabular-nums">{average}%</p>
+            <p className="text-[10px] text-muted-foreground">promedio registrado</p>
+          </div>
+        )}
+      </div>
+
+      {error ? (
+        <p className="rounded-xl bg-muted/50 px-3 py-3 text-xs text-muted-foreground">
+          No se pudo cargar el historial semanal.
+        </p>
+      ) : loading ? (
+        <div className="grid h-[86px] grid-cols-7 items-end gap-2" aria-label="Cargando ritmo semanal">
+          {days.map((day) => <div key={day.date} className="h-12 animate-pulse rounded-lg bg-muted/70" />)}
+        </div>
+      ) : activeDays.length === 0 ? (
+        <p className="rounded-xl bg-muted/45 px-3 py-3 text-xs text-muted-foreground">
+          Aún no hay registros en estos siete días. Los días vacíos se mantienen neutrales; no se cuentan como fallos.
+        </p>
+      ) : (
+        <div className="grid grid-cols-7 gap-2">
+          {days.map((day) => (
+            <div
+              key={day.date}
+              className="flex min-w-0 flex-col items-center gap-1.5"
+              title={day.recorded
+                ? `${day.label} ${day.dayNumber}: ${day.completed} de ${day.recorded} registros completados`
+                : `${day.label} ${day.dayNumber}: sin registros`}
+            >
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {day.percent === null ? "—" : `${day.percent}%`}
+              </span>
+              <div className="flex h-14 w-full items-end overflow-hidden rounded-lg bg-muted/65">
+                {day.percent !== null && (
+                  <div
+                    className="w-full rounded-lg bg-gradient-to-t from-violet-600 to-cyan-400 transition-[height]"
+                    style={{ height: `${Math.max(8, day.percent)}%` }}
+                  />
+                )}
+              </div>
+              <span className="text-[10px] capitalize text-muted-foreground">{day.label}</span>
+              <span className="text-[10px] tabular-nums text-muted-foreground">{day.dayNumber}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
