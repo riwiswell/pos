@@ -197,3 +197,25 @@
 .theme-light .glass {
   background-color: color-mix(in oklab, var(--surface) 88%, transparent);
 }
+
+/*
+ * Desktop workspace: each module fits inside the available window.
+ * Mobile keeps its natural document flow and touch scrolling.
+ */
+@media (min-width: 768px) {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .app-shell-main .app-shell-content [class*="overflow-y-auto"],
+  .app-shell-main .app-shell-content [class*="overflow-y-scroll"],
+  .app-shell-main .app-shell-content [class*="overflow-x-auto"],
+  .app-shell-main .app-shell-content [class*="overflow-auto"] {
+    max-height: none !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
+}
