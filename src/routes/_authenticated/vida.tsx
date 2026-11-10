@@ -51,7 +51,14 @@ function Connections(){
  };
  const save=async()=>{
   if(!fromId||!toId||fromId===toId&&fromType===toType){toast.error("Selecciona dos registros diferentes.");return;}
-  await mutations.create.mutateAsync({from_type:fromType,from_id:fromId,to_type:toType,to_id:toId,relation,metadata:{origin:"vida.connections"}});
+  await mutations.create.mutateAsync({
+   from_type: fromType,
+   from_id: fromId,
+   to_type: toType,
+   to_id: toId,
+   relation: relation,
+   metadata: { origin: "vida.connections" },
+  });
   toast.success("Conexión guardada en el Life Graph.");
   setFromId("");setToId("");
  };
