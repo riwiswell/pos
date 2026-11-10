@@ -13,6 +13,7 @@ export function useLGMutations(table:LGTable){
   const invalidate=()=>{
     void qc.invalidateQueries({queryKey:["lg",table]});
     void qc.invalidateQueries({queryKey:["lg","life_links"]});
+    void qc.invalidateQueries({queryKey:["lg","life_events"]});
     if(!["life_events","notification_jobs","gamification_profiles","gamification_xp_events","gamification_achievements","gamification_challenges"].includes(table)){
       for(const key of ["gamification_profiles","gamification_xp_events","gamification_achievements","gamification_challenges"]){
         void qc.invalidateQueries({queryKey:["lg",key]});
