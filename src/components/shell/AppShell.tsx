@@ -21,6 +21,20 @@ import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "personal-os:sidebar-collapsed";
 const MOBILE_PRIMARY_KEYS = new Set(["inicio", "habitos", "planeador", "salud", "finanzas"]);
+const NAV_ICON_TONES: Record<string, string> = {
+  inicio: "text-amber-300 bg-amber-300/10",
+  habitos: "text-emerald-300 bg-emerald-300/10",
+  planeador: "text-violet-300 bg-violet-300/10",
+  salud: "text-rose-300 bg-rose-300/10",
+  finanzas: "text-cyan-300 bg-cyan-300/10",
+  diario: "text-sky-300 bg-sky-300/10",
+  vida: "text-orange-300 bg-orange-300/10",
+  aprendizaje: "text-indigo-300 bg-indigo-300/10",
+  relaciones: "text-pink-300 bg-pink-300/10",
+  trabajo: "text-blue-300 bg-blue-300/10",
+  espiritualidad: "text-yellow-200 bg-yellow-200/10",
+  gamificacion: "text-fuchsia-300 bg-fuchsia-300/10",
+};
 
 function useCollapsed() {
   const [collapsed, setCollapsed] = useState(false);
@@ -247,12 +261,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
 
-        <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden p-2">
+        <nav className="app-shell-nav flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden p-2">
           <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Mostrar u ocultar módulos">
             <SlidersHorizontal className="h-4 w-4 shrink-0" />
             {!collapsed && <span>{menuEditing ? "Terminar de editar" : "Mostrar / ocultar módulos"}</span>}
           </Button>
-          {menuEditing && !collapsed && <p className="px-2 pb-1 text-xs text-muted-foreground">Para reordenar, arrastra un módulo por el tirador del sidebar. Aquí puedes mostrar u ocultar módulos.</p>}
+          {menuEditing && !collapsed && <p className="app-shell-nav-description px-2 pb-1 text-xs text-muted-foreground">Para reordenar, arrastra un módulo por el tirador del sidebar. Aquí puedes mostrar u ocultar módulos.</p>}
           {menuItems.map((item) => {
             const visible = !hiddenModules.includes(item.key);
             if (menuEditing) return (
@@ -336,11 +350,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </button>
                 )}
                 <Link to={item.to} search={(p: Record<string, unknown>) => p} title={item.label} className={cn(
-                  "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-1.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent",
+                  "app-shell-nav-link flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent",
                   collapsed && "flex-none justify-center px-0",
-                  pathname.startsWith(item.to) && "bg-sidebar-accent",
+                  pathname.startsWith(item.to) && "bg-sidebar-accent text-sidebar-primary ring-1 ring-sidebar-primary/20 shadow-sm",
                 )}>
-                  <item.icon className="h-5 w-5 shrink-0" />
+                  <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-xl", NAV_ICON_TONES[item.key] ?? "bg-white/5 text-sidebar-foreground")}><item.icon className="h-4.5 w-4.5" /></span>
                   {!collapsed && <span className="truncate">{item.label}</span>}
                 </Link>
                 {!collapsed && <HelpTip helpKey={item.helpKey} />}
