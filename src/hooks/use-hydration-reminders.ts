@@ -78,8 +78,12 @@ export function useHydrationReminders() {
     if (profile.isLoading || !config.enabled || times.length === 0) return;
     const now = bogotaNow();
     const date = `${now.year}-${now.month}-${now.day}`;
-    const currentTime = `${now.hour}:${now.minute}`;
-    const due = times.find((time) => time === currentTime);
+    const currentMinute = Number(now.hour) * 60 + Number(now.minute);
+    const due = [...times].reverse().find((time) => {
+      const [hour, minute] = time.split(":").map(Number);
+      const elapsed = currentMinute - (hour * 60 + minute);
+      return elapsed >= 0 && elapsed <= 4;
+    });
     if (!due) return;
 
     const storageKey = `personal-os:hydration-reminders:${profile.data?.id ?? "guest"}`;
@@ -109,7 +113,7 @@ export function useHydrationReminders() {
       const body = `Toma ${config.amount_ml} ml de agua y regístralos en Salud.`;
       toast(title, { description: body, duration: 60_000 });
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(title, { body, tag: `pos:hydration:${date}:${due}` });
+        try { new Notification(title, { body, tag: `pos:hydration:${date}:${due}` }); } catch { /* The in-app toast remains available. */ }
       }
       const next = [...fired, key].slice(-120);
       try {
