@@ -78,12 +78,15 @@ export const personalDomainsService={
   }
   const body=Object.fromEntries(bodyKeys.map(k=>[k,payload[k]!==undefined?payload[k]:(previousBody[k]??null)]));
   for(const k of bodyKeys)delete fallback[k];
-  const userNotes=payload["notes"]!==undefined?(typeof payload["notes"]==="string"?String(payload["notes"]):""):previousNotes;
+  let userNotes=payload["notes"]!==undefined?(typeof payload["notes"]==="string"?String(payload["notes"]):""):previousNotes;
   let sleepToSave=previousSleep;
   if(typeof payload["notes"]==="string"){
     try{
       const incoming=JSON.parse(String(payload["notes"]));
-      if(incoming?.marker===marker&&incoming.sleep&&typeof incoming.sleep==="object")sleepToSave=incoming.sleep;
+      if(incoming?.marker===marker){
+        userNotes=typeof incoming.notes==="string"?incoming.notes:"";
+        if(incoming.sleep&&typeof incoming.sleep==="object")sleepToSave=incoming.sleep;
+      }
     }catch{}
   }
   fallback["notes"]=JSON.stringify({marker,body,notes:userNotes,sleep:sleepToSave});
