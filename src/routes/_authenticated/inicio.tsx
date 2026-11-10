@@ -38,6 +38,7 @@ import { compareChronologically, shortTime } from "@/domain/planner";
 import { addDaysISO, greeting } from "@/lib/date";
 import { normalizeDashboardWidgets } from "@/domain/dashboard";
 import { useLGList } from "@/hooks/use-life-graph";
+import { LifeActivityFeed } from "@/components/dashboard/LifeActivityFeed";
 import type { Habit, HabitLog } from "@/domain/types";
 
 export const Route = createFileRoute("/_authenticated/inicio")({
@@ -365,6 +366,8 @@ function HomePage() {
           <WeatherCard compact />
         </aside>
       </div>
+
+      <LifeActivityFeed connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} />
 
       {dashboardWidgets.length === 0 && (
         <p className="rounded-xl border border-dashed border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-slate-300">
