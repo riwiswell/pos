@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, pos/01-perla-claro]
   pull_request:
-    branches: [main]
+    branches: [main, pos/01-perla-claro]
   workflow_dispatch:
 
 jobs:
