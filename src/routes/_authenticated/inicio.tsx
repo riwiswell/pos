@@ -145,10 +145,10 @@ function HomePage() {
   }).format(new Date(date + "T12:00:00"));
 
   return (
-    <div className="space-y-5 pb-8">
-      <GlobalDateHeader />
+    <div className="inicio-dashboard space-y-4">
+      <GlobalDateHeader compact />
 
-      <section className="relative isolate overflow-hidden rounded-[28px] border border-white/10 bg-[#171b2b] px-5 py-6 shadow-[0_24px_70px_-38px_rgba(75,105,255,.55)] sm:px-7 sm:py-7">
+      <section className="relative isolate overflow-hidden inicio-hero relative isolate rounded-[26px] border border-white/10 bg-gradient-to-br from-[#202342] via-[#171b2b] to-[#10262f] px-5 py-4 shadow-[0_22px_55px_-34px_rgba(75,105,255,.55)]">
         <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="pointer-events-none absolute bottom-[-100px] left-[38%] h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
         <div className="relative grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
@@ -157,28 +157,28 @@ function HomePage() {
               <Sparkles className="h-3.5 w-3.5 text-amber-300" />
               TU ESPACIO PERSONAL
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-[2.5rem]">
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
               {greeting()}{name ? `, ${name}` : ""}
               <HelpTip helpKey="dashboard" />
             </h1>
-            <p className="mt-2 max-w-xl text-sm capitalize leading-6 text-slate-300/80">
+            <p className="mt-1 max-w-xl text-sm capitalize leading-5 text-slate-300/80">
               {dateLabel}. Un día a la vez; registra lo que importa y sigue a tu ritmo.
             </p>
-            {showFocus && <div className="mt-5 max-w-xl"><DailyFocusPicker date={date} /></div>}
+            {showFocus && <div className="mt-3 max-w-xl"><DailyFocusPicker date={date} compact /></div>}
           </div>
 
-          <div className="grid grid-cols-2 gap-2 md:min-w-[270px]">
+          <div className="grid grid-cols-2 gap-2 md:min-w-[250px]">
             {showHabits && (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3.5 backdrop-blur">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur">
                 <div className="flex items-center gap-2 text-xs text-slate-300"><Target className="h-4 w-4 text-cyan-300" /> Hábitos</div>
-                <p className="mt-2 text-2xl font-semibold tabular-nums text-white">{done}<span className="text-sm font-normal text-slate-400"> / {total}</span></p>
+                <p className="mt-2 text-xl font-semibold tabular-nums text-white">{done}<span className="text-sm font-normal text-slate-400"> / {total}</span></p>
                 <p className="mt-0.5 text-[11px] text-slate-400">{percent}% completado</p>
               </div>
             )}
             {showPlanner && (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3.5 backdrop-blur">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur">
                 <div className="flex items-center gap-2 text-xs text-slate-300"><CalendarDays className="h-4 w-4 text-violet-300" /> Agenda</div>
-                <p className="mt-2 text-2xl font-semibold tabular-nums text-white">{pendingItems.length}<span className="text-sm font-normal text-slate-400"> pendientes</span></p>
+                <p className="mt-2 text-xl font-semibold tabular-nums text-white">{pendingItems.length}<span className="text-sm font-normal text-slate-400"> pendientes</span></p>
                 <p className="mt-0.5 text-[11px] text-slate-400">{eventCount} eventos</p>
               </div>
             )}
@@ -186,15 +186,15 @@ function HomePage() {
         </div>
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,.85fr)]">
-        <div className="space-y-4">
+      <div className="inicio-dashboard-grid grid gap-3">
+        <div className="inicio-habits-column min-w-0">
           {showHabits && (
             habitsQuery.isLoading || logsQuery.isLoading ? <LoadingState /> :
             habitsQuery.isError || logsQuery.isError ? (
               <ErrorState message={habitsQuery.error instanceof Error ? habitsQuery.error.message : logsQuery.error instanceof Error ? logsQuery.error.message : "No se pudieron cargar los hábitos y sus registros de esta fecha."} />
             ) : (
-              <section className="overflow-hidden rounded-[26px] border border-border/70 bg-card shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-4 pt-5">
+              <section className="inicio-habits-card overflow-hidden rounded-[26px] border border-violet-400/20 bg-gradient-to-br from-violet-500/[.08] via-card to-card shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-4">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-primary">Tu progreso</p>
                     <h2 className="mt-1 text-lg font-semibold">Hábitos del día <HelpTip helpKey="habits.summary" /></h2>
@@ -206,28 +206,28 @@ function HomePage() {
                 {habits.length === 0 ? (
                   <div className="px-5 pb-5"><EmptyState title="Aún no tienes hábitos" description="Crea tu primer hábito para empezar a construir tu historial real." /></div>
                 ) : (
-                  <div className="grid gap-4 px-5 pb-5 sm:grid-cols-[170px_1fr] sm:items-center">
-                    <div className="relative mx-auto flex h-36 w-36 items-center justify-center rounded-full" style={{ background: `conic-gradient(#8b7cff ${percent}%, color-mix(in srgb, var(--border) 70%, transparent) 0)` }}>
-                      <div className="flex h-[112px] w-[112px] flex-col items-center justify-center rounded-full bg-card">
-                        <span className="text-3xl font-semibold tabular-nums">{percent}%</span>
+                  <div className="grid gap-3 px-4 pb-3 sm:grid-cols-[108px_1fr] sm:items-center">
+                    <div className="relative mx-auto flex h-28 w-28 items-center justify-center rounded-full" style={{ background: `conic-gradient(#8b7cff ${percent}%, color-mix(in srgb, var(--border) 70%, transparent) 0)` }}>
+                      <div className="flex h-[88px] w-[88px] flex-col items-center justify-center rounded-full bg-card">
+                        <span className="text-2xl font-semibold tabular-nums">{percent}%</span>
                         <span className="text-[11px] text-muted-foreground">completado</span>
                       </div>
                     </div>
                     <div className="min-w-0">
-                      <div className="mb-3 flex items-end justify-between gap-3">
+                      <div className="mb-2 flex items-end justify-between gap-3">
                         <div><p className="text-2xl font-semibold tabular-nums">{done}<span className="text-sm font-normal text-muted-foreground"> de {total}</span></p><p className="text-xs text-muted-foreground">hábitos completados</p></div>
                         {activities.length > 0 && <div className="text-right"><p className="text-lg font-semibold tabular-nums">{activitiesDone}/{activities.length}</p><p className="text-[11px] text-muted-foreground">actividades</p></div>}
                       </div>
                       <Progress value={percent} className="h-2.5" />
-                      <div className="mt-4 grid grid-cols-1 gap-2 xl:grid-cols-2">
-                        {onlyHabits.slice(0, 6).map((habit) => {
+                      <div className="mt-3 grid grid-cols-1 gap-1.5">
+                        {onlyHabits.slice(0, 4).map((habit) => {
                           const habitLog = logByHabit.get(habit.id);
                           const complete = isDone(habit, habitLog);
                           const value = habitLog?.value ?? 0;
                           const nextValue = value + 1;
                           return (
-                            <div key={habit.id} className="flex min-w-0 items-center gap-2 rounded-xl bg-muted/55 px-3 py-2">
-                              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${complete ? "bg-emerald-500/15 text-emerald-500" : "bg-background text-muted-foreground"}`}>
+                            <div key={habit.id} className="flex min-w-0 items-center gap-2 rounded-xl bg-muted/55 px-2.5 py-1.5">
+                              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${complete ? "bg-emerald-500/15 text-emerald-500" : "bg-background text-muted-foreground"}`}>
                                 {complete ? <Check className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                               </span>
                               <div className="min-w-0 flex-1">
@@ -282,7 +282,7 @@ function HomePage() {
                   </div>
                 )}
                 {habits.length > 0 && (
-                  <div className="border-t border-border/70 px-5 py-4">
+                  <div className="border-t border-border/70 px-4 py-3">
                     <WeeklyHabitRhythm days={weeklyRhythm} loading={weekLogsQuery.isLoading} error={weekLogsQuery.isError} />
                   </div>
                 )}
@@ -290,8 +290,11 @@ function HomePage() {
             )
           )}
 
+        </div>
+
+        <div className="inicio-planner-column min-w-0">
           {showPlanner && (
-            <section className="rounded-[26px] border border-border/70 bg-card p-5 shadow-sm">
+            <section className="rounded-[26px] border border-amber-400/20 bg-gradient-to-br from-amber-500/[.07] via-card to-card p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-violet-400">Organiza tu tiempo</p>
@@ -304,10 +307,10 @@ function HomePage() {
               {plannerQuery.isLoading ? <p className="mt-4 text-sm text-muted-foreground">Cargando agenda…</p> :
                 plannerQuery.isError ? <ErrorState message={plannerQuery.error instanceof Error ? plannerQuery.error.message : "No se pudo cargar la agenda."} /> :
                 sortedPlanner.length === 0 ? <p className="mt-4 rounded-2xl bg-muted/45 px-4 py-5 text-sm text-muted-foreground">No tienes actividades registradas para esta fecha.</p> :
-                <div className="mt-4 space-y-2">
-                  {sortedPlanner.slice(0, 4).map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-muted/45 px-3.5 py-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400"><Clock3 className="h-4.5 w-4.5" /></span>
+                <div className="mt-3 space-y-2">
+                  {sortedPlanner.slice(0, 3).map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-muted/45 px-3 py-2.5">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400"><Clock3 className="h-4.5 w-4.5" /></span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{item.title}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{item.start_time ? shortTime(item.start_time) : "Sin hora"} · {item.type === "event" ? "Evento" : "Actividad"}</p>
@@ -322,8 +325,8 @@ function HomePage() {
           )}
         </div>
 
-        <aside className="space-y-4">
-          <HydrationOverview date={date} />
+        <aside className="inicio-wellbeing-column min-w-0">
+          <HydrationOverview date={date} compact />
           <DiaryOverview
             entries={journalQuery.data ?? []}
             loading={journalQuery.isLoading}
@@ -337,7 +340,7 @@ function HomePage() {
               setJournalDialogOpen(true);
             }}
           />
-          <WeatherCard />
+          <WeatherCard compact />
         </aside>
       </div>
 
@@ -378,7 +381,7 @@ function DiaryOverview({
   onOpen: (entry: JournalEntry) => void;
 }) {
   return (
-    <section className="glass space-y-3 rounded-[26px] p-4 shadow-sm">
+    <section className="glass space-y-2.5 rounded-[24px] border border-rose-400/20 bg-gradient-to-br from-rose-500/[.07] via-card to-card p-3.5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-400/10 text-sky-300">
@@ -395,7 +398,7 @@ function DiaryOverview({
       </div>
 
       {error ? (
-        <p className="rounded-xl bg-muted/45 px-3 py-3 text-xs text-muted-foreground">
+        <p className="rounded-xl bg-muted/45 px-3 py-2.5 text-xs text-muted-foreground">
           No se pudo cargar el Diario para esta fecha.
         </p>
       ) : loading ? (
@@ -404,19 +407,19 @@ function DiaryOverview({
           <div className="h-11 animate-pulse rounded-xl bg-muted/65" />
         </div>
       ) : entries.length === 0 ? (
-        <p className="rounded-xl bg-muted/45 px-3 py-3 text-xs text-muted-foreground">
+        <p className="rounded-xl bg-muted/45 px-3 py-2.5 text-xs text-muted-foreground">
           Aún no has guardado capturas para esta fecha. Puedes anotar una idea, pensamiento o reflexión.
         </p>
       ) : (
         <div className="space-y-2">
-          {entries.slice(0, 3).map((entry) => {
+          {entries.slice(0, 2).map((entry) => {
             const meta = JOURNAL_META[entry.type];
             return (
               <button
                 key={entry.id}
                 type="button"
                 onClick={() => onOpen(entry)}
-                className="flex w-full min-w-0 items-start gap-3 rounded-xl border border-border/60 bg-background/45 px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-accent/50"
+                className="flex w-full min-w-0 items-start gap-3 rounded-xl border border-border/60 bg-background/45 px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-accent/50"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-lg">
                   {meta.emoji}
@@ -475,7 +478,7 @@ function WeeklyHabitRhythm({
     <section>
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold">Ritmo de los últimos 7 días</h3>
+          <h3 className="text-sm font-semibold">Ritmo semanal</h3>
           <p className="text-[11px] text-muted-foreground">Solo cuenta los hábitos que registraste</p>
         </div>
         {average !== null && (
@@ -487,15 +490,15 @@ function WeeklyHabitRhythm({
       </div>
 
       {error ? (
-        <p className="rounded-xl bg-muted/50 px-3 py-3 text-xs text-muted-foreground">
+        <p className="rounded-xl bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">
           No se pudo cargar el historial semanal.
         </p>
       ) : loading ? (
-        <div className="grid h-[86px] grid-cols-7 items-end gap-2" aria-label="Cargando ritmo semanal">
+        <div className="grid h-[76px] grid-cols-7 items-end gap-2" aria-label="Cargando ritmo semanal">
           {days.map((day) => <div key={day.date} className="h-12 animate-pulse rounded-lg bg-muted/70" />)}
         </div>
       ) : activeDays.length === 0 ? (
-        <p className="rounded-xl bg-muted/45 px-3 py-3 text-xs text-muted-foreground">
+        <p className="rounded-xl bg-muted/45 px-3 py-2.5 text-xs text-muted-foreground">
           Aún no hay registros en estos siete días. Los días vacíos se mantienen neutrales; no se cuentan como fallos.
         </p>
       ) : (
@@ -511,7 +514,7 @@ function WeeklyHabitRhythm({
               <span className="text-[10px] tabular-nums text-muted-foreground">
                 {day.percent === null ? "—" : `${day.percent}%`}
               </span>
-              <div className="flex h-14 w-full items-end overflow-hidden rounded-lg bg-muted/65">
+              <div className="flex h-10 w-full items-end overflow-hidden rounded-lg bg-muted/65">
                 {day.percent !== null && (
                   <div
                     className="w-full rounded-lg bg-gradient-to-t from-violet-600 to-cyan-400 transition-[height]"
@@ -529,7 +532,7 @@ function WeeklyHabitRhythm({
   );
 }
 
-function HydrationOverview({ date }: { date: string }) {
+function HydrationOverview({ date, compact = false }: { date: string; compact?: boolean }) {
   const metrics = usePersonalDateList<{ water_liters: number | null }>("health_metrics", "metric_date", date);
   const doses = useDoses(date);
   const manualLiters = Number(metrics.data?.[0]?.water_liters ?? 0) || 0;
@@ -539,7 +542,7 @@ function HydrationOverview({ date }: { date: string }) {
   const amount = totalLiters.toLocaleString("es-CO", { maximumFractionDigits: 2 });
 
   return (
-    <section className="relative overflow-hidden rounded-[26px] border border-cyan-400/15 bg-gradient-to-br from-cyan-500/[.13] via-card to-card p-5 shadow-sm">
+    <section className="relative overflow-hidden rounded-[24px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[.13] via-card to-card p-3.5 shadow-sm">
       <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-400/10 blur-2xl" />
       <div className="relative">
         <div className="flex items-center justify-between gap-3">
@@ -548,7 +551,7 @@ function HydrationOverview({ date }: { date: string }) {
         </div>
         {metrics.isError || doses.isError ? <p className="mt-4 text-xs text-muted-foreground">No se pudo cargar el resumen de hidratación.</p> : (
           <>
-            <div className="mt-5 flex items-end justify-between gap-3"><p className="text-3xl font-semibold tabular-nums">{metrics.isLoading || doses.isLoading ? "…" : amount}<span className="ml-1 text-sm font-normal text-muted-foreground">/ {targetLiters} L</span></p><span className="text-sm font-semibold text-cyan-500 tabular-nums">{metrics.isLoading || doses.isLoading ? " " : `${percent}%`}</span></div>
+            <div className="mt-3 flex items-end justify-between gap-3"><p className="text-2xl font-semibold tabular-nums">{metrics.isLoading || doses.isLoading ? "…" : amount}<span className="ml-1 text-sm font-normal text-muted-foreground">/ {targetLiters} L</span></p><span className="text-sm font-semibold text-cyan-500 tabular-nums">{metrics.isLoading || doses.isLoading ? " " : `${percent}%`}</span></div>
             <Progress value={metrics.isLoading || doses.isLoading ? 0 : percent} className="mt-3 h-2.5" />
             <p className="mt-2 text-[11px] text-muted-foreground">Datos del registro de Salud; no se crean registros paralelos.</p>
           </>
