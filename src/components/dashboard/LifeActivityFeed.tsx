@@ -47,9 +47,19 @@ const LINK_ENTITY_TYPE: Record<string, string> = {
 function hasTypedConnection(event: LifeEvent, connections: LifeConnection[]) {
   if (!event.entity_id || !event.entity_type) return false;
   const type = LINK_ENTITY_TYPE[event.entity_type] ?? event.entity_type;
+  const payload = event.payload ?? {};
+  // A habit is a reusable definition, while its timeline events belong to
+  // individual habit_logs. Resolve both identities so a connection created
+  // from Vida → Conexiones also lights up the corresponding activity events.
+  const identities = [{ id: event.entity_id, type }];
+  if (event.entity_type === "habit_logs" && typeof payload.habit_id === "string") {
+    identities.push({ id: payload.habit_id, type: "habit" });
+  }
   return connections.some((link) =>
-    (link.from_id === event.entity_id && link.from_type === type) ||
-    (link.to_id === event.entity_id && link.to_type === type)
+    identities.some(({ id, type: entityType }) =>
+      (link.from_id === id && link.from_type === entityType) ||
+      (link.to_id === id && link.to_type === entityType)
+    )
   );
 }
 
