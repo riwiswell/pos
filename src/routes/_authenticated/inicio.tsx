@@ -12,7 +12,6 @@ import {
   Target,
   TrendingUp,
   Trophy,
-  Zap,
 } from "lucide-react";
 
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
