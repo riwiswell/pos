@@ -14,6 +14,8 @@ type LifeConnection = {
   from_id?: string | null;
   to_id?: string | null;
   relation?: string | null;
+  from_type?: string | null;
+  to_type?: string | null;
 };
 
 const DOMAIN: Record<string, { label: string; icon: typeof Activity; tone: string }> = {
@@ -27,6 +29,29 @@ const DOMAIN: Record<string, { label: string; icon: typeof Activity; tone: strin
   relationship_interactions: { label: "Relaciones", icon: Users, tone: "text-pink-400 bg-pink-500/10" },
   spiritual_entries: { label: "Espiritualidad", icon: Sparkles, tone: "text-amber-400 bg-amber-500/10" },
 };
+
+const LINK_ENTITY_TYPE: Record<string, string> = {
+  habit_logs: "habit_log",
+  health_metrics: "health_metric",
+  journal_entries: "journal_entry",
+  work_items: "work_item",
+  work_sessions: "work_session",
+  learning_sessions: "learning_session",
+  learning_items: "learning_item",
+  relationship_interactions: "relationship_interaction",
+  spiritual_entries: "spiritual_entry",
+  life_goals: "life_goal",
+  routine_logs: "routine_log",
+};
+
+function hasTypedConnection(event: LifeEvent, connections: LifeConnection[]) {
+  if (!event.entity_id || !event.entity_type) return false;
+  const type = LINK_ENTITY_TYPE[event.entity_type] ?? event.entity_type;
+  return connections.some((link) =>
+    (link.from_id === event.entity_id && link.from_type === type) ||
+    (link.to_id === event.entity_id && link.to_type === type)
+  );
+}
 
 function eventTitle(event: LifeEvent) {
   const payload = event.payload ?? {};
@@ -85,7 +110,7 @@ export function LifeActivityFeed({ connections, connectionsLoading }: { connecti
           {events.map((event) => {
             const domain = DOMAIN[event.entity_type ?? ""] ?? { label: "Personal", icon: Activity, tone: "text-muted-foreground bg-muted" };
             const Icon = domain.icon;
-            const connected = Boolean(event.entity_id && connections.some((link) => link.from_id === event.entity_id || link.to_id === event.entity_id));
+            const connected = hasTypedConnection(event, connections);
             return (
               <article key={event.id} className="flex items-start gap-3 py-3">
                 <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${domain.tone}`}><Icon className="h-4 w-4" /></span>
