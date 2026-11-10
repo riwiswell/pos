@@ -236,6 +236,13 @@ function HomePage() {
           <WeatherCard />
         </aside>
       </div>
+
+      {dashboardWidgets.length === 0 && (
+        <EmptyState
+          title="Inicio despejado"
+          description="No hay bloques visibles. Puedes elegir Agenda, Enfoque o Hábitos desde Perfil y configuración."
+        />
+      )}
     </div>
   );
 }
