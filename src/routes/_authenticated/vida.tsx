@@ -5,7 +5,7 @@ import { CheckSquare,Flag,ListTodo,Plus,Trash2,GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { ErrorState } from "@/components/common/States"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor";
 import { useGlobalDate } from "@/hooks/use-global-date"; import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { useAuth } from "@/hooks/use-auth";
-import { useHabits } from "@/hooks/use-habits";
+import { useHabits, useRecentLogs } from "@/hooks/use-habits";
 import { usePersonalRecentList } from "@/hooks/use-personal-domains";
 export const Route=createFileRoute("/_authenticated/vida")({component:LifePage});
 type Tab="goals"|"routines"|"checklists"|"bucket"|"connections";
@@ -19,7 +19,14 @@ function Connections(){
  const relationships=useLGList("relationships");
  const spiritual=useLGList("spiritual_goals");
  const spiritualEntries=useLGList("spiritual_entries","entry_date");
+ const routineLogs=useLGList("routine_logs","log_date");
+ const workSessions=useLGList("work_sessions","session_date");
+ const learningSessions=useLGList("learning_sessions","session_date");
+ const learningNotes=useLGList("learning_notes");
+ const relationshipInteractions=useLGList("relationship_interactions","interaction_on");
+ const checklistItems=useLGList("checklist_items");
  const habits=useHabits(false);
+ const habitLogs=useRecentLogs();
  const health=usePersonalRecentList<any>("health_metrics","metric_date",40);
  const diary=usePersonalRecentList<any>("journal_entries","entry_date",40);
  const links=useLGList("life_links");
@@ -37,10 +44,17 @@ function Connections(){
   {type:"relationship",label:"Relación",items:(relationships.data??[]).map((x:any)=>({id:x.id,title:x.name}))},
   {type:"spiritual_goal",label:"Meta espiritual",items:(spiritual.data??[]).map((x:any)=>({id:x.id,title:x.title}))},
   {type:"spiritual_entry",label:"Registro espiritual",items:(spiritualEntries.data??[]).map((x:any)=>({id:x.id,title:x.title||"Reflexión · "+x.entry_date}))},
+  {type:"routine_log",label:"Registro de rutina",items:(routineLogs.data??[]).map((x:any)=>({id:x.id,title:"Rutina · "+x.log_date+(x.completed?" · completada":"")}))},
+  {type:"work_session",label:"Sesión de trabajo",items:(workSessions.data??[]).map((x:any)=>({id:x.id,title:"Trabajo · "+x.session_date+" · "+Number(x.minutes??0)+" min"}))},
+  {type:"learning_session",label:"Sesión de aprendizaje",items:(learningSessions.data??[]).map((x:any)=>({id:x.id,title:"Estudio · "+x.session_date+" · "+Number(x.minutes??0)+" min"}))},
+  {type:"learning_note",label:"Nota de aprendizaje",items:(learningNotes.data??[]).map((x:any)=>({id:x.id,title:x.title||x.section_label||"Nota de lectura"}))},
+  {type:"relationship_interaction",label:"Interacción personal",items:(relationshipInteractions.data??[]).map((x:any)=>({id:x.id,title:"Interacción · "+x.interaction_on}))},
+  {type:"checklist_item",label:"Elemento de checklist",items:(checklistItems.data??[]).map((x:any)=>({id:x.id,title:x.title}))},
   {type:"habit",label:"Hábito",items:(habits.data??[]).map((x:any)=>({id:x.id,title:x.name}))},
+  {type:"habit_log",label:"Registro de hábito",items:(habitLogs.data??[]).map((x:any)=>({id:x.id,title:(habits.data??[]).find((h:any)=>h.id===x.habit_id)?.name||"Hábito")+" · "+x.date}))},
   {type:"health_metric",label:"Registro de Salud",items:(health.data??[]).map((x:any)=>({id:x.id,title:"Salud · "+x.metric_date}))},
   {type:"journal_entry",label:"Entrada del Diario",items:(diary.data??[]).map((x:any)=>({id:x.id,title:x.title||"Diario · "+x.entry_date}))},
- ],[goals.data,routines.data,work.data,learning.data,relationships.data,spiritual.data,spiritualEntries.data,habits.data,health.data,diary.data]);
+ ],[goals.data,routines.data,work.data,learning.data,relationships.data,spiritual.data,spiritualEntries.data,routineLogs.data,workSessions.data,learningSessions.data,learningNotes.data,relationshipInteractions.data,checklistItems.data,habits.data,habitLogs.data,health.data,diary.data]);
  const fromGroup=groups.find(x=>x.type===fromType);
  const toGroup=groups.find(x=>x.type===toType);
  const fromRecords=fromGroup?.items??[];
@@ -55,8 +69,8 @@ function Connections(){
   toast.success("Conexión guardada en el Life Graph.");
   setFromId("");setToId("");
  };
- const loading=goals.isLoading||routines.isLoading||work.isLoading||learning.isLoading||relationships.isLoading||spiritual.isLoading||spiritualEntries.isLoading||habits.isLoading||health.isLoading||diary.isLoading;
- const failed=goals.isError||routines.isError||work.isError||learning.isError||relationships.isError||spiritual.isError||spiritualEntries.isError||habits.isError||health.isError||diary.isError||links.isError;
+ const loading=goals.isLoading||routines.isLoading||work.isLoading||learning.isLoading||relationships.isLoading||spiritual.isLoading||spiritualEntries.isLoading||routineLogs.isLoading||workSessions.isLoading||learningSessions.isLoading||learningNotes.isLoading||relationshipInteractions.isLoading||checklistItems.isLoading||habits.isLoading||habitLogs.isLoading||health.isLoading||diary.isLoading;
+ const failed=goals.isError||routines.isError||work.isError||learning.isError||relationships.isError||spiritual.isError||spiritualEntries.isError||routineLogs.isError||workSessions.isError||learningSessions.isError||learningNotes.isError||relationshipInteractions.isError||checklistItems.isError||habits.isError||habitLogs.isError||health.isError||diary.isError||links.isError;
  return <div className="space-y-4">
   <section className="glass space-y-3 rounded-2xl p-4">
    <div className="flex items-center gap-2"><GitBranch className="h-4 w-4 text-primary"/><h2 className="font-semibold">Conectar áreas de tu vida</h2></div>
