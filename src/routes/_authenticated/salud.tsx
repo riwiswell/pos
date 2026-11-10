@@ -1,9 +1,11 @@
 import { useEffect,useMemo,useRef,useState } from "react";
-import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { CalendarHeart,ClipboardList,HeartPulse,Pencil,Pill,Plus,Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label"; import { Switch } from "@/components/ui/switch";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
-import { useGlobalDate } from "@/hooks/use-global-date"; import { useAuth } from "@/hooks/use-auth"; import { useHealthMetricMutation,usePersonalDateList } from "@/hooks/use-personal-domains"; import { useProfile } from "@/hooks/use-profile"; import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lastWater,useDoseHistory,useDoses,useMedicationMutations,useMedications,useTakenCounts } from "@/hooks/use-medications"; import { formatTime12,doseLabel,formatGlasses,medicationWater,remainingQuantity,durationDays,estimatedEndDate,WATER_OPTIONS,type Medication } from "@/domain/health";
+import { useGlobalDate } from "@/hooks/use-global-date";
+import { subscribeToBackgroundPush } from "@/services/push.service"; import { useAuth } from "@/hooks/use-auth"; import { useHealthMetricMutation,usePersonalDateList } from "@/hooks/use-personal-domains"; import { useProfile, useProfileMutations } from "@/hooks/use-profile";
+import { supabase } from "@/integrations/supabase/client"; import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lastWater,useDoseHistory,useDoses,useMedicationMutations,useMedications,useTakenCounts } from "@/hooks/use-medications"; import { formatTime12,doseLabel,formatGlasses,medicationWater,remainingQuantity,durationDays,estimatedEndDate,WATER_OPTIONS,type Medication } from "@/domain/health";
 export const Route=createFileRoute("/_authenticated/salud")({component:HealthPage});
 function HealthPage(){
  const[tab,setTab]=useState("metrics");
@@ -14,11 +16,22 @@ function HealthPage(){
   if(typeof search["dose"]==="string"&&(search["action"]==="take"||search["action"]==="snooze"))setTab("meds");
  },[search["dose"],search["action"]]);
  const{data:profile}=useProfile();const hidden=profile?.hidden_features||{};const tabs=[["meds","Medicamentos",false],["metrics","Medidas del cuerpo",false],["cycle","Ciclo",hidden["health.cycle"]===true],["appointments","Citas",hidden["health.appointments"]===true],["nutrition","Nutrición",hidden["health.nutrition"]===true]].filter((x:any)=>!x[2]);const current=tabs.some((x:any)=>x[0]===tab)?tab:tabs[0]?.[0]||"meds";return <div className="space-y-5 pb-24"><GlobalDateHeader/><div><h1 className="flex items-center gap-2 text-xl font-semibold">Salud <HelpTip helpKey="health" /></h1><p className="text-sm text-muted-foreground">Medidas, signos vitales, medicamentos y seguimiento diario.</p></div><HydrationCard/><div className="flex flex-wrap gap-1.5">{tabs.map(([k,v])=><button key={k as string} onClick={()=>setTab(k as string)} className={"rounded-full border px-3 py-1.5 text-xs "+(current===k?"border-primary bg-primary/10":"border-border")}>{v as string}</button>)}</div>{current==="meds"?<Medications/>:current==="metrics"?<HealthMetricsPanel/>:current==="cycle"?<Cycle/>:current==="appointments"?<Appointments/>:<Nutrition/>}</div>}
+type HydrationConfig = { enabled: boolean; start_time: string; end_time: string; interval_minutes: number; amount_ml: number; background_push?: boolean };
+const DEFAULT_HYDRATION: HydrationConfig = { enabled: true, start_time: "08:00", end_time: "21:30", interval_minutes: 90, amount_ml: 250 };
+
 function HydrationCard(){
  const{date}=useGlobalDate();const{user}=useAuth();
  const metrics=usePersonalDateList<any>("health_metrics","metric_date",date);
  const doses=useDoses(date);const mutation=useHealthMetricMutation();
+ const profileQuery=useProfile();const profile=profileQuery.data;const profileMutations=useProfileMutations();
  const [busy,setBusy]=useState(false);const [customMl,setCustomMl]=useState("300");
+ const [schedule,setSchedule]=useState<HydrationConfig>(DEFAULT_HYDRATION);
+ const [savingSchedule,setSavingSchedule]=useState(false);
+ const [pushBusy,setPushBusy]=useState(false);
+ useEffect(()=>{
+  if(!profile)return;
+  setSchedule({...DEFAULT_HYDRATION,...(profile.notification_preferences?.hydration??{})});
+ },[profile]);
  const manualLiters=Number(metrics.data?.[0]?.water_liters??0)||0;
  const manualGlasses=manualLiters*4;
  const medicineGlasses=medicationWater(doses.data??[]);
@@ -34,9 +47,47 @@ function HydrationCard(){
   }catch(error){toast.error(error instanceof Error?error.message:"No se pudo guardar el agua.");}
   finally{setBusy(false)}
  };
+ const saveSchedule=async()=>{
+  if(!profile||savingSchedule)return;
+  if(schedule.enabled&&(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(schedule.start_time)||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(schedule.end_time))){
+   toast.error("Revisa las horas de inicio y final.");return;
+  }
+  if(schedule.end_time<=schedule.start_time){toast.error("La hora final debe ser posterior a la hora inicial.");return;}
+  setSavingSchedule(true);
+  try{
+   const preferences={...(profile.notification_preferences||{}),hydration:{...schedule}};
+   await profileMutations.save.mutateAsync({notification_preferences:preferences});
+   const{data:{session}}=await supabase.auth.getSession();
+   if(!session)throw new Error("Inicia sesión de nuevo para sincronizar los avisos.");
+   const response=await fetch("/api/hydration-preferences",{
+    method:"POST",
+    headers:{"content-type":"application/json",Authorization:"Bearer "+session.access_token},
+    body:JSON.stringify(schedule),
+   });
+   const result=await response.json() as {error?:string;scheduled?:number;pushRequired?:boolean;enabled?:boolean};
+   if(!response.ok)throw new Error(result.error||"No se pudieron sincronizar los avisos.");
+   if(!schedule.enabled)toast.success("Recordatorios de hidratación desactivados.");
+   else if(result.pushRequired)toast.info("Los avisos aparecerán mientras Personal OS esté abierto. Activa las notificaciones en segundo plano desde Perfil para recibirlos con el navegador cerrado.");
+   else toast.success(`Avisos de hidratación programados: ${result.scheduled??0} horarios.`);
+  }catch(error){
+   toast.error(error instanceof Error?error.message:"No se pudieron guardar los recordatorios.");
+  }finally{setSavingSchedule(false)}
+ };
+ const activatePush=async()=>{
+  setPushBusy(true);
+  try{
+   const result=await subscribeToBackgroundPush();
+   if(result==="subscribed")toast.success("Notificaciones en segundo plano activadas.");
+   else if(result==="missing-key")toast.error("Falta configurar VAPID en Cloudflare; los avisos locales seguirán funcionando mientras POS esté abierto.");
+   else if(result==="permission-denied")toast.error("Permite las notificaciones del navegador para continuar.");
+   else if(result==="unsupported")toast.error("Este navegador no admite notificaciones push.");
+   else toast.error("No se pudo activar la suscripción de notificaciones.");
+  }catch(error){toast.error(error instanceof Error?error.message:"No se pudieron activar las notificaciones.");}
+  finally{setPushBusy(false)}
+ };
  const disabled=busy||metrics.isLoading||doses.isLoading||metrics.isError||doses.isError;
- return <section className="glass space-y-3 rounded-2xl p-4">
-  <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-1 font-semibold">💧 Hidratación <HelpTip helpKey="hydration.daily" /></h2><p className="text-xs text-muted-foreground">Registra el agua una sola vez; también se refleja en tu seguimiento de Salud.</p></div><span className="text-sm font-semibold tabular-nums">{fmt(total)} / {target} vasos</span></div>
+ return <section className="glass space-y-4 rounded-2xl p-4">
+  <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-1 font-semibold">💧 Hidratación <HelpTip helpKey="hydration.daily" /></h2><p className="text-xs text-muted-foreground">Un solo registro para el agua que tomas, incluidos los vasos asociados a medicamentos.</p></div><span className="text-sm font-semibold tabular-nums">{fmt(total)} / {target} vasos</span></div>
   <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,total/target*100))+"%"}}/></div>
   <p className="text-sm text-muted-foreground">{fmt(manualGlasses)} vasos registrados + {fmt(medicineGlasses)} con medicamentos = <span className="font-medium text-foreground">{fmt(total)} vasos</span></p>
   <div className="flex flex-wrap items-center gap-2">
@@ -44,7 +95,25 @@ function HydrationCard(){
    <div className="flex items-center gap-1"><Input className="h-9 w-20" aria-label="Cantidad personalizada de agua en mililitros" type="number" min="1" max="3000" step="50" value={customMl} onChange={e=>setCustomMl(e.target.value)}/><Button size="sm" variant="outline" disabled={disabled||!Number.isFinite(Number(customMl))||Number(customMl)<=0||Number(customMl)>3000} onClick={()=>void adjust(Number(customMl))}>Añadir</Button></div>
    <Button size="sm" variant="ghost" disabled={disabled||manualLiters<=0} onClick={()=>void adjust(-250)}>− 250 ml</Button>
   </div>
-  <p className="text-xs text-muted-foreground">Agua manual: {fmt(manualLiters)} L · Meta actual: {target} vasos (2,25 L). Los registros de medicamentos se contabilizan aparte para evitar duplicarlos.</p>
+  <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/[.04] p-3 space-y-3">
+   <div className="flex items-center justify-between gap-3">
+    <div><p className="text-sm font-semibold">Avisos para tomar agua</p><p className="text-xs text-muted-foreground">No es un hábito: son recordatorios vinculados al registro de Salud.</p></div>
+    <Switch checked={schedule.enabled} onCheckedChange={enabled=>setSchedule(current=>({...current,enabled}))}/>
+   </div>
+   {schedule.enabled&&<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <label className="space-y-1 text-xs text-muted-foreground">Desde<Input type="time" value={schedule.start_time} onChange={e=>setSchedule(current=>({...current,start_time:e.target.value}))}/></label>
+    <label className="space-y-1 text-xs text-muted-foreground">Hasta<Input type="time" value={schedule.end_time} onChange={e=>setSchedule(current=>({...current,end_time:e.target.value}))}/></label>
+    <label className="space-y-1 text-xs text-muted-foreground">Cada<select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={schedule.interval_minutes} onChange={e=>setSchedule(current=>({...current,interval_minutes:Number(e.target.value)}))}>{[30,45,60,90,120,180].map(value=><option key={value} value={value}>{value} min</option>)}</select></label>
+    <label className="space-y-1 text-xs text-muted-foreground">Cantidad<select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={schedule.amount_ml} onChange={e=>setSchedule(current=>({...current,amount_ml:Number(e.target.value)}))}>{[150,200,250,300,350,500].map(value=><option key={value} value={value}>{value} ml</option>)}</select></label>
+   </div>}
+   <div className="flex flex-wrap items-center gap-2">
+    <Button size="sm" disabled={savingSchedule||profileQuery.isLoading} onClick={()=>void saveSchedule()}>{savingSchedule?"Guardando…":"Guardar avisos"}</Button>
+    <Button size="sm" variant="outline" disabled={pushBusy} onClick={()=>void activatePush()}>{pushBusy?"Activando…":"Activar avisos en segundo plano"}</Button>
+    <Link to="/perfil" search={(prev:Record<string,unknown>)=>prev} className="text-xs text-primary hover:underline">Configuración completa</Link>
+   </div>
+   <p className="text-[11px] text-muted-foreground">{schedule.background_push?"Push activo: los avisos pueden llegar con POS cerrado.":"Avisos locales: se muestran mientras Personal OS está abierto. Para recibirlos con el navegador cerrado debes activar la suscripción push; depende de las credenciales VAPID de Cloudflare."}</p>
+  </div>
+  <p className="text-xs text-muted-foreground">Agua manual: {fmt(manualLiters)} L · Meta actual: {target} vasos (2,25 L). Las tomas de medicamentos se contabilizan desde sus propios registros, sin sumar un segundo hábito.</p>
   {metrics.isError&&<p className="text-xs text-destructive">No se pudo cargar el agua registrada.</p>}
   {doses.isError&&<p className="text-xs text-destructive">No se pudo cargar el agua de las tomas.</p>}
  </section>;
