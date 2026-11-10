@@ -60,6 +60,12 @@ export function useHabitMutations(date: string) {
     void qc.invalidateQueries({ queryKey: habitKeys.recent });
     void qc.invalidateQueries({ queryKey: ["habit_logs", "range"] });
   };
+  const invalidateLifeGraph = () => {
+    void qc.invalidateQueries({ queryKey: ["lg", "life_links"] });
+    for (const key of ["gamification_profiles", "gamification_xp_events", "gamification_achievements", "gamification_challenges"]) {
+      void qc.invalidateQueries({ queryKey: ["lg", key] });
+    }
+  };
 
   const createCategory = useMutation({
     mutationFn: (vars: { input: HabitCategoryInput; position: number }) =>
@@ -134,7 +140,7 @@ export function useHabitMutations(date: string) {
       habitId: string;
       patch: { completed?: boolean; value?: number; note?: string | null };
     }) => habitsService.saveLog(vars.habitId, date, vars.patch),
-    onSuccess: () => invalidateLogs(),
+    onSuccess: () => { invalidateLogs(); invalidateLifeGraph(); },
     onError,
   });
 
