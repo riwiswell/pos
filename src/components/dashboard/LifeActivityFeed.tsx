@@ -32,6 +32,7 @@ const DOMAIN: Record<string, { label: string; icon: typeof Activity; tone: strin
 
 const LINK_ENTITY_TYPE: Record<string, string> = {
   habit_logs: "habit_log",
+  routine_logs: "routine_log",
   health_metrics: "health_metric",
   journal_entries: "journal_entry",
   work_items: "work_item",
@@ -41,19 +42,33 @@ const LINK_ENTITY_TYPE: Record<string, string> = {
   relationship_interactions: "relationship_interaction",
   spiritual_entries: "spiritual_entry",
   life_goals: "life_goal",
-  routine_logs: "routine_log",
+};
+
+const RELATED_EVENT_ENTITIES: Record<string, Array<[string, string]>> = {
+  habit_logs: [["habit_id", "habit"]],
+  routine_logs: [["routine_id", "routine"]],
+  work_sessions: [["work_item_id", "work_item"]],
+  learning_sessions: [["learning_item_id", "learning_item"]],
+  relationship_interactions: [["relationship_id", "relationship"]],
+  work_items: [
+    ["parent_work_item_id", "work_item"],
+    ["source_journal_entry_id", "journal_entry"],
+  ],
 };
 
 function hasTypedConnection(event: LifeEvent, connections: LifeConnection[]) {
   if (!event.entity_id || !event.entity_type) return false;
   const type = LINK_ENTITY_TYPE[event.entity_type] ?? event.entity_type;
   const payload = event.payload ?? {};
-  // A habit is a reusable definition, while its timeline events belong to
-  // individual habit_logs. Resolve both identities so a connection created
-  // from Vida → Conexiones also lights up the corresponding activity events.
-  const identities = [{ id: event.entity_id, type }];
-  if (event.entity_type === "habit_logs" && typeof payload.habit_id === "string") {
-    identities.push({ id: payload.habit_id, type: "habit" });
+  // Events belong to individual activity rows, but users often connect the
+  // reusable parent (habit, routine, project, book or relationship) to a goal.
+  // Resolve those parent IDs as well as the event's own identity.
+  const identities: Array<{ id: string; type: string }> = [{ id: event.entity_id, type }];
+  for (const [field, relatedType] of RELATED_EVENT_ENTITIES[event.entity_type] ?? []) {
+    const relatedId = payload[field];
+    if (typeof relatedId === "string" && relatedId.length > 0) {
+      identities.push({ id: relatedId, type: relatedType });
+    }
   }
   return connections.some((link) =>
     identities.some(({ id, type: entityType }) =>
