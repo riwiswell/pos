@@ -35,6 +35,7 @@ import { usePlannerItems } from "@/hooks/use-planner";
 import { compareChronologically, shortTime } from "@/domain/planner";
 import { addDaysISO, greeting } from "@/lib/date";
 import { normalizeDashboardWidgets } from "@/domain/dashboard";
+import { useLGList } from "@/hooks/use-life-graph";
 import type { Habit, HabitLog } from "@/domain/types";
 
 export const Route = createFileRoute("/_authenticated/inicio")({
@@ -87,6 +88,13 @@ function HomePage() {
   const pendingItems = sortedPlanner.filter((item) => item.status !== "done");
   const eventCount = plannerItems.filter((item) => item.type === "event").length;
   const nextItem = pendingItems.find((item) => item.start_time) ?? null;
+  const gamificationQuery = useLGList("gamification_profiles");
+  const challengesQuery = useLGList("gamification_challenges");
+  const gamification = gamificationQuery.data?.[0];
+  const gamificationXp = Number(gamification?.xp ?? 0);
+  const gamificationLevel = Number(gamification?.level ?? Math.floor(gamificationXp / 100) + 1);
+  const gamificationStreak = Number(gamification?.current_streak ?? 0);
+  const activeChallenge = (challengesQuery.data ?? []).find((challenge: any) => challenge.status === "active");
 
   const habits = habitsQuery.data ?? [];
   const logs = logsQuery.data ?? [];
@@ -167,7 +175,7 @@ function HomePage() {
             {showFocus && <div className="mt-3 max-w-xl"><DailyFocusPicker date={date} compact /></div>}
           </div>
 
-          <div className="grid grid-cols-2 gap-2 md:min-w-[250px]">
+          <div className="grid grid-cols-2 gap-2 md:min-w-[390px] md:grid-cols-3">
             {showHabits && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur">
                 <div className="flex items-center gap-2 text-xs text-slate-300"><Target className="h-4 w-4 text-cyan-300" /> Hábitos</div>
@@ -182,6 +190,12 @@ function HomePage() {
                 <p className="mt-0.5 text-[11px] text-slate-400">{eventCount} eventos</p>
               </div>
             )}
+            <Link to="/gamificacion" search={(prev: Record<string, unknown>) => prev} className="rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-400/[.13] to-white/[.05] p-3 backdrop-blur transition-colors hover:border-amber-300/40">
+              <div className="flex items-center gap-2 text-xs text-slate-300"><Trophy className="h-4 w-4 text-amber-300" /> Nivel personal</div>
+              <p className="mt-2 text-xl font-semibold tabular-nums text-white">{gamificationQuery.isLoading ? "…" : `Nv. ${gamificationLevel}`}</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">{gamificationXp} XP · {gamificationStreak} días de racha</p>
+              {activeChallenge && <p className="mt-1 truncate text-[10px] text-amber-200/80"><Zap className="mr-1 inline h-3 w-3"/>{activeChallenge.title}</p>}
+            </Link>
           </div>
         </div>
       </section>
@@ -293,6 +307,7 @@ function HomePage() {
         </div>
 
         <div className="inicio-planner-column min-w-0">
+          <div className="flex h-full min-w-0 flex-col gap-3">
           {showPlanner && (
             <section className="rounded-[26px] border border-amber-400/20 bg-gradient-to-br from-amber-500/[.07] via-card to-card p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
@@ -323,6 +338,8 @@ function HomePage() {
               }
             </section>
           )}
+          <CurrentBookCard />
+          </div>
         </div>
 
         <aside className="inicio-wellbeing-column min-w-0">
@@ -365,6 +382,32 @@ function HomePage() {
 }
 
 
+
+
+function CurrentBookCard(){
+ const query=useLGList("learning_items","updated_at");
+ const book=(query.data??[]).find((item:any)=>item.kind==="book"&&item.status==="active") as any;
+ const total=Number(book?.total_pages??0);
+ const page=Number(book?.current_page??0);
+ const progress=total>0?Math.min(100,Math.max(0,page/total*100)):Math.min(100,Math.max(0,Number(book?.progress??0)));
+ return <section className="relative min-w-0 overflow-hidden rounded-[24px] border border-sky-400/20 bg-gradient-to-br from-[#152a3b] via-[#172331] to-card p-4 shadow-sm">
+  <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-400/10 blur-2xl"/>
+  <div className="relative">
+   <div className="flex items-center justify-between gap-2">
+    <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-400/15 text-sky-300"><BookOpen className="h-5 w-5"/></span><div><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-sky-300">Aprendizaje</p><h2 className="text-sm font-semibold text-white">Lectura actual</h2></div></div>
+    <Link to="/aprendizaje" search={(prev:Record<string,unknown>)=>prev} className="text-[11px] font-medium text-sky-300 hover:underline">Biblioteca <ArrowUpRight className="ml-0.5 inline h-3 w-3"/></Link>
+   </div>
+   {query.isLoading?<p className="mt-4 text-xs text-slate-300">Buscando tu lectura…</p>:query.isError?<p className="mt-4 text-xs text-slate-300">No se pudo consultar Aprendizaje.</p>:book?
+    <>
+     <p className="mt-4 line-clamp-2 text-base font-semibold text-white">{book.title}</p>
+     <div className="mt-3 flex items-end justify-between gap-3"><p className="text-2xl font-semibold tabular-nums text-white">{Math.round(progress)}%</p><p className="text-right text-[11px] text-slate-300">{total>0?`Página ${page} de ${total} · ${Math.max(0,total-page)} restantes`:"Progreso registrado"}</p></div>
+     <Progress value={progress} className="mt-2 h-2 bg-white/10"/>
+    </>:
+    <div className="mt-4 rounded-xl border border-white/10 bg-white/[.04] p-3"><p className="text-sm font-medium text-white">Aún no tienes una lectura activa</p><p className="mt-1 text-xs text-slate-300">Añade un libro en Aprendizaje y aparecerá aquí con su progreso real.</p></div>
+   }
+  </div>
+ </section>;
+}
 
 function DiaryOverview({
   entries,
