@@ -23,7 +23,7 @@ function GamificationPage() {
   const xp=Number(profile.data?.[0]?.xp||0);
   const level=Number(profile.data?.[0]?.level||Math.floor(xp/100)+1);
   const unlocked=(ach.data||[]).filter((x:any)=>x.unlocked_at);
-  const actionCount=(xpEvents.data||[]).filter((event:any)=>!String(event.event_key||"").startsWith("achievement:")).length;
+  const actionCount=(xpEvents.data||[]).filter((event:any)=>Boolean(event.life_event_id)&&!String(event.event_key||"").startsWith("achievement:")).length;
   const lastActivityOn=profile.data?.[0]?.last_activity_on as string|undefined;
   const currentStreak=lastActivityOn&&(lastActivityOn===todayISO()||lastActivityOn===addDaysISO(todayISO(),-1))?Number(profile.data?.[0]?.current_streak||0):0;
   const recentXp=useMemo(()=>[...(xpEvents.data||[])].slice(0,8),[xpEvents.data]);
