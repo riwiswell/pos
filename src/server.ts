@@ -234,6 +234,13 @@ function normalizeHydrationSchedule(input:unknown, fallback:HydrationSchedule):H
  return next;
 }
 async function syncHydrationJobs(env:Env,userId:string,input?:unknown) {
+ // The browser saves the schedule in the user's profile. Without server-only
+ // Supabase credentials we keep the in-app reminder path available and report
+ // that background push cannot be provisioned yet.
+ if(!env.SUPABASE_SERVICE_ROLE_KEY){
+  const schedule=normalizeHydrationSchedule(input&&typeof input==="object"&&(input as Record<string,unknown>).sync===true?DEFAULT_HYDRATION_SCHEDULE:input??DEFAULT_HYDRATION_SCHEDULE,DEFAULT_HYDRATION_SCHEDULE);
+  return {enabled:schedule.enabled,scheduled:0,pushRequired:schedule.enabled};
+ }
  const profilePath="profiles?id=eq."+encodeURIComponent(userId)+"&select=id,notification_preferences&limit=1";
  const profileRead=await supabaseFetch(env,profilePath);
  if(!profileRead.ok)throw new Error("No se pudo leer la configuración de notificaciones.");
