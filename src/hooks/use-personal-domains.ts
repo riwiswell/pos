@@ -27,6 +27,7 @@ export function useHealthMetricMutation(){
   onSuccess:()=>{
    void qc.invalidateQueries({queryKey:["personal-domain","health_metrics"]});
    void qc.invalidateQueries({queryKey:["lg","life_links"]});
+   void qc.invalidateQueries({queryKey:["lg","life_events"]});
    for(const key of ["gamification_profiles","gamification_xp_events","gamification_achievements","gamification_challenges"]){
     void qc.invalidateQueries({queryKey:["lg",key]});
    }
