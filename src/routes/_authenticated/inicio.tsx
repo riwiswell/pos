@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
+import { WeatherCard } from "@/components/dashboard/WeatherCard";
 import { HelpTip } from "@/components/common/HelpTip";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState, LoadingState } from "@/components/common/States";
@@ -12,6 +13,9 @@ import { useGlobalDate } from "@/hooks/use-global-date";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { useHabits, useLogs } from "@/hooks/use-habits";
+import { usePersonalDateList } from "@/hooks/use-personal-domains";
+import { useDoses } from "@/hooks/use-medications";
+import { medicationWater } from "@/domain/health";
 import { usePlannerItems } from "@/hooks/use-planner";
 import { compareChronologically, shortTime } from "@/domain/planner";
 import { greeting } from "@/lib/date";
@@ -88,16 +92,39 @@ function HomePage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold">
-          {greeting()}
-          {name ? `, ${name}` : ""}
-          <HelpTip helpKey="dashboard" />
-        </h1>
-        <p className="text-sm text-muted-foreground">Tu día en Personal OS</p>
-      </div>
+      <section className="relative overflow-hidden rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/15 via-card to-card p-5 shadow-[0_16px_40px_-28px_var(--primary)] sm:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Tu espacio personal</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+            {greeting()}{name ? `, ${name}` : ""}
+            <HelpTip helpKey="dashboard" />
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">Una vista conectada de tu día. Avanza a tu ritmo.</p>
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:max-w-md">
+            {showHabits && (
+              <div className="rounded-2xl border border-border/70 bg-background/65 p-3">
+                <p className="text-xs text-muted-foreground">Hábitos de hoy</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{done}<span className="text-sm font-normal text-muted-foreground"> / {total}</span></p>
+                <p className="text-[11px] text-muted-foreground">{percent}% completado</p>
+              </div>
+            )}
+            {showPlanner && (
+              <div className="rounded-2xl border border-border/70 bg-background/65 p-3">
+                <p className="text-xs text-muted-foreground">Agenda de hoy</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{pendingCount}<span className="text-sm font-normal text-muted-foreground"> pendientes</span></p>
+                <p className="text-[11px] text-muted-foreground">{eventCount} evento{eventCount === 1 ? "" : "s"}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       <GlobalDateHeader />
+
+      <WeatherCard />
+
+      <HydrationOverview date={date} />
 
       {showPlanner && (
         <section className="glass rounded-2xl p-4">
@@ -167,5 +194,39 @@ function HomePage() {
         />
       )}
     </div>
+  );
+}
+
+function HydrationOverview({ date }: { date: string }) {
+  const metrics = usePersonalDateList<any>("health_metrics", "metric_date", date);
+  const doses = useDoses(date);
+  const manualLiters = Number(metrics.data?.[0]?.water_liters ?? 0) || 0;
+  const totalLiters = manualLiters + (medicationWater(doses.data ?? []) / 4);
+  const targetLiters = 2.25;
+  const percent = Math.min(100, Math.round((totalLiters / targetLiters) * 100));
+  const amount = totalLiters.toLocaleString("es-CO", { maximumFractionDigits: 2 });
+  return (
+    <section className="glass rounded-2xl p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold">💧 Hidratación de hoy</h2>
+          <p className="mt-1 text-xs text-muted-foreground">El mismo registro de Salud, visible desde Inicio.</p>
+        </div>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/salud" search={(prev: Record<string, unknown>) => prev}>Registrar agua</Link>
+        </Button>
+      </div>
+      {metrics.isError || doses.isError ? (
+        <p className="mt-3 text-xs text-muted-foreground">No se pudo cargar el resumen de hidratación.</p>
+      ) : (
+        <>
+          <div className="mt-3 flex items-baseline justify-between gap-3">
+            <p className="text-2xl font-semibold tabular-nums">{metrics.isLoading || doses.isLoading ? "…" : amount}<span className="ml-1 text-sm font-normal text-muted-foreground">/ {targetLiters} L</span></p>
+            <span className="text-sm font-medium text-primary tabular-nums">{metrics.isLoading || doses.isLoading ? " " : percent + "%"}</span>
+          </div>
+          <Progress value={metrics.isLoading || doses.isLoading ? 0 : percent} className="mt-2 h-2" />
+        </>
+      )}
+    </section>
   );
 }

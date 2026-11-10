@@ -18,18 +18,33 @@ function HydrationCard(){
  const{date}=useGlobalDate();const{user}=useAuth();
  const metrics=usePersonalDateList<any>("health_metrics","metric_date",date);
  const doses=useDoses(date);const mutation=useHealthMetricMutation();
- const [busy,setBusy]=useState(false);
+ const [busy,setBusy]=useState(false);const [customMl,setCustomMl]=useState("300");
  const manualLiters=Number(metrics.data?.[0]?.water_liters??0)||0;
  const manualGlasses=manualLiters*4;
  const medicineGlasses=medicationWater(doses.data??[]);
  const total=manualGlasses+medicineGlasses;const target=9;
  const fmt=(value:number)=>Number(value.toFixed(1)).toLocaleString("es-CO",{maximumFractionDigits:1});
- const adjust=async(delta:number)=>{if(!user||busy||metrics.isLoading||doses.isLoading)return;setBusy(true);try{const liters=Math.max(0,Math.round((manualLiters+delta/4)*100)/100);await mutation.mutateAsync({user_id:user.id,metric_date:date,water_liters:liters});toast.success(delta>0?"Vaso de agua registrado.":"Registro de agua ajustado.");}catch(error){toast.error(error instanceof Error?error.message:"No se pudo guardar el agua.");}finally{setBusy(false)}};
+ const adjust=async(deltaMl:number)=>{
+  if(!user||busy||metrics.isLoading||doses.isLoading||!Number.isFinite(deltaMl)||deltaMl===0)return;
+  setBusy(true);
+  try{
+   const liters=Math.max(0,Math.round((manualLiters+deltaMl/1000)*1000)/1000);
+   await mutation.mutateAsync({user_id:user.id,metric_date:date,water_liters:liters});
+   toast.success(deltaMl>0?(`+${deltaMl} ml registrados.`):"Registro de agua ajustado.");
+  }catch(error){toast.error(error instanceof Error?error.message:"No se pudo guardar el agua.");}
+  finally{setBusy(false)}
+ };
+ const disabled=busy||metrics.isLoading||doses.isLoading||metrics.isError||doses.isError;
  return <section className="glass space-y-3 rounded-2xl p-4">
-  <div className="flex items-center justify-between gap-3"><div><h2 className="flex items-center gap-1 font-semibold">Hidratación <HelpTip helpKey="hydration.daily" /></h2><p className="text-xs text-muted-foreground">Un vaso equivale a 250 ml. El agua de medicamentos se suma aparte.</p></div><span className="text-sm font-semibold tabular-nums">{fmt(total)} / {target} vasos</span></div>
+  <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-1 font-semibold">💧 Hidratación <HelpTip helpKey="hydration.daily" /></h2><p className="text-xs text-muted-foreground">Registra el agua una sola vez; también se refleja en tu seguimiento de Salud.</p></div><span className="text-sm font-semibold tabular-nums">{fmt(total)} / {target} vasos</span></div>
   <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,total/target*100))+"%"}}/></div>
   <p className="text-sm text-muted-foreground">{fmt(manualGlasses)} vasos registrados + {fmt(medicineGlasses)} con medicamentos = <span className="font-medium text-foreground">{fmt(total)} vasos</span></p>
-  <div className="flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" disabled={busy||metrics.isLoading||doses.isLoading||metrics.isError||doses.isError||manualLiters<=0} onClick={()=>void adjust(-1)}>− 1 vaso</Button><Button size="sm" disabled={busy||metrics.isLoading||doses.isLoading||metrics.isError||doses.isError} onClick={()=>void adjust(1)}>{busy?"Guardando…":"+ 1 vaso"}</Button><span className="text-xs text-muted-foreground">Agua manual: {fmt(manualLiters)} L · Meta: {target} vasos</span></div>
+  <div className="flex flex-wrap items-center gap-2">
+   {[200,250,500].map(ml=><Button key={ml} size="sm" variant={ml===250?"default":"outline"} disabled={disabled} onClick={()=>void adjust(ml)}>+{ml} ml</Button>)}
+   <div className="flex items-center gap-1"><Input className="h-9 w-20" aria-label="Cantidad personalizada de agua en mililitros" type="number" min="1" max="3000" step="50" value={customMl} onChange={e=>setCustomMl(e.target.value)}/><Button size="sm" variant="outline" disabled={disabled||!Number.isFinite(Number(customMl))||Number(customMl)<=0||Number(customMl)>3000} onClick={()=>void adjust(Number(customMl))}>Añadir</Button></div>
+   <Button size="sm" variant="ghost" disabled={disabled||manualLiters<=0} onClick={()=>void adjust(-250)}>− 250 ml</Button>
+  </div>
+  <p className="text-xs text-muted-foreground">Agua manual: {fmt(manualLiters)} L · Meta actual: {target} vasos (2,25 L). Los registros de medicamentos se contabilizan aparte para evitar duplicarlos.</p>
   {metrics.isError&&<p className="text-xs text-destructive">No se pudo cargar el agua registrada.</p>}
   {doses.isError&&<p className="text-xs text-destructive">No se pudo cargar el agua de las tomas.</p>}
  </section>;
