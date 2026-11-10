@@ -145,10 +145,10 @@ function HomePage() {
   }).format(new Date(date + "T12:00:00"));
 
   return (
-    <div className="inicio-dashboard space-y-4">
+    <div className="inicio-dashboard flex flex-col gap-4">
       <GlobalDateHeader compact />
 
-      <section className="relative isolate overflow-hidden inicio-hero relative isolate rounded-[26px] border border-white/10 bg-gradient-to-br from-[#202342] via-[#171b2b] to-[#10262f] px-5 py-4 shadow-[0_22px_55px_-34px_rgba(75,105,255,.55)]">
+      <section className="inicio-hero relative isolate overflow-hidden rounded-[26px] border border-white/10 bg-gradient-to-br from-[#202342] via-[#171b2b] to-[#10262f] px-5 py-4 shadow-[0_22px_55px_-34px_rgba(75,105,255,.55)]">
         <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="pointer-events-none absolute bottom-[-100px] left-[38%] h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
         <div className="relative grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
@@ -345,10 +345,9 @@ function HomePage() {
       </div>
 
       {dashboardWidgets.length === 0 && (
-        <EmptyState
-          title="Inicio despejado"
-          description="No hay bloques visibles. Puedes elegir Agenda, Enfoque o Hábitos desde Perfil y configuración."
-        />
+        <p className="rounded-xl border border-dashed border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-slate-300">
+          Inicio no tiene widgets activos. Puedes configurarlos desde Perfil.
+        </p>
       )}
 
       <JournalEntryDialog
