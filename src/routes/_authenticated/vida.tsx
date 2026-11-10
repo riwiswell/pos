@@ -51,7 +51,7 @@ function Connections(){
   {type:"relationship_interaction",label:"Interacción personal",items:(relationshipInteractions.data??[]).map((x:any)=>({id:x.id,title:"Interacción · "+x.interaction_on}))},
   {type:"checklist_item",label:"Elemento de checklist",items:(checklistItems.data??[]).map((x:any)=>({id:x.id,title:x.title}))},
   {type:"habit",label:"Hábito",items:(habits.data??[]).map((x:any)=>({id:x.id,title:x.name}))},
-  {type:"habit_log",label:"Registro de hábito",items:(habitLogs.data??[]).map((x:any)=>({id:x.id,title:(habits.data??[]).find((h:any)=>h.id===x.habit_id)?.name||"Hábito")+" · "+x.date}))},
+  {type:"habit_log",label:"Registro de hábito",items:(habitLogs.data??[]).map((x:any)=>({id:x.id,title:((habits.data??[]).find((h:any)=>h.id===x.habit_id)?.name||"Hábito")+" · "+x.date}))},
   {type:"health_metric",label:"Registro de Salud",items:(health.data??[]).map((x:any)=>({id:x.id,title:"Salud · "+x.metric_date}))},
   {type:"journal_entry",label:"Entrada del Diario",items:(diary.data??[]).map((x:any)=>({id:x.id,title:x.title||"Diario · "+x.entry_date}))},
  ],[goals.data,routines.data,work.data,learning.data,relationships.data,spiritual.data,spiritualEntries.data,routineLogs.data,workSessions.data,learningSessions.data,learningNotes.data,relationshipInteractions.data,checklistItems.data,habits.data,habitLogs.data,health.data,diary.data]);
