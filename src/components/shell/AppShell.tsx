@@ -16,6 +16,7 @@ import { useAppointmentReminders } from "@/hooks/use-appointment-reminders";
 import { toast } from "sonner";
 import { useTheme } from "@/hooks/use-theme";
 import { useMedicationReminders } from "@/hooks/use-medication-reminders";
+import { useHydrationReminders } from "@/hooks/use-hydration-reminders";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -116,6 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   useTheme();
   useMedicationReminders();
+  useHydrationReminders();
   useAppointmentReminders();
 
   const allItems = useMemo(() => orderedAllItems(profile?.module_order), [profile?.module_order]);
