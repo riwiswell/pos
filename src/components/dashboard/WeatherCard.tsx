@@ -95,7 +95,7 @@ export function WeatherCard() {
       latitude: String(location.latitude),
       longitude: String(location.longitude),
       current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day",
-      daily: "precipitation_probability_max,temperature_2m_max,temperature_2m_min",
+      daily: "weather_code,precipitation_probability_max,temperature_2m_max,temperature_2m_min",
       forecast_days: "5",
       timezone: "auto",
     });
