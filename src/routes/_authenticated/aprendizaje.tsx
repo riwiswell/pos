@@ -132,6 +132,8 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
   const[range,setRange]=useState("");
   const[newTitle,setNewTitle]=useState(String(book.title||""));
   const[newTotal,setNewTotal]=useState(String(book.total_pages||""));
+  const[newTargetPages,setNewTargetPages]=useState(String(book.target_pages||""));
+  const[newTargetDate,setNewTargetDate]=useState(String(book.target_date||""));
   const[panel,setPanel]=useState<"progress"|"summary"|"notes"|"details"|null>(null);
   const[editingSummary,setEditingSummary]=useState(false);
   const[addingNote,setAddingNote]=useState(false);
@@ -147,6 +149,8 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
   useEffect(()=>setSummary(book.summary||""),[book.summary]);
   useEffect(()=>setNewTitle(String(book.title||"")),[book.title]);
   useEffect(()=>setNewTotal(String(book.total_pages||"")),[book.total_pages]);
+  useEffect(()=>setNewTargetPages(String(book.target_pages||"")),[book.target_pages]);
+  useEffect(()=>setNewTargetDate(String(book.target_date||"")),[book.target_date]);
 
   const uploadCover=async(event:React.ChangeEvent<HTMLInputElement>)=>{
     const input=event.currentTarget;
@@ -185,7 +189,9 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
     if(!newTitle.trim()){toast.error("El título no puede quedar vacío.");return;}
     const parsedTotal=Number(newTotal);
     if(newTotal.trim()&&(!Number.isInteger(parsedTotal)||parsedTotal<1)){toast.error("El total de páginas debe ser un número entero mayor que cero.");return;}
-    await onSave({title:newTitle.trim(),total_pages:newTotal.trim()?parsedTotal:null});
+    const parsedTarget=Number(newTargetPages);
+    if(newTargetPages.trim()&&(!Number.isInteger(parsedTarget)||parsedTarget<1)){toast.error("La meta de páginas debe ser un entero mayor que cero.");return;}
+    await onSave({title:newTitle.trim(),total_pages:newTotal.trim()?parsedTotal:null,target_pages:newTargetPages.trim()?parsedTarget:null,target_date:newTargetDate||null});
     setPanel(null);
     toast.success("Libro actualizado.");
   };
@@ -225,7 +231,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
             <h3 className="line-clamp-2 font-semibold leading-snug">{book.title}</h3>
             {isBible
               ? <p className="mt-1 text-xs text-muted-foreground">Plan de lectura anual o libre</p>
-              : <p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>}
+              : <><p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>{Number(book.target_pages)>0&&<p className="mt-1 text-xs text-primary">Meta: {Number(book.target_pages).toLocaleString("es-CO")} páginas · {Math.max(0,Number(book.target_pages)-pageValue).toLocaleString("es-CO")} restantes{book.target_date?" · fecha "+book.target_date:""}</p>}</>}
           </div>
           <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={()=>void onDelete()} aria-label={"Eliminar "+book.title}>
             <Trash2 className="h-4 w-4 text-destructive"/>
@@ -250,11 +256,13 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
 
     {panel==="details"&&!isBible&&<div className="space-y-2 border-t p-3">
       <p className="text-sm font-medium">Editar libro</p>
-      <div className="grid gap-2 sm:grid-cols-[1fr_150px_auto]">
+      <div className="grid gap-2 sm:grid-cols-2">
         <Input aria-label="Título" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/>
-        <Input aria-label="Total de páginas" type="number" min="1" placeholder="Total de páginas" value={newTotal} onChange={e=>setNewTotal(e.target.value)}/>
-        <Button size="sm" onClick={()=>void saveDetails()}><Save className="mr-1 h-3.5 w-3.5"/>Guardar</Button>
+        <Input aria-label="Total de páginas" type="number" min="1" placeholder="Páginas reales del libro" value={newTotal} onChange={e=>setNewTotal(e.target.value)}/>
+        <Input aria-label="Meta intermedia de páginas" type="number" min="1" placeholder="Meta de páginas (opcional)" value={newTargetPages} onChange={e=>setNewTargetPages(e.target.value)}/>
+        <label className="space-y-1 text-xs text-muted-foreground">Fecha objetivo<Input aria-label="Fecha objetivo" type="date" value={newTargetDate} onChange={e=>setNewTargetDate(e.target.value)}/></label>
       </div>
+      <Button size="sm" onClick={()=>void saveDetails()}><Save className="mr-1 h-3.5 w-3.5"/>Guardar libro y meta</Button>
     </div>}
 
     {panel==="progress"&&!isBible&&<div className="space-y-2 border-t p-3">
