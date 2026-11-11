@@ -108,6 +108,50 @@ export function doseLabel(med: Pick<Medication, "dose" | "unit">): string {
   return `${med.dose}${med.unit ? ` ${med.unit}` : ""}`;
 }
 
+/**
+ * Human-readable daily schedule summary.
+ * units_per_dose is physical inventory consumed at each scheduled time;
+ * dose/unit may instead describe the medication strength (for example, 50 mg).
+ */
+export function medicationScheduleLabel(
+  med: Pick<Medication, "dose" | "unit" | "times" | "frequency" | "stock_unit" | "units_per_dose">,
+): string {
+  const times = normalizeTimes(med.times ?? []);
+  const perDose = Number(med.units_per_dose ?? 1);
+  const dailyQuantity = Math.max(0, perDose * times.length);
+  const rawUnit = String(med.stock_unit || med.unit || "unidades").trim();
+  const key = rawUnit.toLocaleLowerCase("es-CO").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+  const plural: Record<string, string> = {
+    tableta: "tabletas",
+    pastilla: "pastillas",
+    capsula: "capsulas",
+    comprimido: "comprimidos",
+    sobre: "sobres",
+    gota: "gotas",
+    aplicacion: "aplicaciones",
+    puff: "puffs",
+    unidad: "unidades",
+    cucharadita: "cucharaditas",
+    cucharada: "cucharadas",
+  };
+  const stockUnit = plural[key] ?? rawUnit;
+  const quantity = dailyQuantity.toLocaleString("es-CO", { maximumFractionDigits: 3 });
+  const frequencyText = med.frequency === "alternate"
+    ? `${quantity} ${stockUnit} en cada día de toma`
+    : `${quantity} ${stockUnit} al día`;
+
+  const strengthUnit = String(med.unit ?? "").toLocaleLowerCase("es-CO");
+  const isPhysicalDoseUnit = [
+    "tableta", "pastilla", "cápsula", "comprimido", "sobre", "gota",
+    "aplicación", "puff", "cucharadita", "cucharada", "otro",
+  ].includes(strengthUnit);
+  const strength = !isPhysicalDoseUnit && med.dose != null
+    ? `${doseLabel(med)} por toma · `
+    : "";
+
+  return `${strength}${frequencyText}${times.length ? ` · ${times.join(", ")}` : ""}`;
+}
+
 export function normalizeTimes(times: string[]): string[] {
   return Array.from(new Set(times.filter((t) => /^\d{2}:\d{2}$/.test(t)))).sort();
 }
