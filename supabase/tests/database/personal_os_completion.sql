@@ -1,6 +1,6 @@
 begin;
 
-select plan(87);
+select plan(88);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -192,6 +192,15 @@ select is((
      ])
      and policyname like 'personal_shared_%'
 ), 23, 'all expected shared-space access policies exist');
+select is((
+  select count(*)::integer from pg_policies
+   where schemaname='public'
+     and tablename='personal_shared_habits'
+     and policyname='personal_shared_habits_update'
+     and qual like '%personal_shared_is_owner%'
+     and qual like '%created_by%'
+), 1, 'shared habits can only be edited by their creator or a space owner');
+
 select has_function('public','personal_shared_is_member','shared membership helper exists');
 select has_function('public','personal_shared_is_owner','shared owner helper exists');
 select has_function('public','accept_personal_shared_invite','invite acceptance checks the signed-in account');
