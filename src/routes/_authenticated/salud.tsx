@@ -2,7 +2,7 @@ import { useEffect,useMemo,useRef,useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { CalendarHeart,ClipboardList,Coffee,HeartPulse,Pencil,Pill,Plus,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label"; import { Switch } from "@/components/ui/switch";
-import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
+import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { SleepPanel } from "@/components/health/SleepPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { todayISO } from "@/lib/date";
 import { subscribeToBackgroundPush } from "@/services/push.service"; import { useAuth } from "@/hooks/use-auth"; import { usePersonalDateList } from "@/hooks/use-personal-domains"; import { useProfile, useProfileMutations } from "@/hooks/use-profile";
@@ -11,14 +11,14 @@ import { useHydrationEntries,useHydrationMutations } from "@/hooks/use-hydration
 import { useMedicationStockTotals } from "@/hooks/use-medications";
 export const Route=createFileRoute("/_authenticated/salud")({component:HealthPage});
 function HealthPage(){
- const[tab,setTab]=useState("metrics");
+ const[tab,setTab]=useState("sleep");
  const search=useRouterState({select:(state)=>state.location.search as Record<string,unknown>});
  // Push-action links must mount the medication panel; the panel owns the single
  // authenticated mutation and clears the search state through the router.
  useEffect(()=>{
   if(typeof search["dose"]==="string"&&(search["action"]==="take"||search["action"]==="snooze"))setTab("meds");
  },[search["dose"],search["action"]]);
- const{data:profile}=useProfile();const hidden=profile?.hidden_features||{};const tabs=[["meds","Medicamentos",false],["metrics","Medidas del cuerpo",false],["cycle","Ciclo",hidden["health.cycle"]===true],["appointments","Citas",hidden["health.appointments"]===true],["nutrition","Nutrición",hidden["health.nutrition"]===true]].filter((x:any)=>!x[2]);const current=tabs.some((x:any)=>x[0]===tab)?tab:tabs[0]?.[0]||"meds";return <div className="space-y-5 pb-24"><GlobalDateHeader/><div><h1 className="flex items-center gap-2 text-xl font-semibold">Salud <HelpTip helpKey="health" /></h1><p className="text-sm text-muted-foreground">Medidas, signos vitales, medicamentos y seguimiento diario.</p></div><HydrationCard/><div className="flex flex-wrap gap-1.5">{tabs.map(([k,v])=><button key={k as string} onClick={()=>setTab(k as string)} className={"rounded-full border px-3 py-1.5 text-xs "+(current===k?"border-primary bg-primary/10":"border-border")}>{v as string}</button>)}</div>{current==="meds"?<Medications/>:current==="metrics"?<HealthMetricsPanel/>:current==="cycle"?<Cycle/>:current==="appointments"?<Appointments/>:<Nutrition/>}</div>}
+ const{data:profile}=useProfile();const hidden=profile?.hidden_features||{};const tabs=[["meds","Medicamentos",false],["sleep","Sueño",false],["metrics","Medidas del cuerpo",false],["cycle","Ciclo",hidden["health.cycle"]===true],["appointments","Citas",hidden["health.appointments"]===true],["nutrition","Nutrición",hidden["health.nutrition"]===true]].filter((x:any)=>!x[2]);const current=tabs.some((x:any)=>x[0]===tab)?tab:tabs[0]?.[0]||"meds";return <div className="space-y-5 pb-24"><GlobalDateHeader/><div><h1 className="flex items-center gap-2 text-xl font-semibold">Salud <HelpTip helpKey="health" /></h1><p className="text-sm text-muted-foreground">Medicamentos, sueño, medidas, signos vitales y seguimiento diario.</p></div><HydrationCard/><div className="flex flex-wrap gap-1.5">{tabs.map(([k,v])=><button key={k as string} onClick={()=>setTab(k as string)} className={"rounded-full border px-3 py-1.5 text-xs "+(current===k?"border-primary bg-primary/10":"border-border")}>{v as string}</button>)}</div>{current==="meds"?<Medications/>:current==="sleep"?<SleepPanel/>:current==="metrics"?<HealthMetricsPanel/>:current==="cycle"?<Cycle/>:current==="appointments"?<Appointments/>:<Nutrition/>}</div>}
 type HydrationConfig = { enabled: boolean; start_time: string; end_time: string; interval_minutes: number; amount_ml: number; background_push?: boolean };
 const DEFAULT_HYDRATION: HydrationConfig = { enabled: true, start_time: "08:00", end_time: "21:30", interval_minutes: 90, amount_ml: WATER_GLASS_ML };
 
