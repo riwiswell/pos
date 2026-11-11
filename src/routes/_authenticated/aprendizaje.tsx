@@ -462,7 +462,7 @@ function Languages(){
     const value=Number(minutes);
     if(!Number.isFinite(value)||value<1||value>1440){toast.error("La duración debe estar entre 1 y 1440 minutos.");return;}
     if(!selectedProfile){toast.error("Primero agrega este idioma a tu plan.");return;}
-    const session=await sm.create.mutateAsync({user_id:user?.id,session_date:date,minutes:value,activity_type:"language",skill,resource_url:locale});
+    const session=await sm.create.mutateAsync({user_id:user?.id,session_date:date,minutes:value,activity_type:"language",resource_url:locale});
     await lifeGraphService.link("learning_session",session.id,"language_profile",selectedProfile.id,"practiced_language",{locale_code:locale,skill});
     setMinutes("");toast.success("Sesión registrada en tu historial.");
   };
@@ -504,7 +504,7 @@ function Languages(){
     </div>
     <div className="glass space-y-3 rounded-2xl p-4">
       <div><h2 className="font-semibold">Historial de práctica</h2><p className="text-xs text-muted-foreground">Sesiones registradas para {localeInfo(locale).language} · {localeInfo(locale).country}.</p></div>
-      {localeSessions.length===0?<p className="text-sm text-muted-foreground">Aún no hay sesiones para esta variante. Registra la primera arriba.</p>:<div className="space-y-2">{localeSessions.slice(0,12).map((entry:any)=><div key={entry.id} className="flex items-center gap-3 rounded-xl border p-3"><FlagIcon locale={entry.resource_url||locale}/><div className="min-w-0 flex-1"><p className="text-sm font-medium">{skills[entry.skill]||entry.skill||"Práctica"} · {entry.minutes} min</p><p className="text-xs text-muted-foreground">{entry.session_date}</p></div><Button size="icon" variant="ghost" aria-label="Eliminar sesión" onClick={()=>void sm.remove.mutateAsync(entry.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>)}</div>}
+      {localeSessions.length===0?<p className="text-sm text-muted-foreground">Aún no hay sesiones para esta variante. Registra la primera arriba.</p>:<div className="space-y-2">{localeSessions.slice(0,12).map((entry:any)=><div key={entry.id} className="flex items-center gap-3 rounded-xl border p-3"><FlagIcon locale={entry.resource_url||locale}/><div className="min-w-0 flex-1"><p className="text-sm font-medium">Práctica de idioma · {entry.minutes} min</p><p className="text-xs text-muted-foreground">{entry.session_date}</p></div><Button size="icon" variant="ghost" aria-label="Eliminar sesión" onClick={()=>void sm.remove.mutateAsync(entry.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>)}</div>}
     </div>
   </section>;
 }
