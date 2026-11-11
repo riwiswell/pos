@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { addDaysISO, todayISO } from "@/lib/date";
-import { BIBLE_PLAN_MONTHS, BIBLE_READING_PLAN, biblePlanProgress } from "@/domain/bible-reading-plan";
+import { BIBLE_PLAN_MONTHS, BIBLE_READING_PLAN } from "@/domain/bible-reading-plan";
 
 const db = supabase as any;
 type Cycle = {
@@ -200,9 +200,10 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
 
   const progressRows = progressQuery.data ?? [];
   const progressByDay = useMemo(() => new Map(progressRows.map((row) => [row.day_number, row])), [progressRows]);
+  const completedReadings = progressRows.reduce((total, row) => total + Number(row.first_done) + Number(row.second_done) + Number(row.third_done), 0);
   const completedDays = progressRows.filter((row) => row.first_done && row.second_done && row.third_done).length;
   const partialDays = progressRows.filter((row) => Number(row.first_done) + Number(row.second_done) + Number(row.third_done) > 0 && !(row.first_done && row.second_done && row.third_done)).length;
-  const percent = biblePlanProgress(completedDays);
+  const percent = Number((completedReadings / 1095 * 100).toFixed(1));
   const currentDayNumber = activeCycle?.mode === "annual_plan" ? dayNumberForDate(activeCycle.start_date, todayISO()) : 0;
   const currentPlanMonth = BIBLE_READING_PLAN[Math.max(0, Math.min(364, currentDayNumber - 1))]?.monthIndex ?? 0;
 
@@ -211,10 +212,10 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
   }, [activeCycle?.id, currentPlanMonth]);
 
   useEffect(() => {
-    if (activeCycle?.mode === "annual_plan" && completedDays === 365 && activeCycle.status === "active" && !finishCycle.isPending) {
+    if (activeCycle?.mode === "annual_plan" && completedReadings === 1095 && activeCycle.status === "active" && !finishCycle.isPending) {
       finishCycle.mutate();
     }
-  }, [activeCycle?.id, activeCycle?.mode, activeCycle?.status, completedDays]);
+  }, [activeCycle?.id, activeCycle?.mode, activeCycle?.status, completedReadings]);
 
   const todayPlanDay = activeCycle?.mode === "annual_plan" && currentDayNumber >= 1 && currentDayNumber <= 365
     ? BIBLE_READING_PLAN[currentDayNumber - 1]
@@ -272,10 +273,10 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
   }
 
   return (
-    <section className="space-y-4 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-cyan-500/5 p-4">
+    <section className="mx-auto w-full max-w-5xl space-y-4 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-cyan-500/5 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><p className="text-xs font-semibold uppercase tracking-[.15em] text-primary">Plan anual</p><h3 className="flex items-center gap-2 font-semibold"><BookOpen className="h-4 w-4"/>La Biblia en 365 días</h3><p className="mt-1 text-xs text-muted-foreground">Comenzaste el {activeCycle.start_date}. Cada día tiene tres pasajes; el día suma al porcentaje solo cuando completas los tres.</p></div>
-        <div className="flex flex-col items-end gap-2"><div className="rounded-xl bg-background/80 px-3 py-2 text-right"><p className="text-2xl font-bold tabular-nums">{percent}%</p><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{completedDays}/365 días completos</p></div><Button size="sm" variant="outline" onClick={() => createCycle.mutate("free")} disabled={createCycle.isPending}>Cambiar a lectura libre</Button></div>
+        <div><p className="text-xs font-semibold uppercase tracking-[.15em] text-primary">Plan anual</p><h3 className="flex items-center gap-2 font-semibold"><BookOpen className="h-4 w-4"/>La Biblia en 365 días</h3><p className="mt-1 text-xs text-muted-foreground">Comenzaste el {activeCycle.start_date}. Cada pasaje marcado suma al progreso.</p></div>
+        <div className="flex flex-col items-end gap-2"><div className="rounded-xl bg-background/80 px-3 py-2 text-right"><p className="text-2xl font-bold tabular-nums">{percent}%</p><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{completedReadings}/1.095 lecturas</p></div><Button size="sm" variant="outline" onClick={() => createCycle.mutate("free")} disabled={createCycle.isPending}>Cambiar a lectura libre</Button></div>
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all" style={{ width: percent + "%" }}/></div>
       <div className="grid grid-cols-3 gap-2"><div className="rounded-xl border bg-background/70 p-2.5"><p className="text-lg font-semibold tabular-nums">{completedDays}</p><p className="text-[10px] text-muted-foreground">Días completos</p></div><div className="rounded-xl border bg-background/70 p-2.5"><p className="text-lg font-semibold tabular-nums">{partialDays}</p><p className="text-[10px] text-muted-foreground">Días empezados</p></div><div className="rounded-xl border bg-background/70 p-2.5"><p className="text-lg font-semibold tabular-nums">{365 - completedDays}</p><p className="text-[10px] text-muted-foreground">Días por completar</p></div></div>
@@ -284,12 +285,12 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
       <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6 md:grid-cols-12">
         {BIBLE_PLAN_MONTHS.map((item, index) => <button key={item.name} type="button" onClick={() => setSelectedMonth(index)} className={"rounded-lg border px-1.5 py-2 text-xs transition " + (index === selectedMonth ? "border-primary bg-primary/10 font-semibold text-primary" : "bg-background/70 text-muted-foreground hover:bg-accent")}>{item.name.slice(0,3)}</button>)}
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid justify-start gap-3 md:grid-cols-[max-content_max-content]">
         {[
           (month?.days ?? []).filter((day) => day.dayOfMonth <= 15),
           (month?.days ?? []).filter((day) => day.dayOfMonth >= 16),
         ].map((columnDays, columnIndex) => (
-          <div key={columnIndex} className="min-w-0 space-y-1.5">
+          <div key={columnIndex} className="w-fit max-w-full min-w-0 space-y-1.5">
             <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {columnIndex === 0 ? "Días 1–15" : "Días 16–31"}
             </p>
@@ -298,9 +299,9 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
               const flags = [Boolean(row?.first_done), Boolean(row?.second_done), Boolean(row?.third_done)];
               const assignedDate = addDaysISO(activeCycle.start_date, day.dayNumber - 1);
               return (
-                <article key={day.dayNumber} className={"flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto rounded-lg border px-2 py-1.5 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5" : "bg-background/65")}>
+                <article key={day.dayNumber} className={"flex w-fit max-w-full min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto rounded-lg border px-2 py-1.5 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5" : "bg-background/65")}>
                   <span className="shrink-0 text-[11px] font-semibold tabular-nums">Día {day.dayOfMonth}</span>
-                  <div className="flex min-w-max flex-1 items-center whitespace-nowrap text-[11px] leading-snug">
+                  <div className="flex min-w-max items-center whitespace-nowrap text-[11px] leading-snug">
                     {day.references.map((reference, index) => (
                       <span key={index} className={flags[index] ? "text-muted-foreground line-through" : "font-medium"}>
                         {index > 0 ? " · " : ""}{reference}
