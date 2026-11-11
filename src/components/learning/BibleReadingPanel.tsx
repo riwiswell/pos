@@ -298,22 +298,22 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
               const flags = [Boolean(row?.first_done), Boolean(row?.second_done), Boolean(row?.third_done)];
               const assignedDate = addDaysISO(activeCycle.start_date, day.dayNumber - 1);
               return (
-                <article key={day.dayNumber} className={"flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-2 py-1.5 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5" : "bg-background/65")}>
-                  <span className="shrink-0 text-xs font-semibold tabular-nums">Día {day.dayOfMonth}</span>
-                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 text-[11px] leading-snug">
+                <article key={day.dayNumber} className={"flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto rounded-lg border px-2 py-1.5 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5" : "bg-background/65")}>
+                  <span className="shrink-0 text-[11px] font-semibold tabular-nums">Día {day.dayOfMonth}</span>
+                  <div className="flex min-w-max flex-1 items-center whitespace-nowrap text-[11px] leading-snug">
                     {day.references.map((reference, index) => (
                       <span key={index} className={flags[index] ? "text-muted-foreground line-through" : "font-medium"}>
-                        {reference}
+                        {index > 0 ? " · " : ""}{reference}
                       </span>
                     ))}
                   </div>
-                  <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                  <div className="flex shrink-0 items-center gap-1">
                     {day.references.map((reference, index) => {
                       const field = (["first_done","second_done","third_done"] as const)[index]!;
                       return (
                         <label key={field} className="flex cursor-pointer items-center justify-center">
                           <span className="sr-only">Marcar {reference} del día {day.dayOfMonth}</span>
-                          <Checkbox checked={flags[index]} disabled={saveDay.isPending} onCheckedChange={(checked) => saveDay.mutate({ day: day.dayNumber, field, checked: Boolean(checked) })}/>
+                          <Checkbox className="h-3.5 w-3.5" checked={flags[index]} disabled={saveDay.isPending} onCheckedChange={(checked) => saveDay.mutate({ day: day.dayNumber, field, checked: Boolean(checked) })}/>
                         </label>
                       );
                     })}
