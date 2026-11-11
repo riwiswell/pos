@@ -214,9 +214,9 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
                 <span className="text-[8px] uppercase tracking-[.18em] opacity-65">Mi biblioteca</span>
               </div>}
         </div>
-        {!isBible&&<button type="button" onClick={()=>coverInput.current?.click()} disabled={uploadingCover} aria-label="Cambiar portada" title="Cargar foto de portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow transition hover:bg-accent disabled:opacity-50">
+        <button type="button" onClick={()=>coverInput.current?.click()} disabled={uploadingCover} aria-label="Cambiar portada" title="Cargar foto de portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow transition hover:bg-accent disabled:opacity-50">
           <ImagePlus className="h-3.5 w-3.5"/>
-        </button>}
+        </button>
         <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={uploadCover}/>
       </div>
       <div className="min-w-0 flex-1 space-y-2">
