@@ -1,6 +1,6 @@
 begin;
 
-select plan(50);
+select plan(88);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -158,6 +158,133 @@ select ok((select exists(select 1 from storage.buckets where id = 'profile-media
 select is((select count(*)::integer from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'pos_finance_photos_%'), 4, 'finance photo bucket has four per-user policies');
 select is((select count(*)::integer from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'pos_profile_media_%'), 4, 'profile media bucket has four per-user policies');
 select ok((select exists(select 1 from pg_indexes where schemaname='public' and indexname='work_sessions_one_active_per_user_uidx')), 'only one active work session per user is enforced');
+
+
+-- Shared spaces: separate tables, member-scoped access, invitations and team rewards.
+select has_column('public','habits','icon','personal habits support custom icons');
+select has_table('public','personal_shared_spaces','shared spaces table exists');
+select has_table('public','personal_shared_space_members','shared space members table exists');
+select has_table('public','personal_shared_space_invites','shared invitations table exists');
+select has_table('public','personal_shared_habits','shared habits and activities table exists');
+select has_table('public','personal_shared_habit_logs','per-member shared habit logs table exists');
+select has_table('public','personal_shared_goals','shared goals and challenges table exists');
+select has_table('public','personal_shared_goal_contributions','per-member goal contributions table exists');
+select has_table('public','personal_shared_points_ledger','team points ledger exists');
+select ok((
+  select bool_and(c.relrowsecurity)
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+   where n.nspname='public'
+     and c.relname=any(array[
+       'personal_shared_spaces','personal_shared_space_members','personal_shared_space_invites',
+       'personal_shared_habits','personal_shared_habit_logs','personal_shared_goals',
+       'personal_shared_goal_contributions','personal_shared_points_ledger'
+     ])
+), 'all shared-space tables have row-level security enabled');
+select is((
+  select count(*)::integer
+    from pg_policies
+   where schemaname='public'
+     and tablename=any(array[
+       'personal_shared_spaces','personal_shared_space_members','personal_shared_space_invites',
+       'personal_shared_habits','personal_shared_habit_logs','personal_shared_goals',
+       'personal_shared_goal_contributions','personal_shared_points_ledger'
+     ])
+     and policyname like 'personal_shared_%'
+), 23, 'all expected shared-space access policies exist');
+select is((
+  select count(*)::integer from pg_policies
+   where schemaname='public'
+     and tablename='personal_shared_habits'
+     and policyname='personal_shared_habits_update'
+     and qual like '%personal_shared_is_owner%'
+     and qual like '%created_by%'
+), 1, 'shared habits can only be edited by their creator or a space owner');
+
+select has_function('public','personal_shared_is_member','shared membership helper exists');
+select has_function('public','personal_shared_is_owner','shared owner helper exists');
+select has_function('public','accept_personal_shared_invite','invite acceptance checks the signed-in account');
+select ok((
+  select exists(select 1 from pg_trigger
+    where tgrelid='public.personal_shared_spaces'::regclass
+      and tgname='personal_shared_add_owner_member' and not tgisinternal)
+), 'creating a shared space adds its owner as a member');
+select ok((
+  select exists(select 1 from pg_trigger
+    where tgrelid='public.personal_shared_goal_contributions'::regclass
+      and tgname='personal_shared_goal_contribution' and not tgisinternal)
+), 'goal contributions update progress and award team points once');
+
+
+select ok(
+  not has_table_privilege('authenticated','public.personal_shared_goals','UPDATE'),
+  'members cannot edit shared goal progress or rewards directly'
+);
+select is((
+  select count(*)::integer from pg_policies
+   where schemaname='public' and tablename='personal_shared_goals' and cmd='UPDATE'
+), 0, 'shared goals have no direct member update policy');
+
+-- Bible: per-user annual/free modes, legacy progress and book ownership.
+select has_table('public','bible_reading_preferences','Bible reading preferences table exists');
+select has_table('public','bible_reading_cycles','Bible reading cycles table exists');
+select has_table('public','bible_reading_completions','legacy Bible completion history is retained');
+select has_table('public','bible_free_readings','free-reading history table exists');
+select has_table('public','bible_reading_day_progress','three-part daily Bible progress table exists');
+select ok((
+  select bool_and(c.relrowsecurity)
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+   where n.nspname='public'
+     and c.relname=any(array[
+       'bible_reading_preferences','bible_reading_cycles','bible_reading_completions',
+       'bible_free_readings','bible_reading_day_progress'
+     ])
+), 'all Bible reading tables have row-level security enabled');
+select is((
+  select count(*)::integer
+    from pg_policies
+   where schemaname='public'
+     and tablename=any(array[
+       'bible_reading_preferences','bible_reading_cycles','bible_reading_completions',
+       'bible_free_readings','bible_reading_day_progress'
+     ])
+     and policyname in (
+       'bible_reading_preferences_all_own',
+       'bible_reading_cycles_all_own',
+       'bible_reading_completions_all_own',
+       'bible_free_readings_all_own',
+       'bible_reading_day_progress_all_own'
+     )
+), 5, 'all Bible reading tables have owner-only policies');
+select has_index('public','bible_reading_cycles','bible_reading_one_active_cycle_per_book','one active Bible cycle per book is enforced');
+select has_column('public','bible_reading_cycles','learning_item_id','Bible cycles are linked to a learning book');
+select has_column('public','bible_free_readings','passage','free readings store the passage');
+select has_column('public','bible_free_readings','note','free readings store a note');
+select has_column('public','bible_reading_day_progress','first_done','first daily Bible reading can be checked');
+select has_column('public','bible_reading_day_progress','second_done','second daily Bible reading can be checked');
+select has_column('public','bible_reading_day_progress','third_done','third daily Bible reading can be checked');
+select has_function('public','ensure_bible_learning_item_owner','Bible entries must belong to the signed-in user book');
+select ok((
+  select exists(select 1 from pg_trigger
+    where tgrelid='public.bible_reading_cycles'::regclass
+      and tgname='bible_reading_cycles_validate_owner' and not tgisinternal)
+), 'Bible cycles validate ownership of the linked book');
+select ok((
+  select exists(select 1 from pg_trigger
+    where tgrelid='public.bible_free_readings'::regclass
+      and tgname='bible_free_readings_validate_owner' and not tgisinternal)
+), 'free Bible readings validate ownership of the linked book');
+
+
+select ok((
+  not has_function_privilege('anon','public.personal_shared_add_owner_member()','EXECUTE')
+  and not has_function_privilege('authenticated','public.personal_shared_add_owner_member()','EXECUTE')
+), 'shared-space owner trigger function cannot be executed directly');
+select ok((
+  not has_function_privilege('anon','public.personal_shared_apply_goal_contribution()','EXECUTE')
+  and not has_function_privilege('authenticated','public.personal_shared_apply_goal_contribution()','EXECUTE')
+), 'shared-goal reward trigger function cannot be executed directly');
 
 select * from finish();
 rollback;
