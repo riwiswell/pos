@@ -33,7 +33,13 @@ drop policy if exists medication_stock_movements_insert_own on public.medication
 create policy medication_stock_movements_select_own on public.medication_stock_movements
   for select to authenticated using ((select auth.uid()) = user_id);
 create policy medication_stock_movements_insert_own on public.medication_stock_movements
-  for insert to authenticated with check ((select auth.uid()) = user_id);
+  for insert to authenticated with check (
+    (select auth.uid()) = user_id
+    and exists (
+      select 1 from public.medications medication
+      where medication.id = medication_id and medication.user_id = (select auth.uid())
+    )
+  );
 
 create table if not exists public.hydration_entries (
   id uuid primary key default gen_random_uuid(),
