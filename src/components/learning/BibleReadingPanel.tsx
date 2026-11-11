@@ -13,8 +13,6 @@ import { addDaysISO, todayISO } from "@/lib/date";
 import { BIBLE_PLAN_MONTHS, BIBLE_READING_PLAN, biblePlanProgress } from "@/domain/bible-reading-plan";
 
 const db = supabase as any;
-const DEFAULT_ANNUAL_EMAILS = new Set(["riwiswell@gmail.com", "angiediaz456@gmail.com"]);
-
 type Cycle = {
   id: string;
   user_id: string;
@@ -183,11 +181,6 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
   useEffect(() => {
     if (activeCycle?.mode === "annual_plan") setSelectedMonth(currentPlanMonth);
   }, [activeCycle?.id, currentPlanMonth]);
-
-  useEffect(() => {
-    if (cyclesQuery.isLoading || cyclesQuery.isError || !user?.email || (cyclesQuery.data ?? []).length > 0) return;
-    if (DEFAULT_ANNUAL_EMAILS.has(user.email.toLowerCase())) createCycle.mutate("annual_plan");
-  }, [cyclesQuery.data, cyclesQuery.isError, cyclesQuery.isLoading, user?.email]);
 
   useEffect(() => {
     if (activeCycle?.mode === "annual_plan" && completedDays === 365 && activeCycle.status === "active" && !finishCycle.isPending) {
