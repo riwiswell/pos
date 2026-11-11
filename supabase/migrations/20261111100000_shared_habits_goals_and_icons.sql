@@ -242,6 +242,11 @@ create trigger personal_shared_goal_contribution
 after insert on public.personal_shared_goal_contributions
 for each row execute function public.personal_shared_apply_goal_contribution();
 
+-- These functions are trigger-only entry points. Trigger execution does not
+-- require callers to have direct EXECUTE privileges on the trigger function.
+revoke all on function public.personal_shared_add_owner_member() from public, anon, authenticated;
+revoke all on function public.personal_shared_apply_goal_contribution() from public, anon, authenticated;
+
 alter table public.personal_shared_spaces enable row level security;
 alter table public.personal_shared_space_members enable row level security;
 alter table public.personal_shared_space_invites enable row level security;
