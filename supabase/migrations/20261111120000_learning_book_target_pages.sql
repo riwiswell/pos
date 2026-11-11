@@ -21,3 +21,26 @@ where li.kind = 'book'
     where lower(u.email) = lower('riwiswell@gmail.com')
     limit 1
   );
+
+
+-- Correct the imported reading length for the completed Viktor Frankl book.
+-- Its 129-page physical edition includes pages outside the 111-page reading content.
+update public.learning_items li
+set total_pages = 111,
+    current_page = least(coalesce(li.current_page,111),111),
+    progress = case
+      when coalesce(li.current_page,111) >= 111 then 100
+      else round((coalesce(li.current_page,0)::numeric / 111) * 100, 2)
+    end,
+    completed_on = case
+      when coalesce(li.current_page,111) >= 111 then coalesce(li.completed_on,current_date)
+      else li.completed_on
+    end,
+    updated_at = now()
+where li.kind = 'book'
+  and lower(trim(li.title)) like '%el hombre en busca de sentido%'
+  and li.user_id = (
+    select u.id from auth.users u
+    where lower(u.email) = lower('riwiswell@gmail.com')
+    limit 1
+  );
