@@ -122,9 +122,10 @@ export function MedicationDialog({ open, onOpenChange, medication, pending, onSu
               <Label className="text-sm font-semibold">Inventario físico</Label>
               <p className="mt-0.5 text-xs text-muted-foreground">Se descuenta al marcar cada toma. No se confunde con los miligramos de la dosis.</p>
             </div>
+            <p className="text-xs text-muted-foreground">Este es el inventario físico con el que comienzas en la fecha de inicio. Solo se descuentan las tomas confirmadas desde esa fecha.</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="med-total">Cantidad inicial</Label>
+                <Label htmlFor="med-total">Cantidad disponible al iniciar este ciclo</Label>
                 <Input id="med-total" inputMode="decimal" value={form.total_quantity ?? ""} placeholder="30"
                   onChange={(e) => { const n = Number(e.target.value.replace(",", ".")); set("total_quantity", e.target.value === "" || Number.isNaN(n) ? null : n); }} />
               </div>
