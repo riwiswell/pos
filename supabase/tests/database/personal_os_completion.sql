@@ -1,6 +1,6 @@
 begin;
 
-select plan(95);
+select plan(97);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -292,7 +292,8 @@ select has_column('public','learning_items','cover_path','learning resources sup
 select has_column('public','learning_items','target_pages','books support intermediate page goals');
 select has_column('public','learning_items','goal_description','games support a written goal');
 select has_column('public','learning_items','goal_date','games support a target date');
-select has_column('public','medications','total_quantity','medications track physical stock');
+select has_column('public','medications','stock_unit','medications track physical stock units');
+select has_column('public','medications','units_per_dose','medications track units per dose');
 select has_table('public','medication_stock_movements','medication stock refills are stored as movements');
 
 select * from finish();
