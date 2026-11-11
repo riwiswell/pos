@@ -14,6 +14,7 @@ import {
   FREQUENCY_LABEL,
   REMIND_OFFSETS,
   DOSE_UNITS,
+  STOCK_UNITS,
   durationDays,
   estimatedEndDate,
   normalizeTimes,
@@ -34,6 +35,8 @@ const empty = (): MedicationInput => ({
   notes: null,
   remind_offset_min: 0,
   total_quantity: null,
+  stock_unit: "Tabletas",
+  units_per_dose: 1,
 });
 
 interface Props {
@@ -63,6 +66,8 @@ export function MedicationDialog({ open, onOpenChange, medication, pending, onSu
             notes: medication.notes,
             remind_offset_min: medication.remind_offset_min,
             total_quantity: medication.total_quantity,
+            stock_unit: medication.stock_unit || "Unidades",
+            units_per_dose: medication.units_per_dose ?? 1,
           }
         : empty(),
     );
@@ -71,7 +76,7 @@ export function MedicationDialog({ open, onOpenChange, medication, pending, onSu
   const set = <K extends keyof MedicationInput>(k: K, v: MedicationInput[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
   const times = normalizeTimes(form.times);
-  const valid = form.name.trim().length > 0 && times.length > 0 && (!form.end_date || form.end_date >= form.start_date);
+  const valid = form.name.trim().length > 0 && times.length > 0 && form.units_per_dose > 0 && (!form.end_date || form.end_date >= form.start_date);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -112,16 +117,31 @@ export function MedicationDialog({ open, onOpenChange, medication, pending, onSu
                 {DOSE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
               </select>
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="med-total" className="flex items-center gap-1">Cantidad total <HelpTip helpKey="medication.total" /></Label>
-            <div className="flex items-center gap-2">
-              <Input id="med-total" inputMode="decimal" className="w-28" value={form.total_quantity ?? ""} placeholder="60"
-                onChange={(e) => { const n = Number(e.target.value.replace(",", ".")); set("total_quantity", e.target.value === "" || Number.isNaN(n) ? null : n); }} />
-              <span className="text-sm text-muted-foreground">{form.unit ?? ""}</span>
+          </div>          <div className="space-y-1.5 rounded-xl border border-border p-3">
+            <div>
+              <Label className="text-sm font-semibold">Inventario físico</Label>
+              <p className="mt-0.5 text-xs text-muted-foreground">Se descuenta al marcar cada toma. No se confunde con los miligramos de la dosis.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="med-total">Cantidad inicial</Label>
+                <Input id="med-total" inputMode="decimal" value={form.total_quantity ?? ""} placeholder="30"
+                  onChange={(e) => { const n = Number(e.target.value.replace(",", ".")); set("total_quantity", e.target.value === "" || Number.isNaN(n) ? null : n); }} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="med-stock-unit">Unidad del empaque</Label>
+                <select id="med-stock-unit" className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm" value={form.stock_unit} onChange={(e) => set("stock_unit", e.target.value)}>
+                  {STOCK_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="med-units-per-dose">¿Cuántas unidades consumes en cada toma?</Label>
+              <Input id="med-units-per-dose" type="number" inputMode="decimal" min="0.001" step="0.001" value={form.units_per_dose}
+                onChange={(e) => set("units_per_dose", Math.max(0, Number(e.target.value) || 0))} />
             </div>
             {(() => { const d = durationDays({ ...form, times }); const end = estimatedEndDate({ ...form, times }); return d ? (
-              <p className="flex items-center gap-1 text-xs text-muted-foreground" data-testid="med-duration">Alcanza para {d} días · hasta {end} <HelpTip helpKey="medication.duration" /></p>
+              <p className="text-xs text-muted-foreground" data-testid="med-duration">Con el horario actual, el inventario inicial alcanza aproximadamente {d} días{end ? " · hasta " + end : ""}. Las reposiciones se suman aparte.</p>
             ) : null; })()}
           </div>
 

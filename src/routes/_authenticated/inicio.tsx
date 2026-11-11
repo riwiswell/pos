@@ -7,6 +7,7 @@ import {
   Check,
   Clock3,
   Droplets,
+  Gamepad2,
   Plus,
   Sparkles,
   Target,
@@ -37,6 +38,7 @@ import { compareChronologically, shortTime } from "@/domain/planner";
 import { addDaysISO, greeting } from "@/lib/date";
 import { normalizeDashboardWidgets } from "@/domain/dashboard";
 import { useLGList } from "@/hooks/use-life-graph";
+import { LifeActivityFeed } from "@/components/dashboard/LifeActivityFeed";
 import type { Habit, HabitLog } from "@/domain/types";
 
 export const Route = createFileRoute("/_authenticated/inicio")({
@@ -343,6 +345,7 @@ function HomePage() {
             </section>
           )}
           <CurrentBookCard />
+          <CurrentGameCard />
           </div>
         </div>
 
@@ -364,6 +367,8 @@ function HomePage() {
           <WeatherCard compact />
         </aside>
       </div>
+
+      <LifeActivityFeed connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} />
 
       {dashboardWidgets.length === 0 && (
         <p className="rounded-xl border border-dashed border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-slate-300">
@@ -394,7 +399,7 @@ function CurrentBookCard(){
  const total=Number(book?.total_pages??0);
  const page=Number(book?.current_page??0);
  const progress=total>0?Math.min(100,Math.max(0,page/total*100)):Math.min(100,Math.max(0,Number(book?.progress??0)));
- return <section className="relative min-w-0 overflow-hidden rounded-[24px] border border-sky-400/20 bg-gradient-to-br from-[#152a3b] via-[#172331] to-card p-4 shadow-sm">
+ return <section className="inicio-learning-card relative min-w-0 overflow-hidden rounded-[24px] border border-sky-400/20 bg-gradient-to-br from-[#152a3b] via-[#172331] to-card p-4 shadow-sm">
   <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-400/10 blur-2xl"/>
   <div className="relative">
    <div className="flex items-center justify-between gap-2">
@@ -411,6 +416,61 @@ function CurrentBookCard(){
    }
   </div>
  </section>;
+}
+
+function CurrentGameCard() {
+  const query = useLGList("learning_items", "updated_at");
+  const game = (query.data ?? []).find(
+    (item: any) => item.kind === "game" && item.status === "active",
+  ) as any;
+  const progress = Math.min(100, Math.max(0, Number(game?.progress ?? 0)));
+
+  return (
+    <section className="inicio-game-card relative min-w-0 overflow-hidden rounded-[24px] border border-violet-400/20 bg-gradient-to-br from-[#292044] via-[#211d31] to-card p-4 shadow-sm">
+      <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-400/10 blur-2xl" />
+      <div className="relative">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-400/15 text-violet-300">
+              <Gamepad2 className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[.15em] text-violet-300">Ocio digital</p>
+              <h2 className="text-sm font-semibold text-white">Juego actual</h2>
+            </div>
+          </div>
+          <Link to="/aprendizaje" search={(prev: Record<string, unknown>) => prev} className="text-[11px] font-medium text-violet-300 hover:underline">
+            Mis juegos <ArrowUpRight className="ml-0.5 inline h-3 w-3" />
+          </Link>
+        </div>
+        {query.isLoading ? (
+          <p className="mt-4 text-xs text-slate-300">Buscando tu juego…</p>
+        ) : query.isError ? (
+          <p className="mt-4 text-xs text-slate-300">No se pudo consultar tu biblioteca de juegos.</p>
+        ) : game ? (
+          <>
+            <p className="mt-4 line-clamp-2 text-base font-semibold text-white">{game.title}</p>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-medium text-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> En curso
+              </span>
+              {progress > 0 && <span className="text-xs tabular-nums text-slate-300">{Math.round(progress)}% registrado</span>}
+            </div>
+            {progress > 0 ? (
+              <Progress value={progress} className="mt-2 h-2 bg-white/10" />
+            ) : (
+              <p className="mt-2 text-[11px] text-slate-300">Tu partida activa, siempre a mano desde Inicio.</p>
+            )}
+          </>
+        ) : (
+          <div className="mt-4 rounded-xl border border-white/10 bg-white/[.04] p-3">
+            <p className="text-sm font-medium text-white">Todavía no has elegido un juego activo</p>
+            <p className="mt-1 text-xs text-slate-300">Añade un videojuego en Aprendizaje → Otros y aparecerá aquí automáticamente.</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 function DiaryOverview({

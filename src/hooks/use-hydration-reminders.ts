@@ -63,6 +63,7 @@ export function useHydrationReminders() {
     end_time: preferences.end_time ?? DEFAULTS.end_time,
     interval_minutes: preferences.interval_minutes ?? DEFAULTS.interval_minutes,
     amount_ml: preferences.amount_ml ?? DEFAULTS.amount_ml,
+    background_push: preferences.background_push ?? false,
   };
   const times = useMemo(
     () => scheduledTimes(config.start_time, config.end_time, config.interval_minutes),
@@ -98,16 +99,9 @@ export function useHydrationReminders() {
     if (fired.includes(key)) return;
 
     const notify = async () => {
-      let hasPushSubscription = false;
-      try {
-        if ("serviceWorker" in navigator) {
-          const registration = await navigator.serviceWorker.ready;
-          hasPushSubscription = Boolean(await registration.pushManager.getSubscription());
-        }
-      } catch {
-        // Fall back to the in-app notification when service workers are unavailable.
-      }
-      if (hasPushSubscription) return;
+      // Only suppress the local reminder when the server confirms that Web Push
+      // is fully configured. A stale browser subscription alone is not enough.
+      if (config.background_push) return;
 
       const title = "💧 Pausa de hidratación";
       const body = `Toma ${config.amount_ml} ml de agua y regístralos en Salud.`;
@@ -123,5 +117,5 @@ export function useHydrationReminders() {
       }
     };
     void notify();
-  }, [config.amount_ml, config.enabled, config.interval_minutes, config.start_time, config.end_time, profile.data?.id, profile.isLoading, tick, times]);
+  }, [config.amount_ml, config.enabled, config.interval_minutes, config.start_time, config.end_time, config.background_push, profile.data?.id, profile.isLoading, tick, times]);
 }

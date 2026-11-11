@@ -252,6 +252,50 @@ export const medicationsService = {
     return out;
   },
 
+  /** Sum of explicit stock additions per medication. Original quantity stays on the medication record. */
+  async stockTotals(): Promise<Record<string, number>> {
+    const totals: Record<string, number> = {};
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("medication_stock_movements")
+        .select("id,medication_id,quantity")
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      for (const row of page) {
+        totals[row.medication_id] = (totals[row.medication_id] ?? 0) + Number(row.quantity ?? 0);
+      }
+      if (page.length < pageSize) break;
+    }
+    return totals;
+  },
+
+  /** A refill is an append-only movement; it never overwrites the initial stock or dose history. */
+  async addStock(medicationId: string, quantity: number, note?: string): Promise<void> {
+    const user_id = await currentUserId();
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 100000) {
+      throw new Error("La cantidad para reponer debe ser mayor que cero.");
+    }
+    const { data: medication, error: medicationError } = await supabase
+      .from("medications")
+      .select("id")
+      .eq("id", medicationId)
+      .eq("user_id", user_id)
+      .maybeSingle();
+    if (medicationError) throw medicationError;
+    if (!medication) throw new Error("No encontramos el medicamento para reponer su inventario.");
+    const { error } = await supabase.from("medication_stock_movements").insert({
+      user_id,
+      medication_id: medicationId,
+      quantity,
+      movement_type: "restock",
+      note: note?.trim() || null,
+    });
+    if (error) throw error;
+  },
+
   /** Water belongs to the dose row: changing it updates, never duplicates. */
   async setWater(id: string, glasses: number) {
     const { error } = await supabase.from("medication_doses").update({ water_glasses: glasses }).eq("id", id);

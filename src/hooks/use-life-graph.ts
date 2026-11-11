@@ -2,6 +2,9 @@ import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { lifeGraphService,type LGTable } from "@/services/life-graph.service";
 
+export function useLGRecentEvents(limit=8){
+  return useQuery({queryKey:["lg","life_events","recent",limit],queryFn:()=>lifeGraphService.recentEvents(limit),staleTime:30_000});
+}
 export function useLGList(table:LGTable,order="created_at"){
   return useQuery({queryKey:["lg",table,order],queryFn:()=>lifeGraphService.list(table,order)});
 }
@@ -10,6 +13,7 @@ export function useLGMutations(table:LGTable){
   const invalidate=()=>{
     void qc.invalidateQueries({queryKey:["lg",table]});
     void qc.invalidateQueries({queryKey:["lg","life_links"]});
+    void qc.invalidateQueries({queryKey:["lg","life_events"]});
     if(!["life_events","notification_jobs","gamification_profiles","gamification_xp_events","gamification_achievements","gamification_challenges"].includes(table)){
       for(const key of ["gamification_profiles","gamification_xp_events","gamification_achievements","gamification_challenges"]){
         void qc.invalidateQueries({queryKey:["lg",key]});

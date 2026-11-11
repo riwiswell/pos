@@ -266,12 +266,13 @@ async function syncHydrationJobs(env:Env,userId:string,input?:unknown) {
  const subscriptionRead=await supabaseFetch(env,"push_subscriptions?user_id=eq."+encodeURIComponent(userId)+"&select=id&limit=1");
  if(!subscriptionRead.ok)throw new Error("No se pudo comprobar la suscripción de notificaciones.");
  const subscriptions=await subscriptionRead.json() as any[];
- const preferenceWithPush={...nextPreferences,hydration:{...schedule,background_push:subscriptions.length>0}};
+ const pushReady=subscriptions.length>0&&Boolean(env.VAPID_PUBLIC_KEY&&env.VAPID_PRIVATE_KEY&&env.VAPID_SUBJECT);
+ const preferenceWithPush={...nextPreferences,hydration:{...schedule,background_push:pushReady}};
  const pushPreferenceWrite=await supabaseFetch(env,"profiles?id=eq."+encodeURIComponent(userId),{method:"PATCH",body:JSON.stringify({notification_preferences:preferenceWithPush})});
  if(!pushPreferenceWrite.ok)throw new Error("No se pudo guardar el estado de notificaciones.");
  const cancelled=await supabaseFetch(env,jobFilter,{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
  if(!cancelled.ok)throw new Error("No se pudieron actualizar los recordatorios anteriores.");
- if(!subscriptions.length)return {enabled:true,scheduled:0,pushRequired:true};
+ if(!pushReady)return {enabled:true,scheduled:0,pushRequired:true};
  const now=new Date();
  const today=bogotaDate(now);
  const start=clockMinutes(schedule.start_time);
