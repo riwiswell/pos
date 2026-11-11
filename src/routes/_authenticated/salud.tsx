@@ -2,34 +2,56 @@ import { useEffect,useMemo,useRef,useState } from "react";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { CalendarHeart,ClipboardList,HeartPulse,Pencil,Pill,Plus,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label";
-import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
+import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { SleepPanel } from "@/components/health/SleepPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
 import { useGlobalDate } from "@/hooks/use-global-date"; import { useAuth } from "@/hooks/use-auth"; import { useHealthMetricMutation,usePersonalDateList } from "@/hooks/use-personal-domains"; import { useProfile } from "@/hooks/use-profile"; import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lastWater,useDoseHistory,useDoses,useMedicationMutations,useMedications,useTakenCounts } from "@/hooks/use-medications"; import { formatTime12,doseLabel,formatGlasses,medicationWater,remainingQuantity,durationDays,estimatedEndDate,WATER_OPTIONS,type Medication } from "@/domain/health";
 export const Route=createFileRoute("/_authenticated/salud")({component:HealthPage});
 function HealthPage(){
- const[tab,setTab]=useState("metrics");
+ const[tab,setTab]=useState("sleep");
  const search=useRouterState({select:(state)=>state.location.search as Record<string,unknown>});
  // Push-action links must mount the medication panel; the panel owns the single
  // authenticated mutation and clears the search state through the router.
  useEffect(()=>{
   if(typeof search["dose"]==="string"&&(search["action"]==="take"||search["action"]==="snooze"))setTab("meds");
  },[search["dose"],search["action"]]);
- const{data:profile}=useProfile();const hidden=profile?.hidden_features||{};const tabs=[["meds","Medicamentos",false],["metrics","Medidas del cuerpo",false],["cycle","Ciclo",hidden["health.cycle"]===true],["appointments","Citas",hidden["health.appointments"]===true],["nutrition","Nutrición",hidden["health.nutrition"]===true]].filter((x:any)=>!x[2]);const current=tabs.some((x:any)=>x[0]===tab)?tab:tabs[0]?.[0]||"meds";return <div className="space-y-5 pb-24"><GlobalDateHeader/><div><h1 className="flex items-center gap-2 text-xl font-semibold">Salud <HelpTip helpKey="health" /></h1><p className="text-sm text-muted-foreground">Medidas, signos vitales, medicamentos y seguimiento diario.</p></div><HydrationCard/><div className="flex flex-wrap gap-1.5">{tabs.map(([k,v])=><button key={k as string} onClick={()=>setTab(k as string)} className={"rounded-full border px-3 py-1.5 text-xs "+(current===k?"border-primary bg-primary/10":"border-border")}>{v as string}</button>)}</div>{current==="meds"?<Medications/>:current==="metrics"?<HealthMetricsPanel/>:current==="cycle"?<Cycle/>:current==="appointments"?<Appointments/>:<Nutrition/>}</div>}
+ const{data:profile}=useProfile();const hidden=profile?.hidden_features||{};const tabs=[["meds","Medicamentos",false],["sleep","Sueño",false],["metrics","Medidas del cuerpo",false],["cycle","Ciclo",hidden["health.cycle"]===true],["appointments","Citas",hidden["health.appointments"]===true],["nutrition","Nutrición",hidden["health.nutrition"]===true]].filter((x:any)=>!x[2]);const current=tabs.some((x:any)=>x[0]===tab)?tab:tabs[0]?.[0]||"meds";return <div className="space-y-5 pb-24"><GlobalDateHeader/><div><h1 className="flex items-center gap-2 text-xl font-semibold">Salud <HelpTip helpKey="health" /></h1><p className="text-sm text-muted-foreground">Medicamentos, sueño, medidas, signos vitales y seguimiento diario.</p></div><HydrationCard/><div className="flex flex-wrap gap-1.5">{tabs.map(([k,v])=><button key={k as string} onClick={()=>setTab(k as string)} className={"rounded-full border px-3 py-1.5 text-xs "+(current===k?"border-primary bg-primary/10":"border-border")}>{v as string}</button>)}</div>{current==="meds"?<Medications/>:current==="sleep"?<SleepPanel/>:current==="metrics"?<HealthMetricsPanel/>:current==="cycle"?<Cycle/>:current==="appointments"?<Appointments/>:<Nutrition/>}</div>}
 function HydrationCard(){
  const{date}=useGlobalDate();const{user}=useAuth();
  const metrics=usePersonalDateList<any>("health_metrics","metric_date",date);
  const doses=useDoses(date);const mutation=useHealthMetricMutation();
- const [busy,setBusy]=useState(false);
- const manualLiters=Number(metrics.data?.[0]?.water_liters??0)||0;
- const manualGlasses=manualLiters*4;
+ const[busy,setBusy]=useState(false);
+ const[selectedAmount,setSelectedAmount]=useState(250);
+ const manualMl=Math.max(0,Math.round((Number(metrics.data?.[0]?.water_liters??0)||0)*1000));
+ const manualGlasses=manualMl/250;
  const medicineGlasses=medicationWater(doses.data??[]);
- const total=manualGlasses+medicineGlasses;const target=9;
+ const medicineMl=medicineGlasses*250;
+ const totalMl=manualMl+medicineMl;
+ const totalGlasses=totalMl/250;
+ const targetMl=2250;const targetGlasses=9;
  const fmt=(value:number)=>Number(value.toFixed(1)).toLocaleString("es-CO",{maximumFractionDigits:1});
- const adjust=async(delta:number)=>{if(!user||busy||metrics.isLoading||doses.isLoading)return;setBusy(true);try{const liters=Math.max(0,Math.round((manualLiters+delta/4)*100)/100);await mutation.mutateAsync({user_id:user.id,metric_date:date,water_liters:liters});toast.success(delta>0?"Vaso de agua registrado.":"Registro de agua ajustado.");}catch(error){toast.error(error instanceof Error?error.message:"No se pudo guardar el agua.");}finally{setBusy(false)}};
+ const disabled=busy||!user||metrics.isLoading||doses.isLoading||metrics.isError||doses.isError;
+ const adjust=async(deltaMl:number)=>{
+  if(disabled)return;
+  setBusy(true);
+  try{
+   const nextMl=Math.max(0,manualMl+deltaMl);
+   await mutation.mutateAsync({user_id:user.id,metric_date:date,water_liters:Number((nextMl/1000).toFixed(3))});
+   toast.success(deltaMl>0?deltaMl+" ml de agua registrados.": "Se descontaron "+Math.min(250,manualMl)+" ml del agua registrada.");
+  }catch(error){toast.error(error instanceof Error?error.message:"No se pudo guardar el agua.");}
+  finally{setBusy(false);}
+ };
  return <section className="glass space-y-3 rounded-2xl p-4">
-  <div className="flex items-center justify-between gap-3"><div><h2 className="flex items-center gap-1 font-semibold">Hidratación <HelpTip helpKey="hydration.daily" /></h2><p className="text-xs text-muted-foreground">Un vaso equivale a 250 ml. El agua de medicamentos se suma aparte.</p></div><span className="text-sm font-semibold tabular-nums">{fmt(total)} / {target} vasos</span></div>
-  <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,total/target*100))+"%"}}/></div>
-  <p className="text-sm text-muted-foreground">{fmt(manualGlasses)} vasos registrados + {fmt(medicineGlasses)} con medicamentos = <span className="font-medium text-foreground">{fmt(total)} vasos</span></p>
-  <div className="flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" disabled={busy||metrics.isLoading||doses.isLoading||metrics.isError||doses.isError||manualLiters<=0} onClick={()=>void adjust(-1)}>− 1 vaso</Button><Button size="sm" disabled={busy||metrics.isLoading||doses.isLoading||metrics.isError||doses.isError} onClick={()=>void adjust(1)}>{busy?"Guardando…":"+ 1 vaso"}</Button><span className="text-xs text-muted-foreground">Agua manual: {fmt(manualLiters)} L · Meta: {target} vasos</span></div>
+  <div className="flex flex-wrap items-start justify-between gap-3">
+   <div><h2 className="flex items-center gap-1 font-semibold">💧 Hidratación <HelpTip helpKey="hydration.daily" /></h2><p className="text-xs text-muted-foreground">Un solo registro para el agua que tomas, incluidos los vasos asociados a medicamentos.</p></div>
+   <span className="text-sm font-semibold tabular-nums">{fmt(totalGlasses)} / {targetGlasses} vasos</span>
+  </div>
+  <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,totalMl/targetMl*100))+"%"}}/></div>
+  <p className="text-sm text-muted-foreground">{fmt(manualGlasses)} vasos registrados + {fmt(medicineGlasses)} con medicamentos = <span className="font-medium text-foreground">{fmt(totalGlasses)} vasos</span></p>
+  <div className="flex flex-wrap items-center gap-2">
+   {[200,250,500].map(amount=><Button key={amount} size="sm" type="button" variant={selectedAmount===amount?"default":"outline"} aria-pressed={selectedAmount===amount} disabled={disabled} onClick={()=>setSelectedAmount(amount)}>+{amount} ml</Button>)}
+   <Button size="sm" type="button" disabled={disabled} onClick={()=>void adjust(selectedAmount)}>{busy?"Guardando…":"Añadir"}</Button>
+   <Button size="sm" type="button" variant="outline" disabled={disabled||manualMl<=0} onClick={()=>void adjust(-250)}>− 250 ml</Button>
+  </div>
+  <p className="text-[11px] text-muted-foreground">Meta diaria: 2.250 ml (9 vasos de 250 ml). El agua de medicamentos se suma automáticamente cuando marcas la toma como realizada.</p>
   {metrics.isError&&<p className="text-xs text-destructive">No se pudo cargar el agua registrada.</p>}
   {doses.isError&&<p className="text-xs text-destructive">No se pudo cargar el agua de las tomas.</p>}
  </section>;
