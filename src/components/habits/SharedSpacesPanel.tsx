@@ -295,12 +295,25 @@ export function SharedSpacesPanel() {
 
       {spacesQuery.isError ? (
         <div className="rounded-2xl border border-destructive/40 p-4 text-sm text-destructive">{errorMessage(spacesQuery.error)}</div>
+      ) : spacesQuery.isLoading ? (
+        <p className="rounded-xl border p-4 text-sm text-muted-foreground">Cargando tus espacios compartidos…</p>
       ) : (spacesQuery.data ?? []).length === 0 ? (
-        <section className="rounded-2xl border border-dashed p-5">
-          <div className="flex items-center gap-2"><Users className="h-5 w-5 text-primary" /><h3 className="font-semibold">Crea vuestro primer espacio</h3></div>
-          <p className="mt-1 text-sm text-muted-foreground">Después podrás invitar a Angie y empezar a sumar hábitos, experiencias y retos entre los dos.</p>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row"><Input value={spaceName} onChange={(event) => setSpaceName(event.target.value)} placeholder="Nombre del espacio" /><Button disabled={!spaceName.trim() || createSpace.isPending} onClick={() => createSpace.mutate()}><Plus className="mr-1 h-4 w-4" />{createSpace.isPending ? "Creando…" : "Crear espacio"}</Button></div>
-        </section>
+        <>
+          <section className="rounded-2xl border border-dashed p-5">
+            <div className="flex items-center gap-2"><Users className="h-5 w-5 text-primary" /><h3 className="font-semibold">Crea vuestro primer espacio</h3></div>
+            <p className="mt-1 text-sm text-muted-foreground">Después podrás invitar a Angie y empezar a sumar hábitos, experiencias y retos entre los dos.</p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row"><Input value={spaceName} onChange={(event) => setSpaceName(event.target.value)} placeholder="Nombre del espacio" /><Button disabled={!spaceName.trim() || createSpace.isPending} onClick={() => createSpace.mutate()}><Plus className="mr-1 h-4 w-4" />{createSpace.isPending ? "Creando…" : "Crear espacio"}</Button></div>
+          </section>
+          <section className="glass space-y-3 rounded-2xl p-4">
+            <div className="flex items-center gap-2"><Share2 className="h-4 w-4 text-primary" /><h3 className="font-semibold">Aceptar una invitación</h3></div>
+            <p className="text-xs text-muted-foreground">Ya te invitaron a un espacio. Puedes aceptar el enlace recibido sin tener que crear otro espacio primero.</p>
+            <Label htmlFor="shared-invite-code-first" className="text-xs">Código de invitación</Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input id="shared-invite-code-first" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} placeholder="Pega aquí el código del enlace" />
+              <Button disabled={!inviteCode.trim() || acceptInvite.isPending} onClick={() => acceptInvite.mutate()}>{acceptInvite.isPending ? "Aceptando…" : "Aceptar invitación"}</Button>
+            </div>
+          </section>
+        </>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">
