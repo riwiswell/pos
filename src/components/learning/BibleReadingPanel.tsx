@@ -284,20 +284,34 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
       <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6 md:grid-cols-12">
         {BIBLE_PLAN_MONTHS.map((item, index) => <button key={item.name} type="button" onClick={() => setSelectedMonth(index)} className={"rounded-lg border px-1.5 py-2 text-xs transition " + (index === selectedMonth ? "border-primary bg-primary/10 font-semibold text-primary" : "bg-background/70 text-muted-foreground hover:bg-accent")}>{item.name.slice(0,3)}</button>)}
       </div>
-      <div className="space-y-2">
+      <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-3">
         {(month?.days ?? []).map((day) => {
           const row = progressByDay.get(day.dayNumber);
           const flags = [Boolean(row?.first_done), Boolean(row?.second_done), Boolean(row?.third_done)];
           const completed = flags.every(Boolean);
           const partial = flags.some(Boolean);
+          const doneCount = flags.filter(Boolean).length;
           const assignedDate = addDaysISO(activeCycle.start_date, day.dayNumber - 1);
           return (
-            <article key={day.dayNumber} className={"rounded-xl border p-3 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5" : "bg-background/65")}>
-              <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-lg bg-muted text-xs font-semibold tabular-nums">{day.dayOfMonth}</span><div><p className="text-xs font-semibold">Día {day.dayNumber} · {displayDate(assignedDate)}</p><p className="text-[10px] text-muted-foreground">{completed ? "Día completo" : partial ? "Lectura parcial" : "Pendiente"}</p></div></div>{completed && <CheckCircle2 className="h-4 w-4 text-emerald-500"/>}</div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <article key={day.dayNumber} className={"min-w-0 rounded-xl border p-2.5 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5" : "bg-background/65")}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-muted text-[11px] font-semibold tabular-nums">{day.dayOfMonth}</span>
+                  <p className="truncate text-xs font-semibold">Día {day.dayNumber} · {displayDate(assignedDate)}</p>
+                </div>
+                <span className={"shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium " + (completed ? "bg-emerald-500/10 text-emerald-600" : partial ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                  {completed ? <><CheckCircle2 className="mr-1 inline h-3 w-3"/>Completo</> : partial ? `${doneCount}/3` : "Pendiente"}
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-1">
                 {day.references.map((reference, index) => {
                   const field = (["first_done","second_done","third_done"] as const)[index]!;
-                  return <label key={field} className="flex min-w-0 items-start gap-2 rounded-lg bg-muted/40 p-2 text-xs"><Checkbox checked={flags[index]} disabled={saveDay.isPending} onCheckedChange={(checked) => saveDay.mutate({ day: day.dayNumber, field, checked: Boolean(checked) })}/><span className={flags[index] ? "text-muted-foreground line-through" : "font-medium"}>{reference}</span></label>;
+                  return (
+                    <label key={field} className={"flex min-w-0 items-start gap-1 rounded-md px-1.5 py-1.5 text-[11px] leading-tight transition " + (flags[index] ? "bg-primary/5" : "bg-muted/50 hover:bg-muted")}>
+                      <Checkbox checked={flags[index]} disabled={saveDay.isPending} onCheckedChange={(checked) => saveDay.mutate({ day: day.dayNumber, field, checked: Boolean(checked) })}/>
+                      <span className={"min-w-0 break-words " + (flags[index] ? "text-muted-foreground line-through" : "font-medium")}>{reference}</span>
+                    </label>
+                  );
                 })}
               </div>
             </article>
