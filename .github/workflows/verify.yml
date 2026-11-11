@@ -2,7 +2,7 @@ name: verify
 
 on:
   push:
-    branches: [main, pos/01-perla-claro, pos/02-inicio-visual, pos/03-life-activity-feed]
+    branches: [main, pos/01-perla-claro, pos/02-inicio-visual, pos/03-life-activity-feed, pos/04-wiswellart-sales-sync]
   pull_request:
     branches: [main, pos/01-perla-claro, pos/02-inicio-visual]
   workflow_dispatch:
