@@ -50,7 +50,7 @@ export function TransactionList({
               <span
                 className={cn(
                   "text-xs font-medium tabular-nums",
-                  dayTotal >= 0 ? "text-success" : "text-muted-foreground",
+                  dayTotal >= 0 ? "text-success" : "text-destructive",
                 )}
               >
                 {dayTotal >= 0 ? "+" : "−"}
@@ -116,7 +116,7 @@ export function TransactionList({
                               ? "text-success"
                               : isTransfer
                                 ? "text-muted-foreground"
-                                : "text-foreground",
+                                : "text-destructive",
                           )}
                         >
                           {isTransfer ? "" : tx.type === "income" ? "+" : "−"}
