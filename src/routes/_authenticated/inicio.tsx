@@ -130,7 +130,7 @@ function HomePage() {
       if (wasUsed) counts.set(habit.id, (counts.get(habit.id) ?? 0) + 1);
     }
     return counts;
-  }, [onlyHabits, usageLogsQuery.data]);
+  }, [habits, usageLogsQuery.data]);
   const rankedHabits = useMemo(
     () => habits
       .map((habit, index) => ({ habit, index, uses: usageCounts.get(habit.id) ?? 0 }))
@@ -281,6 +281,7 @@ function HomePage() {
                               </span>
                               <div className="min-w-0 flex-1">
                                 <div className="flex min-w-0 items-center gap-2">
+                                  <span aria-hidden className="shrink-0 text-sm">{habit.icon || (habit.kind === "activity" ? "🎯" : "✨")}</span>
                                   <p className="min-w-0 flex-1 truncate text-xs font-medium">{habit.name}</p>
                                   {habit.kind === "activity" && <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">Actividad</span>}
                                   <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground" title={`Registrado en ${usageCounts.get(habit.id) ?? 0} de los últimos 30 días`}>
