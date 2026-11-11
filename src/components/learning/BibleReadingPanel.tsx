@@ -159,7 +159,6 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
       if (!passage.trim()) throw new Error("Escribe el pasaje que leíste.");
       const { error } = await db.from("bible_free_readings").insert({
         user_id: user.id, learning_item_id: learningItemId, reading_date: readingDate,
-        scripture_reference: passage.trim(), notes: note.trim() || null,
         passage: passage.trim(), note: note.trim() || null,
       });
       if (error) throw error;
