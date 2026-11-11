@@ -265,6 +265,7 @@ grant select,delete on public.personal_shared_space_members to authenticated;
 grant select,insert,update,delete on public.personal_shared_space_invites to authenticated;
 grant select,insert,update,delete on public.personal_shared_habits to authenticated;
 grant select,insert,update,delete on public.personal_shared_habit_logs to authenticated;
+revoke update,delete on table public.personal_shared_goals from public, anon, authenticated;
 grant select,insert on public.personal_shared_goals to authenticated;
 grant select,insert on public.personal_shared_goal_contributions to authenticated;
 grant select on public.personal_shared_points_ledger to authenticated;
