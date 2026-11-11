@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useProfile } from "@/hooks/use-profile";
+import { WATER_GLASS_ML } from "@/domain/health";
 
 type HydrationPreferences = {
   enabled?: boolean;
@@ -17,7 +18,7 @@ const DEFAULTS = {
   start_time: "08:00",
   end_time: "21:30",
   interval_minutes: 90,
-  amount_ml: 250,
+  amount_ml: WATER_GLASS_ML,
 };
 
 function bogotaNow() {
