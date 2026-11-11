@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen,ChevronDown,ChevronUp,FileText,Gamepad2,Globe2,GraduationCap,Headphones,ImagePlus,NotebookPen,Pencil,Plus,Save,Trash2,X } from "lucide-react";
+import { BookOpen,ChevronDown,ChevronUp,FileText,Globe2,ImagePlus,NotebookPen,Pencil,Plus,Save,Trash2,X } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor";
 import { SafeRichText } from "@/components/common/SafeRichText";
@@ -47,7 +47,6 @@ function isBibleBook(title:string){
   const normalized=title.trim().toLowerCase();
   return normalized==="la biblia"||normalized==="biblia";
 }
-const COVER_NOTE_MARKER="__personal_os_cover__";
 
 function Books(){
   const q=useLGList("learning_items");
@@ -59,22 +58,8 @@ function Books(){
   const[title,setTitle]=useState("");
   const[pages,setPages]=useState("");
   const books=(q.data||[]).filter((x:any)=>x.kind==="book");
-  const coverRecordFor=(bookId:string)=>notes.data?.find((entry:any)=>entry.learning_item_id===bookId&&entry.section_label===COVER_NOTE_MARKER&&entry.title==="cover")??null;
-  const saveCoverRecord=async(bookId:string,existing:any,path:string)=>{
-    if(existing?.id)return nm.update.mutateAsync({id:existing.id,patch:{body:path}});
-    return nm.create.mutateAsync({
-      user_id:user?.id,
-      learning_item_id:bookId,
-      section_label:COVER_NOTE_MARKER,
-      title:"cover",
-      body:path,
-      page_from:null,
-      page_to:null,
-    });
-  };
   const deleteBook=async(book:any)=>{
-    const cover=coverRecordFor(book.id);
-    if(cover?.body)await privateMediaService.removePhoto(String(cover.body)).catch(()=>undefined);
+    if(book.cover_path)await privateMediaService.removePhoto(String(book.cover_path)).catch(()=>undefined);
     await m.remove.mutateAsync(book.id);
   };
   const addBook=async()=>{
@@ -116,26 +101,23 @@ function Books(){
     {books.length===0&&!q.isError&&<div className="glass max-w-xl rounded-2xl p-4 text-sm text-muted-foreground">Tu biblioteca está vacía. Agrega un libro para registrar tu avance.</div>}
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
       {books.map((book:any)=>{
-        const coverRecord=coverRecordFor(book.id);
-        const bookNotes=(notes.data||[]).filter((entry:any)=>entry.learning_item_id===book.id&&entry.section_label!==COVER_NOTE_MARKER);
+        const bookNotes=(notes.data||[]).filter((entry:any)=>entry.learning_item_id===book.id);
         return <BookCard
           key={book.id}
           book={book}
           notes={bookNotes}
-          coverRecord={coverRecord}
+          coverPath={book.cover_path||null}
           onSave={(patch:any)=>m.update.mutateAsync({id:book.id,patch})}
           onDelete={()=>deleteBook(book)}
           onAddNote={(patch:any)=>nm.create.mutateAsync({...patch,user_id:user?.id})}
-          onUpdateNote={(id:string,patch:any)=>nm.update.mutateAsync({id,patch})}
           onDeleteNote={(id:string)=>nm.remove.mutateAsync(id)}
-          onSaveCover={(existing:any,path:string)=>saveCoverRecord(book.id,existing,path)}
         />;
       })}
     </div>
   </section>;
 }
 
-function BookCard({book,notes,coverRecord,onSave,onDelete,onAddNote,onUpdateNote,onDeleteNote,onSaveCover}:{book:any;notes:any[];coverRecord:any;onSave:(p:any)=>Promise<unknown>;onDelete:()=>Promise<unknown>;onAddNote:(p:any)=>Promise<unknown>;onUpdateNote:(id:string,p:any)=>Promise<unknown>;onDeleteNote:(id:string)=>Promise<unknown>;onSaveCover:(existing:any,path:string)=>Promise<unknown>}){
+function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:{book:any;notes:any[];coverPath:string|null;onSave:(p:any)=>Promise<unknown>;onDelete:()=>Promise<unknown>;onAddNote:(p:any)=>Promise<unknown>;onDeleteNote:(id:string)=>Promise<unknown>}){
   const isBible=isBibleBook(String(book.title||""));
   const total=Number(book.total_pages)||0;
   const[page,setPage]=useState(String(book.current_page||0));
@@ -152,7 +134,6 @@ function BookCard({book,notes,coverRecord,onSave,onDelete,onAddNote,onUpdateNote
   const[uploadingCover,setUploadingCover]=useState(false);
   const coverInput=useRef<HTMLInputElement>(null);
   const mine=notes;
-  const coverPath=typeof coverRecord?.body==="string"?coverRecord.body:null;
   const coverQuery=usePrivatePhotos(coverPath?[coverPath]:[],Boolean(coverPath));
   const coverUrl=coverQuery.data?.find(item=>item.path===coverPath)?.url;
   const pageValue=Math.max(0,Number(page)||0);
@@ -171,7 +152,7 @@ function BookCard({book,notes,coverRecord,onSave,onDelete,onAddNote,onUpdateNote
     try{
       const nextPath=await privateMediaService.uploadPhoto(file);
       try{
-        await onSaveCover(coverRecord,nextPath);
+        await onSave({cover_path:nextPath});
       }catch(error){
         await privateMediaService.removePhoto(nextPath).catch(()=>undefined);
         const detail=error&&typeof error==="object"&&"message" in error?String((error as any).message):"No se pudo guardar la referencia de la portada.";
