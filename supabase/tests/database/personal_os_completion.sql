@@ -1,6 +1,6 @@
 begin;
 
-select plan(97);
+select plan(96);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
