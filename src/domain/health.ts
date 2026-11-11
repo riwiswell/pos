@@ -120,7 +120,9 @@ export function medicationScheduleLabel(
   const perDose = Number(med.units_per_dose ?? 1);
   const dailyQuantity = Math.max(0, perDose * times.length);
   const rawUnit = String(med.stock_unit || med.unit || "unidades").trim();
-  const key = rawUnit.toLocaleLowerCase("es-CO").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+  const key = rawUnit.toLocaleLowerCase("es-CO")
+    .replace(/á/g, "a").replace(/é/g, "e").replace(/í/g, "i")
+    .replace(/ó/g, "o").replace(/ú/g, "u");
   const plural: Record<string, string> = {
     tableta: "tabletas",
     pastilla: "pastillas",
