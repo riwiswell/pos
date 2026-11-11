@@ -1,6 +1,6 @@
 begin;
 
-select plan(85);
+select plan(87);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -191,7 +191,7 @@ select is((
        'personal_shared_goal_contributions','personal_shared_points_ledger'
      ])
      and policyname like 'personal_shared_%'
-), 24, 'all expected shared-space access policies exist');
+), 23, 'all expected shared-space access policies exist');
 select has_function('public','personal_shared_is_member','shared membership helper exists');
 select has_function('public','personal_shared_is_owner','shared owner helper exists');
 select has_function('public','accept_personal_shared_invite','invite acceptance checks the signed-in account');
@@ -205,6 +205,16 @@ select ok((
     where tgrelid='public.personal_shared_goal_contributions'::regclass
       and tgname='personal_shared_goal_contribution' and not tgisinternal)
 ), 'goal contributions update progress and award team points once');
+
+
+select ok(
+  not has_table_privilege('authenticated','public.personal_shared_goals','UPDATE'),
+  'members cannot edit shared goal progress or rewards directly'
+);
+select is((
+  select count(*)::integer from pg_policies
+   where schemaname='public' and tablename='personal_shared_goals' and cmd='UPDATE'
+), 0, 'shared goals have no direct member update policy');
 
 -- Bible: per-user annual/free modes, legacy progress and book ownership.
 select has_table('public','bible_reading_preferences','Bible reading preferences table exists');
