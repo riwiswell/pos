@@ -45,6 +45,15 @@ create table if not exists public.bible_reading_day_progress (
 create index if not exists bible_reading_day_progress_user_idx
   on public.bible_reading_day_progress(user_id,cycle_id,day_number);
 
+-- Preserve days already completed in the earlier one-checkbox-per-day model:
+-- a completed day means all three readings were completed.
+insert into public.bible_reading_day_progress(
+  cycle_id,user_id,day_number,first_done,second_done,third_done,completed_at
+)
+select cycle_id,user_id,day_number,true,true,true,completed_at
+from public.bible_reading_completions
+on conflict(cycle_id,day_number) do nothing;
+
 -- Keep compatibility with the original free-reading history table. The old
 -- scripture_reference/notes columns remain in place and are still written.
 alter table public.bible_free_readings
