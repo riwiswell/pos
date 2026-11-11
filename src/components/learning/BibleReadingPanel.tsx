@@ -296,26 +296,24 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
             {columnDays.map((day) => {
               const row = progressByDay.get(day.dayNumber);
               const flags = [Boolean(row?.first_done), Boolean(row?.second_done), Boolean(row?.third_done)];
-              const completed = flags.every(Boolean);
-              const partial = flags.some(Boolean);
-              const doneCount = flags.filter(Boolean).length;
               const assignedDate = addDaysISO(activeCycle.start_date, day.dayNumber - 1);
               return (
-                <article key={day.dayNumber} className={"flex min-w-0 gap-2 rounded-lg border p-2 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5" : "bg-background/65")}>
-                  <div className="w-[4.5rem] shrink-0">
-                    <p className="text-xs font-semibold tabular-nums">Día {day.dayOfMonth}</p>
-                    <p className="text-[10px] text-muted-foreground">{displayDate(assignedDate)}</p>
-                    <span className={"mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium " + (completed ? "bg-emerald-500/10 text-emerald-600" : partial ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-                      {completed ? "Completo" : `${doneCount}/3`}
-                    </span>
+                <article key={day.dayNumber} className={"flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-2 py-1.5 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5" : "bg-background/65")}>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums">Día {day.dayOfMonth}</span>
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 text-[11px] leading-snug">
+                    {day.references.map((reference, index) => (
+                      <span key={index} className={flags[index] ? "text-muted-foreground line-through" : "font-medium"}>
+                        {reference}
+                      </span>
+                    ))}
                   </div>
-                  <div className="min-w-0 flex-1 space-y-1">
+                  <div className="ml-auto flex shrink-0 items-center gap-1.5">
                     {day.references.map((reference, index) => {
                       const field = (["first_done","second_done","third_done"] as const)[index]!;
                       return (
-                        <label key={field} className={"flex min-w-0 items-start gap-1.5 rounded px-1.5 py-1 text-[11px] leading-snug transition " + (flags[index] ? "bg-primary/5" : "bg-muted/40 hover:bg-muted")}>
+                        <label key={field} className="flex cursor-pointer items-center justify-center">
+                          <span className="sr-only">Marcar {reference} del día {day.dayOfMonth}</span>
                           <Checkbox checked={flags[index]} disabled={saveDay.isPending} onCheckedChange={(checked) => saveDay.mutate({ day: day.dayNumber, field, checked: Boolean(checked) })}/>
-                          <span className={"min-w-0 break-words " + (flags[index] ? "text-muted-foreground line-through" : "font-medium")}>{reference}</span>
                         </label>
                       );
                     })}
