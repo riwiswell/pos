@@ -1,6 +1,6 @@
 begin;
 
-select plan(83);
+select plan(85);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -256,6 +256,16 @@ select ok((
     where tgrelid='public.bible_free_readings'::regclass
       and tgname='bible_free_readings_validate_owner' and not tgisinternal)
 ), 'free Bible readings validate ownership of the linked book');
+
+
+select ok((
+  not has_function_privilege('anon','public.personal_shared_add_owner_member()','EXECUTE')
+  and not has_function_privilege('authenticated','public.personal_shared_add_owner_member()','EXECUTE')
+), 'shared-space owner trigger function cannot be executed directly');
+select ok((
+  not has_function_privilege('anon','public.personal_shared_apply_goal_contribution()','EXECUTE')
+  and not has_function_privilege('authenticated','public.personal_shared_apply_goal_contribution()','EXECUTE')
+), 'shared-goal reward trigger function cannot be executed directly');
 
 select * from finish();
 rollback;
