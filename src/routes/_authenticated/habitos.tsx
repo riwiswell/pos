@@ -48,6 +48,12 @@ const UNCATEGORIZED = "__uncategorized__";
 
 function HabitsPage() {
   const { date } = useGlobalDate();
+  const [activeTab, setActiveTab] = useState("registro");
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("sharedInvite")) {
+      setActiveTab("compartidos");
+    }
+  }, []);
   const categoriesQuery = useCategories();
   const habitsQuery = useHabits();
   const logsQuery = useLogs(date);
@@ -130,7 +136,7 @@ function HabitsPage() {
       <GlobalDateHeader />
       <HabitInsightsPanel date={date} />
 
-      <Tabs defaultValue="registro" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="registro">Registro</TabsTrigger>
           <TabsTrigger value="matriz">Matriz</TabsTrigger>
