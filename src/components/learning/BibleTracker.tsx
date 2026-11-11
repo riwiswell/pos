@@ -148,7 +148,7 @@ export function BibleTracker() {
     }
   };
 
-  const startNewCycle = async () => {
+  const startNewCycle = async (startDate: string = cycleStartDate) => {
     if (!userId) return;
     setSaving(true);
     try {
@@ -162,7 +162,7 @@ export function BibleTracker() {
       }
       const { error } = await db.from("bible_reading_cycles").insert({
         user_id: userId,
-        start_date: cycleStartDate || localDateISO(),
+        start_date: startDate || localDateISO(),
         status: "active",
       });
       if (error) throw error;
@@ -356,10 +356,7 @@ export function BibleTracker() {
               variant="ghost"
               className="ml-auto"
               disabled={saving}
-              onClick={() => {
-                setCycleStartDate(localDateISO());
-                void startNewCycle();
-              }}
+              onClick={() => void startNewCycle(localDateISO())}
             >
               <RefreshCw className="mr-2 h-3.5 w-3.5" />
               Nuevo ciclo
