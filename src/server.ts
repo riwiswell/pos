@@ -200,7 +200,7 @@ type HydrationSchedule = {
  amount_ml: number;
 };
 const DEFAULT_HYDRATION_SCHEDULE: HydrationSchedule = {
- enabled: true, start_time: "08:00", end_time: "21:30", interval_minutes: 90, amount_ml: 250
+ enabled: true, start_time: "08:00", end_time: "21:30", interval_minutes: 90, amount_ml: 325
 };
 function validClockTime(value:unknown): value is string {
  return typeof value === "string" && /^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(value);
