@@ -102,7 +102,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
     mutationFn: async (mode: "annual_plan" | "free") => {
       if (!user?.id) throw new Error("Inicia sesión para guardar tu plan.");
       const { error: pauseError } = await db.from("bible_reading_cycles")
-        .update({ status: "paused" }).eq("user_id", user.id).eq("status", "active");
+        .update({ status: "paused" }).eq("user_id", user.id).eq("learning_item_id", learningItemId).eq("status", "active");
       if (pauseError) throw pauseError;
       const { data, error } = await db.from("bible_reading_cycles").insert({
         user_id: user.id, learning_item_id: learningItemId, mode, start_date: todayISO(), status: "active",
@@ -251,7 +251,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
     <section className="space-y-4 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-cyan-500/5 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><p className="text-xs font-semibold uppercase tracking-[.15em] text-primary">Plan anual</p><h3 className="flex items-center gap-2 font-semibold"><BookOpen className="h-4 w-4"/>La Biblia en 365 días</h3><p className="mt-1 text-xs text-muted-foreground">Comenzaste el {activeCycle.start_date}. Cada día tiene tres pasajes; el día suma al porcentaje solo cuando completas los tres.</p></div>
-        <div className="rounded-xl bg-background/80 px-3 py-2 text-right"><p className="text-2xl font-bold tabular-nums">{percent}%</p><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{completedDays}/365 días completos</p></div>
+        <div className="flex flex-col items-end gap-2"><div className="rounded-xl bg-background/80 px-3 py-2 text-right"><p className="text-2xl font-bold tabular-nums">{percent}%</p><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{completedDays}/365 días completos</p></div><Button size="sm" variant="outline" onClick={() => createCycle.mutate("free")} disabled={createCycle.isPending}>Cambiar a lectura libre</Button></div>
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all" style={{ width: percent + "%" }}/></div>
       <div className="grid grid-cols-3 gap-2"><div className="rounded-xl border bg-background/70 p-2.5"><p className="text-lg font-semibold tabular-nums">{completedDays}</p><p className="text-[10px] text-muted-foreground">Días completos</p></div><div className="rounded-xl border bg-background/70 p-2.5"><p className="text-lg font-semibold tabular-nums">{partialDays}</p><p className="text-[10px] text-muted-foreground">Días empezados</p></div><div className="rounded-xl border bg-background/70 p-2.5"><p className="text-lg font-semibold tabular-nums">{365 - completedDays}</p><p className="text-[10px] text-muted-foreground">Días por completar</p></div></div>
