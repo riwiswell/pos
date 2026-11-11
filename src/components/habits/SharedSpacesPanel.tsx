@@ -159,7 +159,21 @@ export function SharedSpacesPanel() {
       if (!name) throw new Error("Escribe un nombre para el espacio.");
       const { data, error } = await db.from(SHARED_TABLES.spaces).insert({ owner_id: user.id, name }).select("*").single();
       if (error) throw error;
-      return data as Space;
+      const space = data as Space;
+      const { error: habitsError } = await db.from(SHARED_TABLES.habits).insert([
+        { space_id: space.id, created_by: user.id, name: "Besarnos al levantarnos", icon: "😘", kind: "habit", tracking_type: "check", position: 0 },
+        { space_id: space.id, created_by: user.id, name: "Ir a cenar", icon: "🍽️", kind: "activity", tracking_type: "check", position: 1 },
+        { space_id: space.id, created_by: user.id, name: "LEGO Star Wars", icon: "🎮", kind: "activity", tracking_type: "counter", target: 1, unit: "sesión", position: 2 },
+      ]);
+      if (habitsError) throw habitsError;
+      const { error: goalError } = await db.from(SHARED_TABLES.goals).insert({
+        space_id: space.id, created_by: user.id, title: "Reto de pareja",
+        description: "Sumar diez aportes entre los dos para completar el reto juntos.",
+        icon: "🏆", goal_type: "challenge", target: 10, progress: 0,
+        unit: "aportes", reward_points: 100,
+      });
+      if (goalError) throw goalError;
+      return space;
     },
     onSuccess: (space) => {
       setSelectedSpaceId(space.id);
