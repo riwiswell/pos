@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { todayISO } from "@/lib/date";
+import { addDaysISO, dayName, todayISO } from "@/lib/date";
 
 const db = supabase as any;
 const SHARED_TABLES = {
@@ -54,6 +54,13 @@ export function SharedSpacesPanel() {
   const [goalTitle, setGoalTitle] = useState("");
   const [goalTarget, setGoalTarget] = useState("1");
   const [goalReward, setGoalReward] = useState("50");
+
+  const today = todayISO();
+  const weekStart = addDaysISO(today, -6);
+  const weekDates = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => addDaysISO(weekStart, index)),
+    [weekStart],
+  );
 
   const spacesQuery = useQuery({
     queryKey: ["shared-spaces"],
@@ -106,12 +113,12 @@ export function SharedSpacesPanel() {
     },
   });
   const logsQuery = useQuery({
-    queryKey: ["shared-space-logs", selectedSpaceId, todayISO()],
+    queryKey: ["shared-space-logs", selectedSpaceId, weekStart, today],
     enabled: Boolean(selectedSpaceId) && Boolean(habitsQuery.data?.length),
     queryFn: async () => {
       const ids = (habitsQuery.data ?? []).map((habit) => habit.id);
       if (!ids.length) return [];
-      const { data, error } = await db.from(SHARED_TABLES.logs).select("*").in("shared_habit_id", ids).eq("log_date", todayISO());
+      const { data, error } = await db.from(SHARED_TABLES.logs).select("*").in("shared_habit_id", ids).gte("log_date", weekStart).lte("log_date", today);
       if (error) throw error;
       return data ?? [];
     },
@@ -272,8 +279,13 @@ export function SharedSpacesPanel() {
   });
 
   const activeSpace = (spacesQuery.data ?? []).find((space) => space.id === selectedSpaceId);
-  const todayLogs = logsQuery.data ?? [];
-  const byHabit = useMemo(() => new Map(todayLogs.map((log: any) => [log.shared_habit_id + "|" + log.user_id, log])), [todayLogs]);
+  const sharedLogs = logsQuery.data ?? [];
+  const byHabitAndDate = useMemo(
+    () => new Map(sharedLogs.map((log: any) => [log.shared_habit_id + "|" + log.user_id + "|" + log.log_date, log])),
+    [sharedLogs],
+  );
+  const getMemberLog = (habitId: string, userId: string, date: string) =>
+    byHabitAndDate.get(habitId + "|" + userId + "|" + date) as any;
   const invites = invitesQuery.data ?? [];
   const acceptedInviteByUser = new Map<string, string>(invites.filter((invite: any) => invite.status === "accepted" && invite.accepted_by).map((invite: any) => [String(invite.accepted_by), String(invite.invited_email)] as [string, string]));
   const totalPoints = Number(pointsQuery.data ?? 0);
@@ -358,31 +370,47 @@ export function SharedSpacesPanel() {
             {habitType === "counter" && <div className="grid max-w-sm grid-cols-2 gap-2"><Input value={habitTarget} onChange={(event) => setHabitTarget(event.target.value)} placeholder="Meta" /><Input value={habitUnit} onChange={(event) => setHabitUnit(event.target.value)} placeholder="Unidad" /></div>}
             <div className="grid gap-2 sm:grid-cols-2">
               {(habitsQuery.data ?? []).map((habit) => {
-                const mine = byHabit.get(habit.id + "|" + user?.id) as any;
+                const mine = user?.id ? getMemberLog(habit.id, user.id, today) : undefined;
                 const done = habit.tracking_type === "counter" ? Number(mine?.value ?? 0) >= Number(habit.target ?? 1) : Boolean(mine?.completed);
                 return <article key={habit.id} className="flex items-center gap-3 rounded-xl border bg-background/60 p-3">
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-2xl">{habit.icon || (habit.kind === "activity" ? "🎯" : "✨")}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{habit.name}</p>
                     <p className="text-xs text-muted-foreground">{habit.kind === "activity" ? "Actividad" : "Hábito"} · {habit.tracking_type === "counter" ? "Contador" : "Casilla"}</p>
-                    <div className="mt-1 flex flex-wrap gap-1">
+                    <div className="mt-2 space-y-1.5">
+                      <p className="text-[10px] text-muted-foreground">Últimos 7 días</p>
                       {(membersQuery.data ?? []).map((member: any, memberIndex: number) => {
-                        const memberLog = byHabit.get(habit.id + "|" + member.user_id) as any;
-                        const memberValue = Number(memberLog?.value ?? 0);
-                        const memberDone = habit.tracking_type === "counter"
-                          ? memberValue >= Number(habit.target ?? 1)
-                          : Boolean(memberLog?.completed);
                         const invitedEmail = acceptedInviteByUser.get(member.user_id);
                         const memberLabel = member.user_id === user?.id
                           ? "Tú"
                           : invitedEmail?.split("@")[0] || (member.user_id === activeSpace?.owner_id ? "Propietario" : "Miembro " + (memberIndex + 1));
-                        const memberProgress = habit.tracking_type === "counter"
-                          ? memberValue + "/" + String(habit.target ?? 1) + " " + (habit.unit ?? "")
-                          : memberDone ? "Hecho" : "Pendiente";
                         return (
-                          <span key={member.user_id} className="rounded-md bg-muted/70 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                            {memberLabel}: {memberProgress}
-                          </span>
+                          <div key={member.user_id} className="flex items-center gap-2">
+                            <span className="w-16 shrink-0 truncate text-[10px] text-muted-foreground">{memberLabel}</span>
+                            <div className="grid min-w-0 flex-1 grid-cols-7 gap-1" aria-label={`Últimos 7 días de ${memberLabel}`}>
+                              {weekDates.map((date) => {
+                                const dayLog = getMemberLog(habit.id, member.user_id, date);
+                                const dayValue = Number(dayLog?.value ?? 0);
+                                const dayDone = habit.tracking_type === "counter"
+                                  ? dayValue >= Number(habit.target ?? 1)
+                                  : Boolean(dayLog?.completed);
+                                const dayLabel = dayName(date).slice(0, 1);
+                                const dayTitle = habit.tracking_type === "counter"
+                                  ? `${date}: ${dayValue}/${habit.target ?? 1} ${habit.unit ?? ""}`
+                                  : `${date}: ${dayDone ? "completado" : "pendiente"}`;
+                                return (
+                                  <span
+                                    key={date}
+                                    title={dayTitle}
+                                    aria-label={dayTitle}
+                                    className={`grid h-6 min-w-0 place-items-center rounded-md text-[10px] font-semibold ${dayDone ? "bg-primary text-primary-foreground" : "bg-muted/70 text-muted-foreground"}`}
+                                  >
+                                    {dayDone ? "✓" : dayLabel}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
                         );
                       })}
                     </div>
