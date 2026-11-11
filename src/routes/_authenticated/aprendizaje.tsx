@@ -103,7 +103,7 @@ function Books(){
       {isBibleBook(title)&&books.some((book:any)=>isBibleBook(book.title))&&<p className="mt-2 text-xs text-muted-foreground">La Biblia ya está en tu biblioteca.</p>}
     </div>}
     {books.length===0&&!q.isError&&<div className="glass max-w-xl rounded-2xl p-4 text-sm text-muted-foreground">Tu biblioteca está vacía. Agrega un libro para registrar tu avance.</div>}
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {books.map((book:any)=>{
         const bookNotes=(notes.data||[]).filter((entry:any)=>entry.learning_item_id===book.id);
         return <BookCard
@@ -326,6 +326,45 @@ function kindIcon(kind:string){
   if(kind==="certification")return "🏅";
   return "📚";
 }
+
+function OtherLearningCard({item,onEdit,onDelete,onSaveCover}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>}){
+  const[uploading,setUploading]=useState(false);
+  const input=useRef<HTMLInputElement>(null);
+  const path=item.cover_path?String(item.cover_path):null;
+  const photoQuery=usePrivatePhotos(path?[path]:[],Boolean(path));
+  const photoUrl=photoQuery.data?.find(photo=>photo.path===path)?.url;
+  const upload=async(event:React.ChangeEvent<HTMLInputElement>)=>{
+    const element=event.currentTarget;
+    const file=element.files?.[0];
+    if(!file)return;
+    setUploading(true);
+    try{
+      const nextPath=await privateMediaService.uploadPhoto(file);
+      try{await onSaveCover(nextPath);}catch(error){await privateMediaService.removePhoto(nextPath).catch(()=>undefined);throw error;}
+      if(path&&path!==nextPath)await privateMediaService.removePhoto(path).catch(()=>undefined);
+      toast.success("Portada actualizada.");
+    }catch(error){
+      const detail=error&&typeof error==="object"&&"message" in error?String((error as any).message):"No se pudo guardar la portada.";
+      toast.error(detail);
+    }finally{setUploading(false);element.value="";}
+  };
+  return <article className="glass flex min-w-0 gap-3 overflow-hidden rounded-2xl p-3">
+    <div className="relative w-[76px] shrink-0">
+      <div className="aspect-[2/3] overflow-hidden rounded-xl border bg-muted shadow-sm">
+        {photoUrl?<img src={photoUrl} alt={"Portada de "+item.title} className="h-full w-full object-cover"/>:
+          <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-stone-800 via-slate-800 to-slate-950 p-2 text-center text-white">
+            <span className="text-2xl">{kindIcon(item.kind)}</span><span className="line-clamp-4 break-words text-[10px] font-semibold leading-tight">{item.title}</span>
+          </div>}
+      </div>
+      <button type="button" onClick={()=>input.current?.click()} disabled={uploading} aria-label="Cambiar portada" title="Cargar portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow hover:bg-accent disabled:opacity-50"><ImagePlus className="h-3.5 w-3.5"/></button>
+      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
+    </div>
+    <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
+      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
+      <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
+    </div>
+  </article>;
+}
 function OtherLearning(){
   const q=useLGList("learning_items");
   const m=useLGMutations("learning_items");
@@ -384,19 +423,8 @@ function OtherLearning(){
     </div>
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno.</div>}
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-      {visibleItems.map((item:any)=><article key={item.id} className="glass flex min-w-0 items-center gap-3 rounded-xl p-3">
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-muted text-xl">{kindIcon(item.kind)}</div>
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold">{item.title}</h3>
-          <p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>
-          {item.notes&&<p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.notes}</p>}
-        </div>
-        <div className="flex shrink-0">
-          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Editar "+item.title} onClick={()=>startEdit(item)}><Pencil className="h-4 w-4"/></Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void m.remove.mutateAsync(item.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-        </div>
-      </article>)}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {visibleItems.map((item:any)=><OtherLearningCard key={item.id} item={item} onEdit={()=>startEdit(item)} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>) }
     </div>
   </section>;
 }
