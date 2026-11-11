@@ -284,36 +284,39 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
       <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6 md:grid-cols-12">
         {BIBLE_PLAN_MONTHS.map((item, index) => <button key={item.name} type="button" onClick={() => setSelectedMonth(index)} className={"rounded-lg border px-1.5 py-2 text-xs transition " + (index === selectedMonth ? "border-primary bg-primary/10 font-semibold text-primary" : "bg-background/70 text-muted-foreground hover:bg-accent")}>{item.name.slice(0,3)}</button>)}
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         {[
           (month?.days ?? []).filter((day) => day.dayOfMonth <= 15),
           (month?.days ?? []).filter((day) => day.dayOfMonth >= 16),
         ].map((columnDays, columnIndex) => (
-          <div key={columnIndex} className="min-w-0 space-y-1.5">
-            <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div key={columnIndex} className="min-w-0 space-y-2">
+            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {columnIndex === 0 ? "Días 1–15" : "Días 16–31"}
             </p>
             {columnDays.map((day) => {
               const row = progressByDay.get(day.dayNumber);
               const flags = [Boolean(row?.first_done), Boolean(row?.second_done), Boolean(row?.third_done)];
+              const completedCount = flags.filter(Boolean).length;
+              const completed = completedCount === 3;
               const assignedDate = addDaysISO(activeCycle.start_date, day.dayNumber - 1);
               return (
-                <article key={day.dayNumber} className={"flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto rounded-lg border px-2 py-1.5 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5" : "bg-background/65")}>
-                  <span className="shrink-0 text-[11px] font-semibold tabular-nums">Día {day.dayOfMonth}</span>
-                  <div className="flex min-w-max flex-1 items-center whitespace-nowrap text-[11px] leading-snug">
-                    {day.references.map((reference, index) => (
-                      <span key={index} className={flags[index] ? "text-muted-foreground line-through" : "font-medium"}>
-                        {index > 0 ? " · " : ""}{reference}
-                      </span>
-                    ))}
+                <article key={day.dayNumber} className={"min-w-0 rounded-xl border p-3 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5" : "bg-background/65")}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">Día {day.dayNumber} · {displayDate(assignedDate)}</p>
+                      <p className="text-[11px] text-muted-foreground">{day.dayOfMonth} de {month?.name}</p>
+                    </div>
+                    <span className={"shrink-0 rounded-full px-2 py-1 text-[11px] font-medium " + (completed ? "bg-emerald-500/10 text-emerald-600" : completedCount ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                      {completed ? "Completo" : completedCount + "/3 lecturas"}
+                    </span>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="mt-2 space-y-1.5">
                     {day.references.map((reference, index) => {
                       const field = (["first_done","second_done","third_done"] as const)[index]!;
                       return (
-                        <label key={field} className="flex cursor-pointer items-center justify-center">
-                          <span className="sr-only">Marcar {reference} del día {day.dayOfMonth}</span>
-                          <Checkbox className="h-3.5 w-3.5" checked={flags[index]} disabled={saveDay.isPending} onCheckedChange={(checked) => saveDay.mutate({ day: day.dayNumber, field, checked: Boolean(checked) })}/>
+                        <label key={field} className={"flex min-w-0 cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-sm leading-snug transition " + (flags[index] ? "bg-primary/5 text-muted-foreground" : "bg-muted/45 hover:bg-muted/70")}>
+                          <Checkbox className="mt-0.5 shrink-0" checked={flags[index]} disabled={saveDay.isPending} onCheckedChange={(checked) => saveDay.mutate({ day: day.dayNumber, field, checked: Boolean(checked) })}/>
+                          <span className={"min-w-0 break-words " + (flags[index] ? "line-through" : "font-medium")}>{reference}</span>
                         </label>
                       );
                     })}
