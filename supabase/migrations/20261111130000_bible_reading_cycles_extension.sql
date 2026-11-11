@@ -78,7 +78,7 @@ where passage is null or note is null;
 create or replace function public.sync_bible_free_reading_legacy_columns()
 returns trigger
 language plpgsql
-as $
+as $sync_bible_free_reading$
 begin
   new.passage := coalesce(nullif(btrim(new.passage),''),nullif(btrim(new.scripture_reference),''));
   new.scripture_reference := coalesce(nullif(btrim(new.scripture_reference),''),new.passage);
@@ -89,7 +89,7 @@ begin
   end if;
   return new;
 end;
-$;
+$sync_bible_free_reading$;
 
 drop trigger if exists bible_free_readings_sync_legacy_columns on public.bible_free_readings;
 create trigger bible_free_readings_sync_legacy_columns
