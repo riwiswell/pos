@@ -319,8 +319,12 @@ create policy personal_shared_habits_insert on public.personal_shared_habits
 for insert to authenticated with check (created_by=auth.uid() and public.personal_shared_is_member(space_id));
 drop policy if exists personal_shared_habits_update on public.personal_shared_habits;
 create policy personal_shared_habits_update on public.personal_shared_habits
-for update to authenticated using (public.personal_shared_is_member(space_id))
-with check (public.personal_shared_is_member(space_id));
+for update to authenticated
+using (public.personal_shared_is_owner(space_id) or created_by=auth.uid())
+with check (
+  public.personal_shared_is_member(space_id)
+  and (public.personal_shared_is_owner(space_id) or created_by=auth.uid())
+);
 drop policy if exists personal_shared_habits_delete on public.personal_shared_habits;
 create policy personal_shared_habits_delete on public.personal_shared_habits
 for delete to authenticated using (public.personal_shared_is_owner(space_id) or created_by=auth.uid());
