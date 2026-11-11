@@ -369,7 +369,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover}:{item:any;onEdit:(
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
     </div>
     <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
-      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
+      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{item.kind==="video_game"&&<div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
       <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
     </div>
   </article>;
@@ -384,18 +384,21 @@ function OtherLearning(){
   const[title,setTitle]=useState("");
   const[kind,setKind]=useState("course");
   const[notes,setNotes]=useState("");
+  const[goalDescription,setGoalDescription]=useState("");
+  const[goalDate,setGoalDate]=useState("");
+  const[gameProgress,setGameProgress]=useState("0");
   const[filter,setFilter]=useState("all");
   const items=(q.data||[]).filter((item:any)=>item.kind!=="book"&&item.kind!=="language");
   const visibleItems=items.filter((item:any)=>filter==="all"||item.kind===filter||(filter==="video_game"&&item.kind==="game"));
-  const resetForm=()=>{setTitle("");setKind("course");setNotes("");setEditingId(null);setAdding(false);};
-  const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind||"other");setNotes(item.notes||"");setEditingId(item.id);setAdding(true);};
+  const resetForm=()=>{setTitle("");setKind("course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setEditingId(null);setAdding(false);};
+  const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setEditingId(item.id);setAdding(true);};
   const saveItem=async()=>{
     if(!title.trim()){toast.error("Escribe el nombre del elemento.");return;}
     if(editingId){
-      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null}});
+      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,goal_description:kind==="video_game"?(goalDescription.trim()||null):null,goal_date:kind==="video_game"?(goalDate||null):null,progress:kind==="video_game"?Math.min(100,Math.max(0,Number(gameProgress)||0)):undefined}});
       toast.success("Elemento actualizado.");
     }else{
-      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active"});
+      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",goal_description:kind==="video_game"?(goalDescription.trim()||null):null,goal_date:kind==="video_game"?(goalDate||null):null,progress:kind==="video_game"?Math.min(100,Math.max(0,Number(gameProgress)||0)):0});
       toast.success("Elemento agregado.");
     }
     resetForm();
@@ -425,6 +428,7 @@ function OtherLearning(){
         <Button size="sm" disabled={!title.trim()||m.create.isPending||m.update.isPending} onClick={()=>void saveItem()}><Save className="mr-1 h-3.5 w-3.5"/>{editingId?"Guardar":"Agregar"}</Button>
       </div>
       {editingId&&<textarea className="min-h-16 w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm" rows={2} placeholder="Notas o descripción (opcional)" value={notes} onChange={e=>setNotes(e.target.value)}/>}
+      {kind==="video_game"&&<div className="grid gap-2 sm:grid-cols-3"><Input placeholder="Meta (ej. Terminar la historia)" value={goalDescription} onChange={e=>setGoalDescription(e.target.value)}/><label className="text-xs text-muted-foreground">Fecha objetivo<Input className="mt-1" type="date" value={goalDate} onChange={e=>setGoalDate(e.target.value)}/></label><label className="text-xs text-muted-foreground">Avance (%)<Input className="mt-1" type="number" min="0" max="100" value={gameProgress} onChange={e=>setGameProgress(e.target.value)}/></label></div>}
       {editingId&&<p className="text-xs text-muted-foreground">Puedes actualizar el nombre, la categoría y la descripción.</p>}
     </div>}
     <div className="flex flex-wrap gap-1.5">
