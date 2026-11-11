@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Minus, Plus, StickyNote } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,20 @@ export function HabitRow({
   const completed = habit.type === "check" ? (log?.completed ?? false) : value > 0;
   const target = habit.target ?? 0;
   const percent = target > 0 ? Math.round((value / target) * 100) : 0;
+  const goalCompleted = habit.type === "check" ? (log?.completed ?? false) : target > 0 && value >= target;
+  const [celebrating, setCelebrating] = useState(false);
+  const previousGoalCompleted = useRef(goalCompleted);
+
+  useEffect(() => {
+    if (!previousGoalCompleted.current && goalCompleted) {
+      setCelebrating(true);
+      const timeout = window.setTimeout(() => setCelebrating(false), 1500);
+      previousGoalCompleted.current = goalCompleted;
+      return () => window.clearTimeout(timeout);
+    }
+    previousGoalCompleted.current = goalCompleted;
+    return undefined;
+  }, [goalCompleted]);
 
   const [draft, setDraft] = useState(String(value));
   const [editing, setEditing] = useState(false);
@@ -58,12 +72,21 @@ export function HabitRow({
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-surface/40 px-3 py-2.5">
+    <div className="relative flex items-center gap-3 rounded-xl border border-border/60 bg-surface/40 px-3 py-2.5">
       <span
         aria-hidden
-        className="h-8 w-1 shrink-0 rounded-full"
-        style={{ backgroundColor: color, opacity: completed ? 1 : 0.35 }}
-      />
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border text-xl"
+        style={{ backgroundColor: color + "18", borderColor: color + "55" }}
+      >
+        {habit.icon || (habit.kind === "activity" ? "🎯" : "✨")}
+      </span>
+      {celebrating && (
+        <span aria-hidden className="pointer-events-none absolute -top-4 right-16 z-20 flex items-center gap-1 text-lg">
+          <span className="animate-bounce">✨</span>
+          <span className="animate-bounce [animation-delay:90ms]">🎉</span>
+          <span className="animate-bounce [animation-delay:180ms]">⭐</span>
+        </span>
+      )}
 
       <div className="min-w-0 flex-1">
         <p
