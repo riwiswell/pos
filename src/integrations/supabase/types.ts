@@ -186,6 +186,8 @@ export type Database = {
           category_id: string | null
           cost_amount: number
           counts_for_tithe: boolean
+          external_id: string | null
+          external_source: string | null
           created_at: string
           id: string
           is_tithe_payment: boolean
@@ -205,6 +207,8 @@ export type Database = {
           category_id?: string | null
           cost_amount?: number
           counts_for_tithe?: boolean
+          external_id?: string | null
+          external_source?: string | null
           created_at?: string
           id?: string
           is_tithe_payment?: boolean
@@ -224,6 +228,8 @@ export type Database = {
           category_id?: string | null
           cost_amount?: number
           counts_for_tithe?: boolean
+          external_id?: string | null
+          external_source?: string | null
           created_at?: string
           id?: string
           is_tithe_payment?: boolean
@@ -340,6 +346,7 @@ export type Database = {
           active: boolean
           category_id: string | null
           created_at: string
+          icon: string | null
           id: string
           kind: string
           name: string
@@ -354,6 +361,7 @@ export type Database = {
           active?: boolean
           category_id?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           kind?: string
           name: string
@@ -368,6 +376,7 @@ export type Database = {
           active?: boolean
           category_id?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           kind?: string
           name?: string
@@ -503,6 +512,8 @@ export type Database = {
           start_date: string
           times: string[]
           total_quantity: number | null
+          stock_unit: string
+          units_per_dose: number
           unit: string | null
           updated_at: string
           user_id: string
@@ -520,6 +531,8 @@ export type Database = {
           start_date?: string
           times?: string[]
           total_quantity?: number | null
+          stock_unit?: string
+          units_per_dose?: number
           unit?: string | null
           updated_at?: string
           user_id: string
@@ -537,11 +550,84 @@ export type Database = {
           start_date?: string
           times?: string[]
           total_quantity?: number | null
+          stock_unit?: string
+          units_per_dose?: number
           unit?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      hydration_entries: {
+        Row: {
+          amount_ml: number
+          beverage_type: string
+          consumed_at: string
+          consumed_on: string
+          created_at: string
+          id: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_ml: number
+          beverage_type: string
+          consumed_at?: string
+          consumed_on?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_ml?: number
+          beverage_type?: string
+          consumed_at?: string
+          consumed_on?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      medication_stock_movements: {
+        Row: {
+          created_at: string
+          id: string
+          medication_id: string
+          movement_type: string
+          note: string | null
+          quantity: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          medication_id: string
+          movement_type?: string
+          note?: string | null
+          quantity: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          medication_id?: string
+          movement_type?: string
+          note?: string | null
+          quantity?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medication_stock_movements_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       planner_categories: {
         Row: {
