@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HelpTip } from "@/components/common/HelpTip";
 import { createFileRoute } from "@tanstack/react-router";
 import { MoreHorizontal, Plus } from "lucide-react";
@@ -20,6 +20,8 @@ import { HabitDialog } from "@/components/habits/HabitDialog";
 import { CategoryDialog } from "@/components/habits/CategoryDialog";
 import { NoteDialog } from "@/components/habits/NoteDialog";
 import { HabitMatrix } from "@/components/habits/HabitMatrix";
+import { SharedSpacesPanel } from "@/components/habits/SharedSpacesPanel";
+import { HabitInsightsPanel } from "@/components/habits/HabitInsightsPanel";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useCategories, useHabitMutations, useHabits, useLogs } from "@/hooks/use-habits";
 import type { Habit, HabitCategory, HabitLog, HabitKind } from "@/domain/types";
@@ -46,6 +48,12 @@ const UNCATEGORIZED = "__uncategorized__";
 
 function HabitsPage() {
   const { date } = useGlobalDate();
+  const [activeTab, setActiveTab] = useState("registro");
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("sharedInvite")) {
+      setActiveTab("compartidos");
+    }
+  }, []);
   const categoriesQuery = useCategories();
   const habitsQuery = useHabits();
   const logsQuery = useLogs(date);
@@ -126,11 +134,13 @@ function HabitsPage() {
   return (
     <div className="space-y-5">
       <GlobalDateHeader />
+      <HabitInsightsPanel date={date} />
 
-      <Tabs defaultValue="registro" className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="registro">Registro</TabsTrigger>
           <TabsTrigger value="matriz">Matriz</TabsTrigger>
+          <TabsTrigger value="compartidos">Compartidos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="registro" className="space-y-5">
@@ -305,6 +315,10 @@ function HabitsPage() {
 
         <TabsContent value="matriz">
           <HabitMatrix />
+        </TabsContent>
+
+        <TabsContent value="compartidos">
+          <SharedSpacesPanel />
         </TabsContent>
       </Tabs>
 
