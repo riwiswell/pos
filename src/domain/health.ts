@@ -185,6 +185,7 @@ export const DOSE_UNITS = [
   "Aplicación", "Puff", "Cucharadita", "Cucharada", "Otro",
 ] as const;
 
+export const WATER_GLASS_ML = 325;
 export const WATER_OPTIONS = [0, 0.5, 1, 1.5, 2] as const;
 
 export const STOCK_UNITS = ["Tabletas", "Cápsulas", "Comprimidos", "Sobres", "ml", "Gotas", "Aplicaciones", "Puffs", "Unidades"] as const;
@@ -204,6 +205,17 @@ export interface HydrationEntry {
 export function formatGlasses(n: number): string {
   const v = String(n).replace(".", ",");
   return `${v} ${n === 1 ? "vaso" : "vasos"}`;
+}
+
+/** Convert a glass fraction to milliliters using the user's 325 ml glass. */
+export function waterGlassesToMl(glasses: number): number {
+  return Math.max(0, Number.isFinite(glasses) ? glasses : 0) * WATER_GLASS_ML;
+}
+
+/** Shows the selected glass fraction and its milliliter equivalent. */
+export function formatWaterGlassOption(glasses: number): string {
+  const ml = waterGlassesToMl(glasses).toLocaleString("es-CO", { maximumFractionDigits: 1 });
+  return `${formatGlasses(glasses)} · ${ml} ml`;
 }
 
 /** Average doses per day (alternate-day schedules count half). */
