@@ -400,7 +400,7 @@ function CurrentBookCard(){
  const total=Number(book?.total_pages??0);
  const page=Number(book?.current_page??0);
  const progress=total>0?Math.min(100,Math.max(0,page/total*100)):Math.min(100,Math.max(0,Number(book?.progress??0)));
- return <section className="relative min-w-0 overflow-hidden rounded-[24px] border border-sky-400/20 bg-gradient-to-br from-[#152a3b] via-[#172331] to-card p-4 shadow-sm">
+ return <section className="inicio-learning-card relative min-w-0 overflow-hidden rounded-[24px] border border-sky-400/20 bg-gradient-to-br from-[#152a3b] via-[#172331] to-card p-4 shadow-sm">
   <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-400/10 blur-2xl"/>
   <div className="relative">
    <div className="flex items-center justify-between gap-2">
@@ -427,7 +427,7 @@ function CurrentGameCard() {
   const progress = Math.min(100, Math.max(0, Number(game?.progress ?? 0)));
 
   return (
-    <section className="relative min-w-0 overflow-hidden rounded-[24px] border border-violet-400/20 bg-gradient-to-br from-[#292044] via-[#211d31] to-card p-4 shadow-sm">
+    <section className="inicio-game-card relative min-w-0 overflow-hidden rounded-[24px] border border-violet-400/20 bg-gradient-to-br from-[#292044] via-[#211d31] to-card p-4 shadow-sm">
       <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-400/10 blur-2xl" />
       <div className="relative">
         <div className="flex items-center justify-between gap-2">
