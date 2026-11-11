@@ -421,10 +421,31 @@ function CurrentBookCard(){
 
 function CurrentGameCard() {
   const query = useLGList("learning_items", "updated_at");
-  const game = (query.data ?? []).find(
+  const activeGames = (query.data ?? []).filter(
     (item: any) => item.kind === "game" && item.status === "active",
-  ) as any;
+  ) as any[];
+
+  // Prefer the game with recorded progress so a newly imported 0% backlog
+  // does not replace the game the user is actually playing on the dashboard.
+  const game = [...activeGames].sort((a, b) => {
+    const aProgress = Number(a.progress ?? 0);
+    const bProgress = Number(b.progress ?? 0);
+    const aHasProgress = aProgress > 0;
+    const bHasProgress = bProgress > 0;
+
+    if (aHasProgress !== bHasProgress) return aHasProgress ? -1 : 1;
+
+    const aUpdatedAt = Date.parse(a.updated_at ?? a.created_at ?? "") || 0;
+    const bUpdatedAt = Date.parse(b.updated_at ?? b.created_at ?? "") || 0;
+    if (aUpdatedAt !== bUpdatedAt) return bUpdatedAt - aUpdatedAt;
+
+    return bProgress - aProgress;
+  })[0];
   const progress = Math.min(100, Math.max(0, Number(game?.progress ?? 0)));
+  const progressLabel = progress.toLocaleString("es-CO", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
 
   return (
     <section className="inicio-game-card relative min-w-0 overflow-hidden rounded-[24px] border border-violet-400/20 bg-gradient-to-br from-[#292044] via-[#211d31] to-card p-4 shadow-sm">
@@ -455,13 +476,9 @@ function CurrentGameCard() {
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-medium text-emerald-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> En curso
               </span>
-              {progress > 0 && <span className="text-xs tabular-nums text-slate-300">{Math.round(progress)}% registrado</span>}
+              <span className="text-xs tabular-nums text-slate-300">{progressLabel}% registrado</span>
             </div>
-            {progress > 0 ? (
-              <Progress value={progress} className="mt-2 h-2 bg-white/10" />
-            ) : (
-              <p className="mt-2 text-[11px] text-slate-300">Tu partida activa, siempre a mano desde Inicio.</p>
-            )}
+            <Progress value={progress} className="mt-2 h-2 bg-white/10" />
           </>
         ) : (
           <div className="mt-4 rounded-xl border border-white/10 bg-white/[.04] p-3">
