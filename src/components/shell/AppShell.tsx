@@ -16,6 +16,7 @@ import { useAppointmentReminders } from "@/hooks/use-appointment-reminders";
 import { toast } from "sonner";
 import { useTheme } from "@/hooks/use-theme";
 import { useMedicationReminders } from "@/hooks/use-medication-reminders";
+import { useHydrationReminders } from "@/hooks/use-hydration-reminders";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -116,6 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   useTheme();
   useMedicationReminders();
+  useHydrationReminders();
   useAppointmentReminders();
 
   const allItems = useMemo(() => orderedAllItems(profile?.module_order), [profile?.module_order]);
@@ -196,11 +198,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3">
-          <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Mostrar u ocultar módulos">
+          <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Editar menú">
             <SlidersHorizontal className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>{menuEditing ? "Terminar de editar" : "Mostrar / ocultar módulos"}</span>}
+            {!collapsed && <span>{menuEditing ? "Terminar de editar" : "Editar menú"}</span>}
           </Button>
-          {menuEditing && !collapsed && <p className="px-2 pb-1 text-xs text-muted-foreground">Para reordenar, arrastra un módulo por el tirador del sidebar. Aquí puedes mostrar u ocultar módulos.</p>}
           {menuItems.map((item) => {
             const visible = !hiddenModules.includes(item.key);
             if (menuEditing) return (
@@ -324,7 +325,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main
         className={cn(
-          "w-full px-4 pb-28 pt-4 md:pb-10 md:pt-8 md:px-8",
+          "app-shell-main w-full px-4 pb-28 pt-4 md:pb-10 md:pt-8 md:px-8",
           collapsed
             ? "md:ml-[80px] md:w-[calc(100%_-_80px)]"
             : "md:ml-[272px] md:w-[calc(100%_-_272px)]",

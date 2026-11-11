@@ -135,6 +135,28 @@ export function SleepPanel() {
   const average = history.length
     ? history.reduce((sum, row) => sum + row.hours, 0) / history.length
     : null;
+
+  const weeklyComparison = useMemo(() => {
+    const shiftDate = (offset: number) => {
+      const value = new Date(date + "T12:00:00");
+      value.setDate(value.getDate() + offset);
+      return [value.getFullYear(), String(value.getMonth() + 1).padStart(2, "0"), String(value.getDate()).padStart(2, "0")].join("-");
+    };
+    const currentStart = shiftDate(-6);
+    const previousStart = shiftDate(-13);
+    const currentWeek = history.filter((row) => row.date >= currentStart && row.date <= date);
+    const previousWeek = history.filter((row) => row.date >= previousStart && row.date < currentStart);
+    const mean = (rows: typeof history) => rows.length ? rows.reduce((sum, row) => sum + row.hours, 0) / rows.length : null;
+    const currentAverage = mean(currentWeek);
+    const previousAverage = mean(previousWeek);
+    return {
+      currentAverage,
+      previousAverage,
+      difference: currentAverage !== null && previousAverage !== null ? currentAverage - previousAverage : null,
+      currentCount: currentWeek.length,
+      previousCount: previousWeek.length,
+    };
+  }, [history, date]);
   const latest = history.at(-1) ?? null;
   const maxHours = Math.max(10, Math.ceil(Math.max(...history.map((row) => row.hours), 0) + 1));
 
@@ -252,6 +274,15 @@ export function SleepPanel() {
       </section>
 
       <section className="glass space-y-3 rounded-2xl p-4">
+        <div><h3 className="font-semibold">Comparación semanal</h3><p className="text-xs text-muted-foreground">Promedio de las últimas 7 noches frente a las 7 anteriores, hasta la fecha seleccionada.</p></div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl border bg-background/60 p-3"><p className="text-[11px] text-muted-foreground">Últimos 7 días</p><p className="mt-1 text-xl font-semibold tabular-nums">{weeklyComparison.currentAverage===null?"—":formatSleepHours(weeklyComparison.currentAverage)}</p><p className="text-[10px] text-muted-foreground">{weeklyComparison.currentCount} registros</p></div>
+          <div className="rounded-xl border bg-background/60 p-3"><p className="text-[11px] text-muted-foreground">7 días anteriores</p><p className="mt-1 text-xl font-semibold tabular-nums">{weeklyComparison.previousAverage===null?"—":formatSleepHours(weeklyComparison.previousAverage)}</p><p className="text-[10px] text-muted-foreground">{weeklyComparison.previousCount} registros</p></div>
+        </div>
+        {weeklyComparison.difference!==null?<p className="text-xs text-muted-foreground">{weeklyComparison.difference>0.05?"Estás durmiendo en promedio "+formatSleepHours(weeklyComparison.difference)+" más por noche.":weeklyComparison.difference< -0.05?"Estás durmiendo en promedio "+formatSleepHours(Math.abs(weeklyComparison.difference))+" menos por noche.":"Tu promedio se mantiene prácticamente igual."}</p>:<p className="text-xs text-muted-foreground">Registra noches en ambos periodos para comparar las semanas.</p>}
+      </section>
+
+      <section className="glass space-y-3 rounded-2xl p-4">
         <div>
           <h3 className="font-semibold">Evolución del sueño</h3>
           <p className="text-xs text-muted-foreground">Hasta 30 registros recientes, ordenados por fecha.</p>
@@ -265,40 +296,37 @@ export function SleepPanel() {
             Todavía no hay duraciones de sueño para graficar. Guarda el primer registro y aparecerá aquí.
           </div>
         ) : (
-          <div className="h-64 w-full">
+          <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={history} margin={{ top: 10, right: 12, left: -8, bottom: 4 }}>
-                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
+              <BarChart data={history} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="label"
                   tickLine={false}
                   axisLine={false}
-                  tick={{ fontSize: 12, fontWeight: 500, fill: "var(--muted-foreground)" }}
-                  tickMargin={10}
-                  minTickGap={8}
-                  interval={history.length <= 7 ? 0 : "preserveStartEnd"}
+                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                  interval="preserveStartEnd"
                 />
                 <YAxis
                   domain={[0, maxHours]}
                   tickLine={false}
                   axisLine={false}
-                  width={40}
-                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  width={34}
+                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                   tickFormatter={(value: number) => `${value} h`}
                 />
                 <Tooltip
-                  cursor={{ fill: "var(--accent)", opacity: 0.55 }}
+                  cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
                   contentStyle={{
-                    background: "var(--popover)",
-                    color: "var(--popover-foreground)",
-                    border: "1px solid var(--border)",
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
                     borderRadius: 12,
                     fontSize: 12,
                   }}
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""}
                   formatter={(value: number) => [formatSleepHours(Number(value)), "Duración"]}
                 />
-                <Bar dataKey="hours" name="Sueño" fill="var(--primary)" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                <Bar dataKey="hours" name="Sueño" fill="hsl(var(--primary))" radius={[5, 5, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
           </div>

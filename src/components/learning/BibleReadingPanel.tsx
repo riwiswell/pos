@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, CalendarDays, CheckCircle2, ChevronDown, Clock3, Sparkles } from "lucide-react";
+import { BookOpen, CalendarDays, CheckCircle2, ChevronDown, Clock3, ImagePlus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { addDaysISO, todayISO } from "@/lib/date";
 import { BIBLE_PLAN_MONTHS, BIBLE_READING_PLAN, biblePlanProgress } from "@/domain/bible-reading-plan";
+import { usePrivatePhotos } from "@/hooks/use-private-photos";
+import { privateMediaService } from "@/services/private-media.service";
 
 const db = supabase as any;
 type Cycle = {
@@ -45,6 +47,61 @@ function displayDate(date: string) {
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "No se pudo guardar tu lectura.";
+}
+
+
+function BibleCover({ learningItemId }: { learningItemId: string }) {
+  const queryClient = useQueryClient();
+  const input = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const itemQuery = useQuery({
+    queryKey: ["bible-learning-item", learningItemId],
+    queryFn: async () => {
+      const { data, error } = await db.from("learning_items").select("id,title,cover_path").eq("id", learningItemId).single();
+      if (error) throw error;
+      return data as { id: string; title: string; cover_path: string | null };
+    },
+    enabled: Boolean(learningItemId),
+    staleTime: 60 * 60 * 1000,
+  });
+  const coverPath = itemQuery.data?.cover_path ?? null;
+  const photoQuery = usePrivatePhotos(coverPath ? [coverPath] : [], Boolean(coverPath));
+  const photoUrl = photoQuery.data?.find((photo) => photo.path === coverPath)?.url;
+
+  const upload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const element = event.currentTarget;
+    const file = element.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const nextPath = await privateMediaService.uploadPhoto(file);
+      const { error } = await db.from("learning_items").update({ cover_path: nextPath }).eq("id", learningItemId);
+      if (error) {
+        await privateMediaService.removePhoto(nextPath).catch(() => undefined);
+        throw error;
+      }
+      if (coverPath && coverPath !== nextPath) await privateMediaService.removePhoto(coverPath).catch(() => undefined);
+      await queryClient.invalidateQueries({ queryKey: ["bible-learning-item", learningItemId] });
+      await queryClient.invalidateQueries({ queryKey: ["lg", "learning_items"] });
+      toast.success("Portada de la Biblia actualizada.");
+    } catch (error) {
+      toast.error(message(error));
+    } finally {
+      setUploading(false);
+      element.value = "";
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border bg-background/70 p-3">
+      <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg border bg-gradient-to-br from-indigo-950 via-blue-900 to-slate-950">
+        {photoUrl ? <img src={photoUrl} alt="Portada de la Biblia" className="h-full w-full object-cover"/> : <div className="flex h-full flex-col items-center justify-center gap-1 p-1 text-center text-white"><BookOpen className="h-5 w-5"/><span className="text-[9px] font-semibold">LA BIBLIA</span></div>}
+      </div>
+      <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Portada de la Biblia</p><p className="text-xs text-muted-foreground">Agrega o cambia la foto de tu Biblia.</p></div>
+      <Button type="button" size="sm" variant="outline" onClick={() => input.current?.click()} disabled={uploading || itemQuery.isLoading}><ImagePlus className="mr-1 h-4 w-4"/>{uploading ? "Subiendo…" : photoUrl ? "Cambiar foto" : "Agregar foto"}</Button>
+      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
+    </div>
+  );
 }
 
 export function BibleReadingPanel({ learningItemId }: { learningItemId: string }) {
@@ -234,7 +291,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
 
   if (!activeCycle && latestCycle?.status === "completed") {
     return (
-      <section className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
+      <section className="space-y-3 rounded-2xl border border-primary/30 bg-primary/5 p-4">\n        <BibleCover learningItemId={learningItemId}/>
         <div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-primary"/><h3 className="font-semibold">¡Completaste la lectura de la Biblia!</h3></div>
         <p className="mt-1 text-sm text-muted-foreground">Tu ciclo quedó guardado con sus 365 días. Puedes empezar otro año cuando quieras.</p>
         <Button className="mt-3" onClick={() => createCycle.mutate(latestCycle.mode)} disabled={createCycle.isPending}>Iniciar otro año de lectura</Button>
@@ -244,7 +301,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
 
   if (!activeCycle) {
     return (
-      <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+      <section className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">\n        <BibleCover learningItemId={learningItemId}/>
         <div className="flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary"/><h3 className="font-semibold">¿Cómo quieres leer la Biblia?</h3></div>
         <p className="mt-1 text-sm text-muted-foreground">Puedes seguir el plan diario de un año, con tres pasajes al día, o llevar una lectura completamente libre.</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -261,7 +318,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
 
   if (activeCycle.mode === "free") {
     return (
-      <section className="space-y-3 rounded-2xl border p-4">
+      <section className="space-y-3 rounded-2xl border p-4">\n        <BibleCover learningItemId={learningItemId}/>
         <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Modo libre</p><h3 className="font-semibold">Tu lectura bíblica</h3><p className="text-xs text-muted-foreground">Sin días obligatorios ni porcentaje anual.</p></div><Button size="sm" variant="outline" onClick={() => createCycle.mutate("annual_plan")} disabled={createCycle.isPending}>Cambiar al plan anual</Button></div>
         <div className="grid gap-2 sm:grid-cols-[150px_1fr]"><label className="text-xs text-muted-foreground">Fecha<Input className="mt-1" type="date" value={readingDate} onChange={(event) => setReadingDate(event.target.value)}/></label><label className="text-xs text-muted-foreground">Pasaje leído<Input className="mt-1" value={passage} onChange={(event) => setPassage(event.target.value)} placeholder="Ej. Génesis 1–3"/></label></div>
         <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Nota o reflexión (opcional)"/>
@@ -272,7 +329,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
   }
 
   return (
-    <section className="space-y-4 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-cyan-500/5 p-4">
+    <section className="space-y-4 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-cyan-500/5 p-4">\n      <BibleCover learningItemId={learningItemId}/>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><p className="text-xs font-semibold uppercase tracking-[.15em] text-primary">Plan anual</p><h3 className="flex items-center gap-2 font-semibold"><BookOpen className="h-4 w-4"/>La Biblia en 365 días</h3><p className="mt-1 text-xs text-muted-foreground">Comenzaste el {activeCycle.start_date}. Cada día tiene tres pasajes; el día suma al porcentaje solo cuando completas los tres.</p></div>
         <div className="flex flex-col items-end gap-2"><div className="rounded-xl bg-background/80 px-3 py-2 text-right"><p className="text-2xl font-bold tabular-nums">{percent}%</p><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{completedDays}/365 días completos</p></div><Button size="sm" variant="outline" onClick={() => createCycle.mutate("free")} disabled={createCycle.isPending}>Cambiar a lectura libre</Button></div>

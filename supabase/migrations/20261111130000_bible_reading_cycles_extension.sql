@@ -74,29 +74,6 @@ set passage=coalesce(passage,scripture_reference),
     note=coalesce(note,notes)
 where passage is null or note is null;
 
--- Keep the legacy NOT NULL columns compatible with the new passage/note fields.
-create or replace function public.sync_bible_free_reading_legacy_columns()
-returns trigger
-language plpgsql
-as $sync_bible_free_reading$
-begin
-  new.passage := coalesce(nullif(btrim(new.passage),''),nullif(btrim(new.scripture_reference),''));
-  new.scripture_reference := coalesce(nullif(btrim(new.scripture_reference),''),new.passage);
-  new.note := coalesce(new.note,new.notes);
-  new.notes := coalesce(new.notes,new.note);
-  if new.passage is null then
-    raise exception 'Escribe el pasaje bíblico antes de guardar.';
-  end if;
-  return new;
-end;
-$sync_bible_free_reading$;
-
-drop trigger if exists bible_free_readings_sync_legacy_columns on public.bible_free_readings;
-create trigger bible_free_readings_sync_legacy_columns
-before insert or update on public.bible_free_readings
-for each row execute function public.sync_bible_free_reading_legacy_columns();
-
-
 create index if not exists bible_free_readings_user_item_idx
   on public.bible_free_readings(user_id,learning_item_id,reading_date desc);
 

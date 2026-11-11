@@ -19,6 +19,7 @@ type Source = DailyFocus["source"];
 
 interface Props {
   date: string;
+  compact?: boolean;
 }
 
 function focusLabel(focus: DailyFocus | null, habits: Habit[], plannerItems: PlannerItem[]) {
@@ -29,7 +30,7 @@ function focusLabel(focus: DailyFocus | null, habits: Habit[], plannerItems: Pla
   return item ? (item.start_time ? `${shortTime(item.start_time)} · ${item.title}` : item.title) : focus.text ?? "Actividad del planeador";
 }
 
-export function DailyFocusPicker({ date }: Props) {
+export function DailyFocusPicker({ date, compact = false }: Props) {
   const focusQuery = useDailyFocus(date);
   const habitsQuery = useHabits();
   const plannerQuery = usePlannerItems(date);
@@ -87,11 +88,11 @@ export function DailyFocusPicker({ date }: Props) {
 
   return (
     <>
-      <section className="glass rounded-2xl p-4">
+      <section className={`glass rounded-2xl ${compact ? "p-3" : "p-4"}`}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Crosshair className="h-4 w-4 text-primary" />
-            <h2 className="flex items-center gap-1 text-sm font-semibold">Enfoque del día <HelpTip helpKey="focus" /></h2>
+            <h2 className="flex items-center gap-1 text-sm font-semibold">{compact ? "Enfoque" : "Enfoque del día"} <HelpTip helpKey="focus" /></h2>
           </div>
           <Button size="sm" variant="outline" disabled={focusQuery.isError} onClick={() => setOpen(true)}>
             {current ? "Cambiar" : "Elegir enfoque"}
@@ -104,7 +105,7 @@ export function DailyFocusPicker({ date }: Props) {
           <p className="mt-3 text-base font-medium">{currentLabel}</p>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
-            Elige una sola prioridad para esta fecha. Puede ser cualquier elemento de tu registro unificado (hábito o actividad), algo del Planeador o una frase libre.
+            {compact ? "Todavía no has elegido una prioridad." : "Elige una sola prioridad para esta fecha. Puede ser cualquier elemento de tu registro unificado (hábito o actividad), algo del Planeador o una frase libre."}
           </p>
         )}
       </section>

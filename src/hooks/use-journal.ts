@@ -18,6 +18,14 @@ export function useJournalEntries() {
   return useQuery({ queryKey: journalKeys.entries, queryFn: journalService.listEntries, staleTime: 15_000 });
 }
 
+export function useJournalEntriesByDate(date: string) {
+  return useQuery({
+    queryKey: [...journalKeys.entries, date],
+    queryFn: () => journalService.listEntriesByDate(date),
+    staleTime: 15_000,
+  });
+}
+
 export function useJournalMutations() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: journalKeys.entries });

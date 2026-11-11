@@ -19,13 +19,15 @@ import {
 interface Props {
   /** Show the "next day" shortcut (planning domains need it). */
   allowFuture?: boolean;
+  /** Single-row date selector used by the desktop dashboard. */
+  compact?: boolean;
 }
 
 /**
  * Reusable global date header. Every PERSONAL OS domain uses this component —
  * there are no per-module date pickers.
  */
-export function GlobalDateHeader({ allowFuture = true }: Props) {
+export function GlobalDateHeader({ allowFuture = true, compact = false }: Props) {
   const { date, setDate, shiftDate, goToday } = useGlobalDate();
   const [now, setNow] = useState<Date | null>(null);
   const [open, setOpen] = useState(false);
@@ -37,6 +39,66 @@ export function GlobalDateHeader({ allowFuture = true }: Props) {
   }, []);
 
   const relative = relativeLabel(date);
+
+  if (compact) {
+    return (
+      <header className="glass rounded-2xl px-3 py-2">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 shrink-0 gap-1 px-2 text-muted-foreground hover:text-foreground"
+              onClick={() => shiftDate(-1)}
+              aria-label={`Ir a ${previousDayLabel(date)}`}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden text-xs sm:inline">{previousDayLabel(date)}</span>
+            </Button>
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Abrir calendario" className="h-9 w-9 shrink-0">
+                  <CalendarDays className="h-5 w-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={fromISODate(date)}
+                  defaultMonth={fromISODate(date)}
+                  onSelect={(selected) => {
+                    if (!selected) return;
+                    setDate(toISODate(selected));
+                    setOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="min-w-0 flex-1 text-center">
+            <p className="truncate text-sm font-semibold">{formatDayLabel(date)}</p>
+            <p className="text-[10px] font-medium tracking-wide text-muted-foreground" suppressHydrationWarning>
+              {relative}{now ? ` · ${formatClock(now)}` : ""}
+            </p>
+          </div>
+
+          {allowFuture ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 shrink-0 gap-1 px-2 text-muted-foreground hover:text-foreground"
+              onClick={() => shiftDate(1)}
+              aria-label={`Ir a ${nextDayLabel(date)}`}
+            >
+              <span className="hidden text-xs sm:inline">{nextDayLabel(date)}</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          ) : <span className="w-9 shrink-0" />}
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="glass rounded-2xl px-4 py-3 sm:px-5">

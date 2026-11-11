@@ -61,6 +61,7 @@ function Books(){
   const[adding,setAdding]=useState(false);
   const[title,setTitle]=useState("");
   const[pages,setPages]=useState("");
+  const[targetPages,setTargetPages]=useState("");
   const books=(q.data||[]).filter((x:any)=>x.kind==="book");
   const deleteBook=async(book:any)=>{
     if(book.cover_path)await privateMediaService.removePhoto(String(book.cover_path)).catch(()=>undefined);
@@ -73,11 +74,13 @@ function Books(){
       title:title.trim(),
       kind:"book",
       total_pages:Number(pages)>0?Number(pages):null,
+      target_pages:Number(targetPages)>0?Number(targetPages):null,
       current_page:0,
       progress:0,
     });
     setTitle("");
     setPages("");
+    setTargetPages("");
     setAdding(false);
     toast.success("Libro agregado a tu biblioteca.");
   };
@@ -93,9 +96,10 @@ function Books(){
       </Button>
     </div>
     {adding&&<div className="glass max-w-2xl rounded-2xl p-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr_140px_auto]">
+      <div className="grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]">
         <Input placeholder="Título del libro" value={title} onChange={e=>setTitle(e.target.value)}/>
-        <Input type="number" min="1" placeholder="Páginas (opcional)" value={pages} onChange={e=>setPages(e.target.value)}/>
+        <Input type="number" min="1" placeholder="Páginas reales" value={pages} onChange={e=>setPages(e.target.value)}/>
+        <Input type="number" min="1" placeholder="Meta páginas" value={targetPages} onChange={e=>setTargetPages(e.target.value)}/>
         <Button disabled={!title.trim()||m.create.isPending||(isBibleBook(title)&&books.some((book:any)=>isBibleBook(book.title)))} onClick={()=>void addBook()}>
           <Plus className="mr-1 h-4 w-4"/>Agregar
         </Button>
@@ -132,6 +136,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
   const[range,setRange]=useState("");
   const[newTitle,setNewTitle]=useState(String(book.title||""));
   const[newTotal,setNewTotal]=useState(String(book.total_pages||""));
+  const[newTargetPages,setNewTargetPages]=useState(String(book.target_pages||""));
   const[panel,setPanel]=useState<"progress"|"summary"|"notes"|"details"|null>(null);
   const[editingSummary,setEditingSummary]=useState(false);
   const[addingNote,setAddingNote]=useState(false);
@@ -147,6 +152,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
   useEffect(()=>setSummary(book.summary||""),[book.summary]);
   useEffect(()=>setNewTitle(String(book.title||"")),[book.title]);
   useEffect(()=>setNewTotal(String(book.total_pages||"")),[book.total_pages]);
+  useEffect(()=>setNewTargetPages(String(book.target_pages||"")),[book.target_pages]);
 
   const uploadCover=async(event:React.ChangeEvent<HTMLInputElement>)=>{
     const input=event.currentTarget;
@@ -185,7 +191,9 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
     if(!newTitle.trim()){toast.error("El título no puede quedar vacío.");return;}
     const parsedTotal=Number(newTotal);
     if(newTotal.trim()&&(!Number.isInteger(parsedTotal)||parsedTotal<1)){toast.error("El total de páginas debe ser un número entero mayor que cero.");return;}
-    await onSave({title:newTitle.trim(),total_pages:newTotal.trim()?parsedTotal:null});
+    const parsedTarget=Number(newTargetPages);
+    if(newTargetPages.trim()&&(!Number.isInteger(parsedTarget)||parsedTarget<1)){toast.error("La meta de páginas debe ser un entero mayor que cero.");return;}
+    await onSave({title:newTitle.trim(),total_pages:newTotal.trim()?parsedTotal:null,target_pages:newTargetPages.trim()?parsedTarget:null});
     setPanel(null);
     toast.success("Libro actualizado.");
   };
@@ -225,7 +233,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
             <h3 className="line-clamp-2 font-semibold leading-snug">{book.title}</h3>
             {isBible
               ? <p className="mt-1 text-xs text-muted-foreground">Plan de lectura anual o libre</p>
-              : <p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>}
+              : <><p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>{Number(book.target_pages)>0&&<p className="mt-1 text-xs text-primary">Meta intermedia: {book.target_pages} páginas · {Math.max(0,Number(book.target_pages)-pageValue)} restantes</p>}</>}
           </div>
           <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={()=>void onDelete()} aria-label={"Eliminar "+book.title}>
             <Trash2 className="h-4 w-4 text-destructive"/>
@@ -250,9 +258,10 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
 
     {panel==="details"&&!isBible&&<div className="space-y-2 border-t p-3">
       <p className="text-sm font-medium">Editar libro</p>
-      <div className="grid gap-2 sm:grid-cols-[1fr_150px_auto]">
+      <div className="grid gap-2 sm:grid-cols-[1fr_130px_130px_auto]">
         <Input aria-label="Título" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/>
-        <Input aria-label="Total de páginas" type="number" min="1" placeholder="Total de páginas" value={newTotal} onChange={e=>setNewTotal(e.target.value)}/>
+        <Input aria-label="Páginas reales" type="number" min="1" placeholder="Páginas reales" value={newTotal} onChange={e=>setNewTotal(e.target.value)}/>
+        <Input aria-label="Meta intermedia de páginas" type="number" min="1" placeholder="Meta páginas" value={newTargetPages} onChange={e=>setNewTargetPages(e.target.value)}/>
         <Button size="sm" onClick={()=>void saveDetails()}><Save className="mr-1 h-3.5 w-3.5"/>Guardar</Button>
       </div>
     </div>}
@@ -360,7 +369,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover}:{item:any;onEdit:(
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
     </div>
     <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
-      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
+      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game")&&<div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
       <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
     </div>
   </article>;
@@ -375,18 +384,22 @@ function OtherLearning(){
   const[title,setTitle]=useState("");
   const[kind,setKind]=useState("course");
   const[notes,setNotes]=useState("");
+  const[goalDescription,setGoalDescription]=useState("");
+  const[goalDate,setGoalDate]=useState("");
+  const[gameProgress,setGameProgress]=useState("0");
   const[filter,setFilter]=useState("all");
   const items=(q.data||[]).filter((item:any)=>item.kind!=="book"&&item.kind!=="language");
   const visibleItems=items.filter((item:any)=>filter==="all"||item.kind===filter||(filter==="video_game"&&item.kind==="game"));
-  const resetForm=()=>{setTitle("");setKind("course");setNotes("");setEditingId(null);setAdding(false);};
-  const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind||"other");setNotes(item.notes||"");setEditingId(item.id);setAdding(true);};
+  const resetForm=()=>{setTitle("");setKind("course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setEditingId(null);setAdding(false);};
+  const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setEditingId(item.id);setAdding(true);};
   const saveItem=async()=>{
+    const isGame=kind==="video_game"||kind==="game";
     if(!title.trim()){toast.error("Escribe el nombre del elemento.");return;}
     if(editingId){
-      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null}});
+      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?Math.min(100,Math.max(0,Number(gameProgress)||0)):undefined}});
       toast.success("Elemento actualizado.");
     }else{
-      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active"});
+      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?Math.min(100,Math.max(0,Number(gameProgress)||0)):0});
       toast.success("Elemento agregado.");
     }
     resetForm();
@@ -416,6 +429,7 @@ function OtherLearning(){
         <Button size="sm" disabled={!title.trim()||m.create.isPending||m.update.isPending} onClick={()=>void saveItem()}><Save className="mr-1 h-3.5 w-3.5"/>{editingId?"Guardar":"Agregar"}</Button>
       </div>
       {editingId&&<textarea className="min-h-16 w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm" rows={2} placeholder="Notas o descripción (opcional)" value={notes} onChange={e=>setNotes(e.target.value)}/>}
+      {kind==="video_game"&&<div className="grid gap-2 sm:grid-cols-3"><Input placeholder="Meta (ej. Terminar la historia)" value={goalDescription} onChange={e=>setGoalDescription(e.target.value)}/><label className="text-xs text-muted-foreground">Fecha objetivo<Input className="mt-1" type="date" value={goalDate} onChange={e=>setGoalDate(e.target.value)}/></label><label className="text-xs text-muted-foreground">Avance (%)<Input className="mt-1" type="number" min="0" max="100" value={gameProgress} onChange={e=>setGameProgress(e.target.value)}/></label></div>}
       {editingId&&<p className="text-xs text-muted-foreground">Puedes actualizar el nombre, la categoría y la descripción.</p>}
     </div>}
     <div className="flex flex-wrap gap-1.5">
