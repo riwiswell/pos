@@ -230,7 +230,13 @@ select is((
        'bible_reading_preferences','bible_reading_cycles','bible_reading_completions',
        'bible_free_readings','bible_reading_day_progress'
      ])
-     and policyname like 'bible_reading_%_all_own'
+     and policyname in (
+       'bible_reading_preferences_all_own',
+       'bible_reading_cycles_all_own',
+       'bible_reading_completions_all_own',
+       'bible_free_readings_all_own',
+       'bible_reading_day_progress_all_own'
+     )
 ), 5, 'all Bible reading tables have owner-only policies');
 select has_index('public','bible_reading_cycles','bible_reading_one_active_cycle_per_book','one active Bible cycle per book is enforced');
 select has_column('public','bible_reading_cycles','learning_item_id','Bible cycles are linked to a learning book');
