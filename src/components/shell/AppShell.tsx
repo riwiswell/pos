@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { profileKeys, useProfile, useProfileMediaUrl } from "@/hooks/use-profile";
 import { profileService } from "@/services/profile.service";
 import { useAppointmentReminders } from "@/hooks/use-appointment-reminders";
+import { useHydrationReminders } from "@/hooks/use-hydration-reminders";
 import { toast } from "sonner";
 import { useTheme } from "@/hooks/use-theme";
 import { useMedicationReminders } from "@/hooks/use-medication-reminders";
@@ -117,6 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useTheme();
   useMedicationReminders();
   useAppointmentReminders();
+  useHydrationReminders();
 
   const allItems = useMemo(() => orderedAllItems(profile?.module_order), [profile?.module_order]);
   const orderedItems = allItems;
