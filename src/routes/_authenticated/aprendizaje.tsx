@@ -103,7 +103,7 @@ function Books(){
       {isBibleBook(title)&&books.some((book:any)=>isBibleBook(book.title))&&<p className="mt-2 text-xs text-muted-foreground">La Biblia ya está en tu biblioteca.</p>}
     </div>}
     {books.length===0&&!q.isError&&<div className="glass max-w-xl rounded-2xl p-4 text-sm text-muted-foreground">Tu biblioteca está vacía. Agrega un libro para registrar tu avance.</div>}
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {books.map((book:any)=>{
         const bookNotes=(notes.data||[]).filter((entry:any)=>entry.learning_item_id===book.id);
         return <BookCard
@@ -214,9 +214,9 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
                 <span className="text-[8px] uppercase tracking-[.18em] opacity-65">Mi biblioteca</span>
               </div>}
         </div>
-        {!isBible&&<button type="button" onClick={()=>coverInput.current?.click()} disabled={uploadingCover} aria-label="Cambiar portada" title="Cargar foto de portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow transition hover:bg-accent disabled:opacity-50">
+        <button type="button" onClick={()=>coverInput.current?.click()} disabled={uploadingCover} aria-label="Cambiar portada" title="Cargar foto de portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow transition hover:bg-accent disabled:opacity-50">
           <ImagePlus className="h-3.5 w-3.5"/>
-        </button>}
+        </button>
         <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={uploadCover}/>
       </div>
       <div className="min-w-0 flex-1 space-y-2">
@@ -326,6 +326,45 @@ function kindIcon(kind:string){
   if(kind==="certification")return "🏅";
   return "📚";
 }
+
+function OtherLearningCard({item,onEdit,onDelete,onSaveCover}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>}){
+  const[uploading,setUploading]=useState(false);
+  const input=useRef<HTMLInputElement>(null);
+  const path=item.cover_path?String(item.cover_path):null;
+  const photoQuery=usePrivatePhotos(path?[path]:[],Boolean(path));
+  const photoUrl=photoQuery.data?.find(photo=>photo.path===path)?.url;
+  const upload=async(event:React.ChangeEvent<HTMLInputElement>)=>{
+    const element=event.currentTarget;
+    const file=element.files?.[0];
+    if(!file)return;
+    setUploading(true);
+    try{
+      const nextPath=await privateMediaService.uploadPhoto(file);
+      try{await onSaveCover(nextPath);}catch(error){await privateMediaService.removePhoto(nextPath).catch(()=>undefined);throw error;}
+      if(path&&path!==nextPath)await privateMediaService.removePhoto(path).catch(()=>undefined);
+      toast.success("Portada actualizada.");
+    }catch(error){
+      const detail=error&&typeof error==="object"&&"message" in error?String((error as any).message):"No se pudo guardar la portada.";
+      toast.error(detail);
+    }finally{setUploading(false);element.value="";}
+  };
+  return <article className="glass flex min-w-0 gap-3 overflow-hidden rounded-2xl p-3">
+    <div className="relative w-[76px] shrink-0">
+      <div className="aspect-[2/3] overflow-hidden rounded-xl border bg-muted shadow-sm">
+        {photoUrl?<img src={photoUrl} alt={"Portada de "+item.title} className="h-full w-full object-cover"/>:
+          <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-stone-800 via-slate-800 to-slate-950 p-2 text-center text-white">
+            <span className="text-2xl">{kindIcon(item.kind)}</span><span className="line-clamp-4 break-words text-[10px] font-semibold leading-tight">{item.title}</span>
+          </div>}
+      </div>
+      <button type="button" onClick={()=>input.current?.click()} disabled={uploading} aria-label="Cambiar portada" title="Cargar portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow hover:bg-accent disabled:opacity-50"><ImagePlus className="h-3.5 w-3.5"/></button>
+      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
+    </div>
+    <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
+      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
+      <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
+    </div>
+  </article>;
+}
 function OtherLearning(){
   const q=useLGList("learning_items");
   const m=useLGMutations("learning_items");
@@ -384,20 +423,88 @@ function OtherLearning(){
     </div>
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno.</div>}
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-      {visibleItems.map((item:any)=><article key={item.id} className="glass flex min-w-0 items-center gap-3 rounded-xl p-3">
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-muted text-xl">{kindIcon(item.kind)}</div>
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold">{item.title}</h3>
-          <p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>
-          {item.notes&&<p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.notes}</p>}
-        </div>
-        <div className="flex shrink-0">
-          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Editar "+item.title} onClick={()=>startEdit(item)}><Pencil className="h-4 w-4"/></Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void m.remove.mutateAsync(item.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-        </div>
-      </article>)}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {visibleItems.map((item:any)=><OtherLearningCard key={item.id} item={item} onEdit={()=>startEdit(item)} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>) }
     </div>
   </section>;
 }
-function Languages(){const q=useLGList("language_profiles");const s=useLGList("learning_sessions","session_date");const m=useLGMutations("language_profiles");const sm=useLGMutations("learning_sessions");const{user}=useAuth();const{date}=useGlobalDate();const[code,setCode]=useState("en"),[locale,setLocale]=useState("en-US"),[level,setLevel]=useState("A1"),[target,setTarget]=useState("B1"),[focus,setFocus]=useState(""),[minutes,setMinutes]=useState(""),[skill,setSkill]=useState("speaking");const selectedProfile=(q.data||[]).find((x:any)=>x.language_code===code&&(x.locale_code===locale||(!x.locale_code&&((LANGS.find((l:any)=>l.code===code)||LANGS[0]).variants[0][0]===locale))))||null;useEffect(()=>{if(selectedProfile){setLevel(selectedProfile.level||"A1");setTarget(selectedProfile.target_level||"B1");setFocus((selectedProfile.focus_areas||[]).join(", "))}else{setLevel("A1");setTarget("B1");setFocus("")}},[code,locale,q.data]);const saveLanguage=async()=>{const lang=(LANGS.find((x:any)=>x.code===code)||LANGS[0]);const patch={language_code:code,language_name:lang.name,locale_code:locale,country_name:(lang.variants.find((x:any)=>x[0]===locale)||["",""])[1],level,target_level:target,focus_areas:focus.split(",").map(x=>x.trim()).filter(Boolean)};const existing=selectedProfile;if(existing)await m.update.mutateAsync({id:existing.id,patch});else await m.create.mutateAsync({user_id:user?.id,...patch});toast.success(existing?"Perfil de idioma actualizado.":"Perfil de idioma guardado.");};const saveSession=async()=>{const value=Number(minutes);if(!Number.isFinite(value)||value<1||value>1440){toast.error("La duración debe estar entre 1 y 1440 minutos.");return}if(!selectedProfile){toast.error("Guarda primero el perfil de este idioma y variante.");return}const session=await sm.create.mutateAsync({user_id:user?.id,session_date:date,minutes:value,activity_type:"language",skill,resource_url:locale});await lifeGraphService.link("learning_session",session.id,"language_profile",selectedProfile.id,"practiced_language",{locale_code:locale,skill});setMinutes("");toast.success("Sesión de aprendizaje registrada.")};return <section className="space-y-4"><div className="glass space-y-3 rounded-2xl p-4"><h2 className="flex items-center gap-1 font-semibold">Idiomas <HelpTip helpKey="learning.languageVariant"/></h2>{(q.isError||s.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:s.error instanceof Error?s.error.message:"No se pudieron cargar idiomas o sesiones."}/>}<div className="grid gap-2 sm:grid-cols-5"><select className="h-10 rounded-md border bg-background px-3" value={code} onChange={e=>{const v=e.target.value;setCode(v);const l=(LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0];setLocale(l)}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select><select className="h-10 rounded-md border bg-background px-3" value={locale} onChange={e=>setLocale(e.target.value)}>{(LANGS.find((x:any)=>x.code===code)||LANGS[0]).variants.map((x:any)=><option key={x[0]} value={x[0]}>{x[2]} {x[1]}</option>)}</select><select className="h-10 rounded-md border bg-background px-3" value={level} onChange={e=>setLevel(e.target.value)}>{["A1","A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select><select className="h-10 rounded-md border bg-background px-3" value={target} onChange={e=>setTarget(e.target.value)}>{["A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select><Input placeholder="Enfoque (hablar, escuchar…)" value={focus} onChange={e=>setFocus(e.target.value)}/><Button onClick={()=>void saveLanguage()} disabled={m.create.isPending||m.update.isPending}><Plus className="mr-1 h-4 w-4"/>{selectedProfile?"Actualizar perfil":"Guardar variante"}</Button></div>{(q.data||[]).map((x:any)=><div key={x.id} className="flex items-center gap-2 rounded-xl border p-3"><span className="flex-1"><b>{flagForLanguageProfile(x)} {x.language_name}</b><span className="ml-2 text-xs text-muted-foreground">Nivel {x.level} · meta {x.target_level||"—"} · {x.country_name||x.locale_code||"variante"} · {(x.focus_areas||[]).join(" · ")}</span></span><span className="text-xs text-muted-foreground">{(s.data||[]).filter((z:any)=>z.resource_url===x.locale_code).length} sesiones</span></div>)}</div><div className="glass space-y-3 rounded-2xl p-4"><h2 className="font-semibold">Registrar sesión</h2><div className="grid gap-2 sm:grid-cols-4"><select className="h-10 rounded-md border bg-background px-3" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale(((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]))}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select><select className="h-10 rounded-md border bg-background px-3" value={locale} onChange={e=>setLocale(e.target.value)}>{(LANGS.find((x:any)=>x.code===code)||LANGS[0]).variants.map((x:any)=><option key={x[0]} value={x[0]}>{x[2]} {x[1]}</option>)}</select><select className="h-10 rounded-md border bg-background px-3" value={skill} onChange={e=>setSkill(e.target.value)}>{["speaking","listening","reading","writing","vocabulary","grammar"].map(x=><option key={x}>{x}</option>)}</select><Input type="number" min="1" max="1440" placeholder="Minutos" value={minutes} onChange={e=>setMinutes(e.target.value)}/><Button disabled={!minutes||!selectedProfile||sm.create.isPending} onClick={()=>void saveSession()}><Save className="mr-1 h-4 w-4"/>{sm.create.isPending?"Guardando…":"Registrar"}</Button></div></div></section>}
+
+function FlagIcon({locale}:{locale:string}){
+  const country=locale.split("-")[1]||"";
+  const common={viewBox:"0 0 30 20",className:"inline-block h-5 w-7 shrink-0 overflow-hidden rounded-[3px] border border-black/10 shadow-sm",role:"img","aria-label":"Bandera "+country};
+  if(country==="FR")return <svg {...common}><rect width="10" height="20" fill="#1b3f8b"/><rect x="10" width="10" height="20" fill="#fff"/><rect x="20" width="10" height="20" fill="#ed2939"/></svg>;
+  if(country==="IT")return <svg {...common}><rect width="10" height="20" fill="#009246"/><rect x="10" width="10" height="20" fill="#fff"/><rect x="20" width="10" height="20" fill="#ce2b37"/></svg>;
+  if(country==="BR")return <svg {...common}><rect width="30" height="20" fill="#009b3a"/><path d="M15 2 L27 10 15 18 3 10Z" fill="#ffdf00"/><circle cx="15" cy="10" r="4.4" fill="#002776"/></svg>;
+  if(country==="PT")return <svg {...common}><rect width="12" height="20" fill="#006600"/><rect x="12" width="18" height="20" fill="#ff0000"/><circle cx="12" cy="10" r="3" fill="#ffdf00"/></svg>;
+  if(country==="CA")return <svg {...common}><rect width="7" height="20" fill="#d80621"/><rect x="7" width="16" height="20" fill="#fff"/><rect x="23" width="7" height="20" fill="#d80621"/><path d="M15 4l1.2 3 2-.8-1 2.4 2 1.2-2.5.3.3 2.5-2-1.4-2 1.4.3-2.5-2.5-.3 2-1.2-1-2.4 2 .8Z" fill="#d80621"/></svg>;
+  if(country==="GB")return <svg {...common}><rect width="30" height="20" fill="#012169"/><path d="M0 0L30 20M30 0L0 20" stroke="#fff" strokeWidth="5"/><path d="M0 0L30 20M30 0L0 20" stroke="#c8102e" strokeWidth="2"/><path d="M15 0V20M0 10H30" stroke="#fff" strokeWidth="7"/><path d="M15 0V20M0 10H30" stroke="#c8102e" strokeWidth="3"/></svg>;
+  if(country==="US")return <svg {...common}><rect width="30" height="20" fill="#fff"/>{Array.from({length:7},(_,i)=><rect key={i} y={i*3} width="30" height="1.5" fill="#b22234"/>)}<rect width="13" height="11" fill="#3c3b6e"/>{Array.from({length:3},(_,i)=>Array.from({length:4},(_,j)=><circle key={i+"-"+j} cx={1.5+j*3} cy={1.5+i*3.2} r=".55" fill="#fff"/>))}</svg>;
+  return <span className="inline-grid h-5 w-7 shrink-0 place-items-center rounded border text-[9px] font-bold">{country||"?"}</span>;
+}
+function Languages(){
+  const q=useLGList("language_profiles");
+  const s=useLGList("learning_sessions","session_date");
+  const m=useLGMutations("language_profiles");
+  const sm=useLGMutations("learning_sessions");
+  const{user}=useAuth();
+  const{date}=useGlobalDate();
+  const[code,setCode]=useState("en"),[locale,setLocale]=useState("en-US"),[level,setLevel]=useState("A1"),[target,setTarget]=useState("B1"),[focus,setFocus]=useState(""),[minutes,setMinutes]=useState(""),[skill,setSkill]=useState("speaking");
+  const selectedProfile=(q.data||[]).find((x:any)=>x.language_code===code&&(x.locale_code===locale||(!x.locale_code&&((LANGS.find((l:any)=>l.code===code)||LANGS[0]).variants[0][0]===locale))))||null;
+  useEffect(()=>{if(selectedProfile){setLevel(selectedProfile.level||"A1");setTarget(selectedProfile.target_level||"B1");setFocus((selectedProfile.focus_areas||[]).join(", "))}else{setLevel("A1");setTarget("B1");setFocus("")}},[code,locale,q.data]);
+  const saveLanguage=async()=>{
+    const lang=(LANGS.find((x:any)=>x.code===code)||LANGS[0]);
+    const patch={language_code:code,language_name:lang.name,locale_code:locale,country_name:(lang.variants.find((x:any)=>x[0]===locale)||["",""])[1],level,target_level:target,focus_areas:focus.split(",").map(x=>x.trim()).filter(Boolean)};
+    if(selectedProfile)await m.update.mutateAsync({id:selectedProfile.id,patch});
+    else await m.create.mutateAsync({user_id:user?.id,...patch});
+    toast.success(selectedProfile?"Perfil de idioma actualizado.":"Idioma agregado a tu plan.");
+  };
+  const saveSession=async()=>{
+    const value=Number(minutes);
+    if(!Number.isFinite(value)||value<1||value>1440){toast.error("La duración debe estar entre 1 y 1440 minutos.");return;}
+    if(!selectedProfile){toast.error("Primero agrega este idioma a tu plan.");return;}
+    const session=await sm.create.mutateAsync({user_id:user?.id,session_date:date,minutes:value,activity_type:"language",resource_url:locale});
+    await lifeGraphService.link("learning_session",session.id,"language_profile",selectedProfile.id,"practiced_language",{locale_code:locale,skill});
+    setMinutes("");toast.success("Sesión registrada en tu historial.");
+  };
+  const skills:Record<string,string>={speaking:"Conversación",listening:"Escucha",reading:"Lectura",writing:"Escritura",vocabulary:"Vocabulario",grammar:"Gramática"};
+  const localeSessions=(s.data||[]).filter((entry:any)=>entry.resource_url===locale);
+  return <section className="space-y-4">
+    {(q.isError||s.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:s.error instanceof Error?s.error.message:"No se pudieron cargar idiomas o sesiones."}/>}
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <div className="glass space-y-3 rounded-2xl p-4">
+        <div><h2 className="font-semibold">Agregar o configurar un idioma</h2><p className="text-xs text-muted-foreground">Elige el idioma y su variante regional, define tu nivel actual y tu meta.</p></div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="space-y-1 text-xs text-muted-foreground">Idioma<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]);}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">País / variante<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={locale} onChange={e=>setLocale(e.target.value)}>{(LANGS.find((x:any)=>x.code===code)||LANGS[0]).variants.map((x:any)=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">Nivel actual<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={level} onChange={e=>setLevel(e.target.value)}>{["A1","A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">Meta<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={target} onChange={e=>setTarget(e.target.value)}>{["A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select></label>
+        </div>
+        <Input placeholder="Enfoques: hablar, escuchar, vocabulario…" value={focus} onChange={e=>setFocus(e.target.value)}/>
+        <Button className="w-full sm:w-auto" onClick={()=>void saveLanguage()} disabled={m.create.isPending||m.update.isPending}><Plus className="mr-1 h-4 w-4"/>{selectedProfile?"Guardar cambios":"Agregar idioma"}</Button>
+      </div>
+      <div className="glass space-y-3 rounded-2xl p-4">
+        <div><h2 className="font-semibold">Registrar práctica</h2><p className="text-xs text-muted-foreground">Guarda cada sesión para medir tu constancia y tiempo de estudio.</p></div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="space-y-1 text-xs text-muted-foreground">Idioma<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]);}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">Variante<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={locale} onChange={e=>setLocale(e.target.value)}>{(LANGS.find((x:any)=>x.code===code)||LANGS[0]).variants.map((x:any)=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">Actividad<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={skill} onChange={e=>setSkill(e.target.value)}>{Object.entries(skills).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">Duración (minutos)<Input type="number" min="1" max="1440" placeholder="Ej. 25" value={minutes} onChange={e=>setMinutes(e.target.value)}/></label>
+        </div>
+        <Button className="w-full sm:w-auto" disabled={!minutes||!selectedProfile||sm.create.isPending} onClick={()=>void saveSession()}><Save className="mr-1 h-4 w-4"/>{sm.create.isPending?"Guardando…":"Registrar sesión"}</Button>
+        {!selectedProfile&&<p className="text-xs text-amber-600">Agrega primero el idioma y la variante para habilitar el registro.</p>}
+      </div>
+    </div>
+    <div className="glass space-y-3 rounded-2xl p-4">
+      <div className="flex items-center justify-between gap-2"><div><h2 className="font-semibold">Mis idiomas</h2><p className="text-xs text-muted-foreground">Selecciona una tarjeta para editar el nivel y la meta.</p></div><span className="text-xs text-muted-foreground">{(q.data||[]).length} registrados</span></div>
+      {(q.data||[]).length===0?<p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">Todavía no has agregado idiomas. Usa el formulario de arriba para comenzar.</p>:<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{(q.data||[]).map((x:any)=><button type="button" key={x.id} onClick={()=>{setCode(x.language_code);setLocale(x.locale_code||((LANGS.find((l:any)=>l.code===x.language_code)||LANGS[0]).variants[0][0]));}} className={"flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition hover:border-primary "+(selectedProfile?.id===x.id?"border-primary bg-primary/5":"bg-background/50")}>
+        <FlagIcon locale={x.locale_code||((LANGS.find((l:any)=>l.code===x.language_code)||LANGS[0]).variants[0][0])}/>
+        <span className="min-w-0 flex-1"><b className="block text-sm">{x.language_name} · {x.country_name||x.locale_code}</b><span className="text-xs text-muted-foreground">Nivel {x.level} → meta {x.target_level||"—"}</span><span className="block text-[11px] text-muted-foreground">{(x.focus_areas||[]).join(" · ")||"Sin enfoque definido"}</span></span>
+        <span className="text-right text-xs text-muted-foreground">{(s.data||[]).filter((z:any)=>z.resource_url===x.locale_code).length}<span className="block">sesiones</span></span>
+      </button>)}</div>}
+    </div>
+    <div className="glass space-y-3 rounded-2xl p-4">
+      <div><h2 className="font-semibold">Historial de práctica</h2><p className="text-xs text-muted-foreground">Sesiones registradas para {localeInfo(locale).language} · {localeInfo(locale).country}.</p></div>
+      {localeSessions.length===0?<p className="text-sm text-muted-foreground">Aún no hay sesiones para esta variante. Registra la primera arriba.</p>:<div className="space-y-2">{localeSessions.slice(0,12).map((entry:any)=><div key={entry.id} className="flex items-center gap-3 rounded-xl border p-3"><FlagIcon locale={entry.resource_url||locale}/><div className="min-w-0 flex-1"><p className="text-sm font-medium">Práctica de idioma · {entry.minutes} min</p><p className="text-xs text-muted-foreground">{entry.session_date}</p></div><Button size="icon" variant="ghost" aria-label="Eliminar sesión" onClick={()=>void sm.remove.mutateAsync(entry.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>)}</div>}
+    </div>
+  </section>;
+}
