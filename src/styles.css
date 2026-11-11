@@ -266,6 +266,69 @@
   }
 }
 
+
+/*
+ * Contrast correction for the light theme.
+ * Some dashboard panels use intentional dark gradients in dark mode.
+ * In light mode they become light surfaces and inherit semantic text colors.
+ */
+.theme-light .inicio-hero {
+  background: linear-gradient(
+    125deg,
+    color-mix(in oklab, var(--primary) 9%, var(--card)),
+    color-mix(in oklab, oklch(0.78 0.08 300) 11%, var(--card)) 56%,
+    color-mix(in oklab, oklch(0.78 0.08 190) 10%, var(--card))
+  ) !important;
+  border-color: color-mix(in oklab, var(--primary) 22%, var(--border));
+  box-shadow: 0 18px 44px -32px color-mix(in oklab, var(--primary) 24%, transparent);
+}
+
+.theme-light .inicio-learning-card,
+.theme-light .inicio-game-card {
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--primary) 7%, var(--card)),
+    color-mix(in oklab, var(--card) 96%, var(--background))
+  ) !important;
+  border-color: color-mix(in oklab, var(--primary) 20%, var(--border));
+}
+
+.theme-light .inicio-hero .text-white,
+.theme-light .inicio-learning-card .text-white,
+.theme-light .inicio-game-card .text-white {
+  color: var(--foreground) !important;
+}
+
+.theme-light .inicio-hero .text-slate-300,
+.theme-light .inicio-hero .text-slate-400,
+.theme-light .inicio-learning-card .text-slate-300,
+.theme-light .inicio-learning-card .text-slate-400,
+.theme-light .inicio-game-card .text-slate-300,
+.theme-light .inicio-game-card .text-slate-400 {
+  color: var(--muted-foreground) !important;
+}
+
+.theme-light .inicio-hero [class*="border-white"],
+.theme-light .inicio-learning-card [class*="border-white"],
+.theme-light .inicio-game-card [class*="border-white"] {
+  border-color: var(--border) !important;
+}
+
+.theme-light .inicio-hero [class*="bg-white"],
+.theme-light .inicio-learning-card [class*="bg-white"],
+.theme-light .inicio-game-card [class*="bg-white"] {
+  background-color: color-mix(in oklab, var(--card) 82%, transparent) !important;
+}
+
+.theme-light .inicio-hero .text-sky-300,
+.theme-light .inicio-learning-card .text-sky-300 {
+  color: oklch(0.47 0.14 245) !important;
+}
+
+.theme-light .inicio-game-card .text-violet-300 {
+  color: oklch(0.47 0.16 300) !important;
+}
+
 /* A shorter laptop still gets readable cards; only spacing changes slightly. */
 @media (min-width: 1280px) and (max-height: 820px) {
   .inicio-dashboard {
