@@ -7,6 +7,7 @@ export function usePrivatePhotos(paths: string[], enabled = true) {
     queryKey: ["private-media", ...paths],
     enabled: enabled && paths.length > 0,
     staleTime: 50 * 60 * 1000,
+    gcTime: 45 * 60 * 1000,
     queryFn: async () => {
       const urls: { path: string; url: string }[] = [];
       for (const path of paths) {
