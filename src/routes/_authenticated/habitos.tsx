@@ -21,6 +21,7 @@ import { CategoryDialog } from "@/components/habits/CategoryDialog";
 import { NoteDialog } from "@/components/habits/NoteDialog";
 import { HabitMatrix } from "@/components/habits/HabitMatrix";
 import { SharedSpacesPanel } from "@/components/habits/SharedSpacesPanel";
+import { HabitInsightsPanel } from "@/components/habits/HabitInsightsPanel";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useCategories, useHabitMutations, useHabits, useLogs } from "@/hooks/use-habits";
 import type { Habit, HabitCategory, HabitLog, HabitKind } from "@/domain/types";
@@ -127,6 +128,7 @@ function HabitsPage() {
   return (
     <div className="space-y-5">
       <GlobalDateHeader />
+      <HabitInsightsPanel date={date} />
 
       <Tabs defaultValue="registro" className="space-y-4">
         <TabsList className="grid w-full max-w-lg grid-cols-3">
