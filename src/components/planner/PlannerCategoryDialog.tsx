@@ -75,7 +75,11 @@ function CategoryForm({
     <form
       className="space-y-4"
       onSubmit={(event) => {
+        // This dialog is rendered inside the task/event dialog. Stop the
+        // synthetic submit event from reaching the parent form, otherwise
+        // saving a category can also submit the task before it has a category.
         event.preventDefault();
+        event.stopPropagation();
         if (!name.trim()) return;
         void onSubmit({ name: name.trim(), color });
       }}
