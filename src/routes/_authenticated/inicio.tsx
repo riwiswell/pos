@@ -396,7 +396,28 @@ function HomePage() {
 
 function CurrentBookCard(){
  const query=useLGList("learning_items","updated_at");
- const book=(query.data??[]).find((item:any)=>item.kind==="book"&&item.status==="active") as any;
+ const activeBooks=(query.data??[]).filter(
+  (item:any)=>item.kind==="book"&&item.status==="active",
+ ) as any[];
+
+ // Ignore technical zero-progress entries (for example, chapter-based
+ // reading plans) when choosing the book shown as the current reading.
+ const book=[...activeBooks].sort((a,b)=>{
+  const aPage=Number(a.current_page??0);
+  const bPage=Number(b.current_page??0);
+  const aProgress=Number(a.progress??0);
+  const bProgress=Number(b.progress??0);
+  const aHasProgress=aPage>0||aProgress>0;
+  const bHasProgress=bPage>0||bProgress>0;
+
+  if(aHasProgress!==bHasProgress)return aHasProgress?-1:1;
+
+  const aUpdatedAt=Date.parse(a.updated_at??a.created_at??"")||0;
+  const bUpdatedAt=Date.parse(b.updated_at??b.created_at??"")||0;
+  if(aUpdatedAt!==bUpdatedAt)return bUpdatedAt-aUpdatedAt;
+
+  return bProgress-aProgress;
+ })[0];
  const total=Number(book?.total_pages??0);
  const page=Number(book?.current_page??0);
  const progress=total>0?Math.min(100,Math.max(0,page/total*100)):Math.min(100,Math.max(0,Number(book?.progress??0)));
