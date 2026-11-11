@@ -275,7 +275,7 @@ export function SharedSpacesPanel() {
   const todayLogs = logsQuery.data ?? [];
   const byHabit = useMemo(() => new Map(todayLogs.map((log: any) => [log.shared_habit_id + "|" + log.user_id, log])), [todayLogs]);
   const invites = invitesQuery.data ?? [];
-  const acceptedInviteByUser = new Map(invites.filter((invite: any) => invite.status === "accepted" && invite.accepted_by).map((invite: any) => [invite.accepted_by, invite.invited_email]));
+  const acceptedInviteByUser = new Map<string, string>(invites.filter((invite: any) => invite.status === "accepted" && invite.accepted_by).map((invite: any) => [String(invite.accepted_by), String(invite.invited_email)] as [string, string]));
   const totalPoints = Number(pointsQuery.data ?? 0);
   const loading = spacesQuery.isLoading || (Boolean(selectedSpaceId) && (membersQuery.isLoading || habitsQuery.isLoading || goalsQuery.isLoading));
   const queryError = spacesQuery.error ?? membersQuery.error ?? habitsQuery.error ?? goalsQuery.error;
