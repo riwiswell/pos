@@ -116,7 +116,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
     onSuccess: (cycle) => {
       setSelectedMonth(0);
       void queryClient.invalidateQueries({ queryKey: ["bible-reading-cycles", learningItemId] });
-      toast.success(cycle.mode === "annual" ? "Plan anual activado. ¡Vamos día a día!" : "Lectura libre activada.");
+      toast.success(cycle.mode === "annual_plan" ? "Plan anual activado. ¡Vamos día a día!" : "Lectura libre activada.");
     },
     onError: (error) => toast.error(message(error)),
   });
@@ -178,11 +178,11 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
   const completedDays = progressRows.filter((row) => row.first_done && row.second_done && row.third_done).length;
   const partialDays = progressRows.filter((row) => Number(row.first_done) + Number(row.second_done) + Number(row.third_done) > 0 && !(row.first_done && row.second_done && row.third_done)).length;
   const percent = biblePlanProgress(completedDays);
-  const currentDayNumber = activeCycle?.mode === "annual" ? dayNumberForDate(activeCycle.start_date, todayISO()) : 0;
+  const currentDayNumber = activeCycle?.mode === "annual_plan" ? dayNumberForDate(activeCycle.start_date, todayISO()) : 0;
   const currentPlanMonth = BIBLE_READING_PLAN[Math.max(0, Math.min(364, currentDayNumber - 1))]?.monthIndex ?? 0;
 
   useEffect(() => {
-    if (activeCycle?.mode === "annual") setSelectedMonth(currentPlanMonth);
+    if (activeCycle?.mode === "annual_plan") setSelectedMonth(currentPlanMonth);
   }, [activeCycle?.id, currentPlanMonth]);
 
   useEffect(() => {
@@ -191,12 +191,12 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
   }, [cyclesQuery.data, cyclesQuery.isError, cyclesQuery.isLoading, user?.email]);
 
   useEffect(() => {
-    if (activeCycle?.mode === "annual" && completedDays === 365 && activeCycle.status === "active" && !finishCycle.isPending) {
+    if (activeCycle?.mode === "annual_plan" && completedDays === 365 && activeCycle.status === "active" && !finishCycle.isPending) {
       finishCycle.mutate();
     }
   }, [activeCycle?.id, activeCycle?.mode, activeCycle?.status, completedDays]);
 
-  const todayPlanDay = activeCycle?.mode === "annual" && currentDayNumber >= 1 && currentDayNumber <= 365
+  const todayPlanDay = activeCycle?.mode === "annual_plan" && currentDayNumber >= 1 && currentDayNumber <= 365
     ? BIBLE_READING_PLAN[currentDayNumber - 1]
     : undefined;
   const month = BIBLE_PLAN_MONTHS[selectedMonth];
@@ -224,7 +224,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
         <div className="flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary"/><h3 className="font-semibold">¿Cómo quieres leer la Biblia?</h3></div>
         <p className="mt-1 text-sm text-muted-foreground">Puedes seguir el plan diario de un año, con tres pasajes al día, o llevar una lectura completamente libre.</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <button type="button" className="rounded-xl border bg-background p-3 text-left transition hover:border-primary" onClick={() => createCycle.mutate("annual")} disabled={createCycle.isPending}>
+          <button type="button" className="rounded-xl border bg-background p-3 text-left transition hover:border-primary" onClick={() => createCycle.mutate("annual_plan")} disabled={createCycle.isPending}>
             <span className="text-lg">📅</span><p className="mt-1 font-semibold">Plan de un año</p><p className="mt-1 text-xs text-muted-foreground">365 días · tres lecturas diarias · porcentaje anual.</p>
           </button>
           <button type="button" className="rounded-xl border bg-background p-3 text-left transition hover:border-primary" onClick={() => createCycle.mutate("free")} disabled={createCycle.isPending}>
@@ -238,7 +238,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
   if (activeCycle.mode === "free") {
     return (
       <section className="space-y-3 rounded-2xl border p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Modo libre</p><h3 className="font-semibold">Tu lectura bíblica</h3><p className="text-xs text-muted-foreground">Sin días obligatorios ni porcentaje anual.</p></div><Button size="sm" variant="outline" onClick={() => createCycle.mutate("annual")} disabled={createCycle.isPending}>Cambiar al plan anual</Button></div>
+        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Modo libre</p><h3 className="font-semibold">Tu lectura bíblica</h3><p className="text-xs text-muted-foreground">Sin días obligatorios ni porcentaje anual.</p></div><Button size="sm" variant="outline" onClick={() => createCycle.mutate("annual_plan")} disabled={createCycle.isPending}>Cambiar al plan anual</Button></div>
         <div className="grid gap-2 sm:grid-cols-[150px_1fr]"><label className="text-xs text-muted-foreground">Fecha<Input className="mt-1" type="date" value={readingDate} onChange={(event) => setReadingDate(event.target.value)}/></label><label className="text-xs text-muted-foreground">Pasaje leído<Input className="mt-1" value={passage} onChange={(event) => setPassage(event.target.value)} placeholder="Ej. Génesis 1–3"/></label></div>
         <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Nota o reflexión (opcional)"/>
         <Button size="sm" disabled={!passage.trim() || addFreeReading.isPending} onClick={() => addFreeReading.mutate()}>Guardar lectura</Button>
@@ -281,7 +281,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
         })}
       </div>
       <p className="flex items-start gap-2 text-[11px] text-muted-foreground"><Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0"/>No se pierde el avance si te atrasas: puedes marcar cualquier día y continuar a tu ritmo. El porcentaje cuenta días con las tres lecturas completas, no casillas sueltas.</p>
-      {latestCycle?.status === "completed" && <Button onClick={() => createCycle.mutate("annual")} disabled={createCycle.isPending}><Sparkles className="mr-1 h-4 w-4"/>Comenzar otro año</Button>}
+      {latestCycle?.status === "completed" && <Button onClick={() => createCycle.mutate("annual_plan")} disabled={createCycle.isPending}><Sparkles className="mr-1 h-4 w-4"/>Comenzar otro año</Button>}
     </section>
   );
 }
