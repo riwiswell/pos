@@ -82,7 +82,7 @@ function BibleCover({ learningItemId }: { learningItemId: string }) {
       }
       if (coverPath && coverPath !== nextPath) await privateMediaService.removePhoto(coverPath).catch(() => undefined);
       await queryClient.invalidateQueries({ queryKey: ["bible-learning-item", learningItemId] });
-      await queryClient.invalidateQueries({ queryKey: ["life-graph-list", "learning_items"] });
+      await queryClient.invalidateQueries({ queryKey: ["lg", "learning_items"] });
       toast.success("Portada de la Biblia actualizada.");
     } catch (error) {
       toast.error(message(error));
