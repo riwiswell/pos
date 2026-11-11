@@ -182,9 +182,9 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
     toast.success("Avance de lectura guardado.");
   };
   const saveDetails=async()=>{
-    if(!newTitle.trim())return toast.error("El título no puede quedar vacío.");
+    if(!newTitle.trim()){toast.error("El título no puede quedar vacío.");return;}
     const parsedTotal=Number(newTotal);
-    if(newTotal.trim()&&(!Number.isInteger(parsedTotal)||parsedTotal<1))return toast.error("El total de páginas debe ser un número entero mayor que cero.");
+    if(newTotal.trim()&&(!Number.isInteger(parsedTotal)||parsedTotal<1)){toast.error("El total de páginas debe ser un número entero mayor que cero.");return;}
     await onSave({title:newTitle.trim(),total_pages:newTotal.trim()?parsedTotal:null});
     setPanel(null);
     toast.success("Libro actualizado.");
@@ -342,7 +342,7 @@ function OtherLearning(){
   const resetForm=()=>{setTitle("");setKind("course");setNotes("");setEditingId(null);setAdding(false);};
   const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind||"other");setNotes(item.notes||"");setEditingId(item.id);setAdding(true);};
   const saveItem=async()=>{
-    if(!title.trim())return toast.error("Escribe el nombre del elemento.");
+    if(!title.trim()){toast.error("Escribe el nombre del elemento.");return;}
     if(editingId){
       await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null}});
       toast.success("Elemento actualizado.");
