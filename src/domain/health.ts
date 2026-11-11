@@ -108,6 +108,45 @@ export function doseLabel(med: Pick<Medication, "dose" | "unit">): string {
   return `${med.dose}${med.unit ? ` ${med.unit}` : ""}`;
 }
 
+function normalizeMedicationUnit(unit: string): string {
+  return unit.toLocaleLowerCase("es-CO")
+    .replace(/á/g, "a").replace(/é/g, "e").replace(/í/g, "i")
+    .replace(/ó/g, "o").replace(/ú/g, "u");
+}
+
+/** Formats stock with correct Spanish singular/plural labels. */
+export function formatStockQuantity(quantity: number, unit: string | null | undefined): string {
+  const rawUnit = String(unit || "unidades").trim();
+  const key = normalizeMedicationUnit(rawUnit);
+  const forms: Record<string, { one: string; many: string }> = {
+    tableta: { one: "tableta", many: "tabletas" },
+    tabletas: { one: "tableta", many: "tabletas" },
+    pastilla: { one: "pastilla", many: "pastillas" },
+    pastillas: { one: "pastilla", many: "pastillas" },
+    capsula: { one: "cápsula", many: "cápsulas" },
+    capsulas: { one: "cápsula", many: "cápsulas" },
+    comprimido: { one: "comprimido", many: "comprimidos" },
+    comprimidos: { one: "comprimido", many: "comprimidos" },
+    sobre: { one: "sobre", many: "sobres" },
+    sobres: { one: "sobre", many: "sobres" },
+    gota: { one: "gota", many: "gotas" },
+    gotas: { one: "gota", many: "gotas" },
+    aplicacion: { one: "aplicación", many: "aplicaciones" },
+    aplicaciones: { one: "aplicación", many: "aplicaciones" },
+    puff: { one: "puff", many: "puffs" },
+    puffs: { one: "puff", many: "puffs" },
+    unidad: { one: "unidad", many: "unidades" },
+    unidades: { one: "unidad", many: "unidades" },
+    cucharadita: { one: "cucharadita", many: "cucharaditas" },
+    cucharaditas: { one: "cucharadita", many: "cucharaditas" },
+    cucharada: { one: "cucharada", many: "cucharadas" },
+    cucharadas: { one: "cucharada", many: "cucharadas" },
+  };
+  const pair = forms[key];
+  const number = quantity.toLocaleString("es-CO", { maximumFractionDigits: 3 });
+  return `${number} ${pair ? quantity === 1 ? pair.one : pair.many : rawUnit}`;
+}
+
 /**
  * Human-readable daily schedule summary.
  * units_per_dose is physical inventory consumed at each scheduled time;
@@ -119,33 +158,16 @@ export function medicationScheduleLabel(
   const times = normalizeTimes(med.times ?? []);
   const perDose = Number(med.units_per_dose ?? 1);
   const dailyQuantity = Math.max(0, perDose * times.length);
-  const rawUnit = String(med.stock_unit || med.unit || "unidades").trim();
-  const key = rawUnit.toLocaleLowerCase("es-CO")
-    .replace(/á/g, "a").replace(/é/g, "e").replace(/í/g, "i")
-    .replace(/ó/g, "o").replace(/ú/g, "u");
-  const plural: Record<string, string> = {
-    tableta: "tabletas",
-    pastilla: "pastillas",
-    capsula: "capsulas",
-    comprimido: "comprimidos",
-    sobre: "sobres",
-    gota: "gotas",
-    aplicacion: "aplicaciones",
-    puff: "puffs",
-    unidad: "unidades",
-    cucharadita: "cucharaditas",
-    cucharada: "cucharadas",
-  };
-  const stockUnit = plural[key] ?? rawUnit;
-  const quantity = dailyQuantity.toLocaleString("es-CO", { maximumFractionDigits: 3 });
+  const stockUnit = med.stock_unit || med.unit || "unidades";
+  const amount = formatStockQuantity(dailyQuantity, stockUnit);
   const frequencyText = med.frequency === "alternate"
-    ? `${quantity} ${stockUnit} en cada día de toma`
-    : `${quantity} ${stockUnit} al día`;
+    ? `${amount} en cada día de toma`
+    : `${amount} al día`;
 
-  const strengthUnit = String(med.unit ?? "").toLocaleLowerCase("es-CO");
+  const strengthUnit = normalizeMedicationUnit(String(med.unit ?? ""));
   const isPhysicalDoseUnit = [
-    "tableta", "pastilla", "cápsula", "comprimido", "sobre", "gota",
-    "aplicación", "puff", "cucharadita", "cucharada", "otro",
+    "tableta", "pastilla", "capsula", "comprimido", "sobre", "gota",
+    "aplicacion", "puff", "cucharadita", "cucharada", "otro",
   ].includes(strengthUnit);
   const strength = !isPhysicalDoseUnit && med.dose != null
     ? `${doseLabel(med)} por toma · `
