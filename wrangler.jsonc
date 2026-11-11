@@ -10,6 +10,14 @@
     "SUPABASE_PUBLISHABLE_KEY":"sb_publishable_BUpXOvkLY8cJFamCN5rFqQ_hza14pTZ"
   },
   "ai":{"binding":"AI"},
+  "previews":{
+    "vars":{
+      "SUPABASE_URL":"https://preview.invalid",
+      "SUPABASE_PROJECT_ID":"preview-no-db",
+      "SUPABASE_PUBLISHABLE_KEY":"preview-no-db"
+    },
+    "ai":{"binding":"AI"}
+  },
   "triggers":{"crons":["* * * * *"]},
   "observability":{"enabled":true}
 }
