@@ -20,6 +20,7 @@ import { HabitDialog } from "@/components/habits/HabitDialog";
 import { CategoryDialog } from "@/components/habits/CategoryDialog";
 import { NoteDialog } from "@/components/habits/NoteDialog";
 import { HabitMatrix } from "@/components/habits/HabitMatrix";
+import { SharedSpacesPanel } from "@/components/habits/SharedSpacesPanel";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useCategories, useHabitMutations, useHabits, useLogs } from "@/hooks/use-habits";
 import type { Habit, HabitCategory, HabitLog, HabitKind } from "@/domain/types";
@@ -128,9 +129,10 @@ function HabitsPage() {
       <GlobalDateHeader />
 
       <Tabs defaultValue="registro" className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="registro">Registro</TabsTrigger>
           <TabsTrigger value="matriz">Matriz</TabsTrigger>
+          <TabsTrigger value="compartidos">Compartidos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="registro" className="space-y-5">
@@ -305,6 +307,10 @@ function HabitsPage() {
 
         <TabsContent value="matriz">
           <HabitMatrix />
+        </TabsContent>
+
+        <TabsContent value="compartidos">
+          <SharedSpacesPanel />
         </TabsContent>
       </Tabs>
 
