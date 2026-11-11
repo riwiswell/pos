@@ -1,6 +1,6 @@
 begin;
 
-select plan(88);
+select plan(95);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -285,6 +285,15 @@ select ok((
   not has_function_privilege('anon','public.personal_shared_apply_goal_contribution()','EXECUTE')
   and not has_function_privilege('authenticated','public.personal_shared_apply_goal_contribution()','EXECUTE')
 ), 'shared-goal reward trigger function cannot be executed directly');
+
+
+select has_column('public','habits','icon','personal habits support custom icons');
+select has_column('public','learning_items','cover_path','learning resources support private cover photos');
+select has_column('public','learning_items','target_pages','books support intermediate page goals');
+select has_column('public','learning_items','goal_description','games support a written goal');
+select has_column('public','learning_items','goal_date','games support a target date');
+select has_column('public','medications','total_quantity','medications track physical stock');
+select has_table('public','medication_stock_movements','medication stock refills are stored as movements');
 
 select * from finish();
 rollback;
