@@ -265,37 +265,40 @@ export function SleepPanel() {
             Todavía no hay duraciones de sueño para graficar. Guarda el primer registro y aparecerá aquí.
           </div>
         ) : (
-          <div className="h-56 w-full">
+          <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={history} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 3" />
+              <BarChart data={history} margin={{ top: 10, right: 12, left: -8, bottom: 4 }}>
+                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="label"
                   tickLine={false}
                   axisLine={false}
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                  interval="preserveStartEnd"
+                  tick={{ fontSize: 12, fontWeight: 500, fill: "var(--muted-foreground)" }}
+                  tickMargin={10}
+                  minTickGap={8}
+                  interval={history.length <= 7 ? 0 : "preserveStartEnd"}
                 />
                 <YAxis
                   domain={[0, maxHours]}
                   tickLine={false}
                   axisLine={false}
-                  width={34}
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                  width={40}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                   tickFormatter={(value: number) => `${value} h`}
                 />
                 <Tooltip
-                  cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+                  cursor={{ fill: "var(--accent)", opacity: 0.55 }}
                   contentStyle={{
-                    background: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
+                    background: "var(--popover)",
+                    color: "var(--popover-foreground)",
+                    border: "1px solid var(--border)",
                     borderRadius: 12,
                     fontSize: 12,
                   }}
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""}
                   formatter={(value: number) => [formatSleepHours(Number(value)), "Duración"]}
                 />
-                <Bar dataKey="hours" name="Sueño" fill="hsl(var(--primary))" radius={[5, 5, 0, 0]} maxBarSize={48} />
+                <Bar dataKey="hours" name="Sueño" fill="var(--primary)" radius={[6, 6, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
           </div>
