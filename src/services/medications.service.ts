@@ -233,20 +233,46 @@ export const medicationsService = {
     return { rows: (data ?? []) as MedicationDose[], total: count ?? 0 };
   },
 
-  /** Number of taken doses per medication (for remaining quantity). */
+  /**
+   * Number of taken doses in the current medication cycle.
+   *
+   * total_quantity is the physical stock counted when the current start_date
+   * was set. Older taken doses belong to a previous course and must not be
+   * deducted again after the medication is reactivated or its stock is reset.
+   */
   async takenCounts(): Promise<Record<string, number>> {
     const out: Record<string, number> = {};
+    const medications = await medicationsService.list();
+    if (medications.length === 0) return out;
+
+    const startByMedication = new Map(
+      medications.map((med) => [med.id, med.start_date]),
+    );
+    const startDates = medications
+      .map((med) => med.start_date)
+      .filter((date): date is string => Boolean(date))
+      .sort();
+    const firstStartDate = startDates[0];
+    if (!firstStartDate) return out;
+
+    const medicationIds = medications.map((med) => med.id);
     const pageSize = 1000;
     for (let from = 0; ; from += pageSize) {
       const { data, error } = await supabase
         .from("medication_doses")
-        .select("id,medication_id")
+        .select("id,medication_id,dose_date")
+        .in("medication_id", medicationIds)
         .eq("status", "taken")
+        .gte("dose_date", firstStartDate)
         .order("id", { ascending: true })
         .range(from, from + pageSize - 1);
       if (error) throw error;
       const page = data ?? [];
-      for (const row of page) out[row.medication_id] = (out[row.medication_id] ?? 0) + 1;
+      for (const row of page) {
+        const cycleStart = startByMedication.get(row.medication_id);
+        if (!cycleStart || row.dose_date < cycleStart) continue;
+        out[row.medication_id] = (out[row.medication_id] ?? 0) + 1;
+      }
       if (page.length < pageSize) break;
     }
     return out;
