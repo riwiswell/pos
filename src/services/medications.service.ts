@@ -221,11 +221,25 @@ export const medicationsService = {
   ): Promise<{ rows: MedicationDose[]; total: number }> {
     const safePage = Math.max(0, Math.floor(page));
     const safeSize = Math.max(1, Math.min(100, Math.floor(pageSize) || 50));
+
+    // History is for confirmed actions only. A past scheduled dose that was
+    // never marked taken/skipped is not a medication-history event.
+    const medications = await medicationsService.list();
+    const cycleFilters = medications
+      .filter((med) => Boolean(med.id && med.start_date))
+      .map((med) => `and(medication_id.eq.${med.id},dose_date.gte.${med.start_date})`);
+
+    if (cycleFilters.length === 0) return { rows: [], total: 0 };
+
+    // A medication whose course was restarted must not leak doses from its
+    // previous course into the current history list.
     const { data, error, count } = await supabase
       .from("medication_doses")
       .select("*", { count: "exact" })
       .gte("dose_date", fromDate)
       .lte("dose_date", toDate)
+      .in("status", ["taken", "skipped"])
+      .or(cycleFilters.join(","))
       .order("scheduled_at", { ascending: false })
       .order("id", { ascending: false })
       .range(safePage * safeSize, safePage * safeSize + safeSize - 1);
