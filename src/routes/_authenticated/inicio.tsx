@@ -120,7 +120,7 @@ function HomePage() {
   const activitiesDone = activities.filter((habit) => isDone(habit, logByHabit.get(habit.id))).length;
   const usageCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    const habitById = new Map(onlyHabits.map((habit) => [habit.id, habit]));
+    const habitById = new Map(habits.map((habit) => [habit.id, habit] as const));
     for (const log of usageLogsQuery.data ?? []) {
       const habit = habitById.get(log.habit_id);
       if (!habit) continue;
@@ -132,11 +132,11 @@ function HomePage() {
     return counts;
   }, [onlyHabits, usageLogsQuery.data]);
   const rankedHabits = useMemo(
-    () => onlyHabits
+    () => habits
       .map((habit, index) => ({ habit, index, uses: usageCounts.get(habit.id) ?? 0 }))
       .sort((a, b) => b.uses - a.uses || a.index - b.index)
       .map(({ habit }) => habit),
-    [onlyHabits, usageCounts],
+    [habits, usageCounts],
   );
   const weeklyRhythm = useMemo(() => {
     const habitById = new Map<string, Habit>();
@@ -282,6 +282,7 @@ function HomePage() {
                               <div className="min-w-0 flex-1">
                                 <div className="flex min-w-0 items-center gap-2">
                                   <p className="min-w-0 flex-1 truncate text-xs font-medium">{habit.name}</p>
+                                  {habit.kind === "activity" && <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">Actividad</span>}
                                   <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground" title={`Registrado en ${usageCounts.get(habit.id) ?? 0} de los últimos 30 días`}>
                                     {usageCounts.get(habit.id) ?? 0}/30 días
                                   </span>
