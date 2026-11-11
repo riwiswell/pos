@@ -265,7 +265,7 @@ grant select,delete on public.personal_shared_space_members to authenticated;
 grant select,insert,update,delete on public.personal_shared_space_invites to authenticated;
 grant select,insert,update,delete on public.personal_shared_habits to authenticated;
 grant select,insert,update,delete on public.personal_shared_habit_logs to authenticated;
-grant select,insert,update,delete on public.personal_shared_goals to authenticated;
+grant select,insert on public.personal_shared_goals to authenticated;
 grant select,insert on public.personal_shared_goal_contributions to authenticated;
 grant select on public.personal_shared_points_ledger to authenticated;
 
@@ -354,9 +354,6 @@ drop policy if exists personal_shared_goals_insert on public.personal_shared_goa
 create policy personal_shared_goals_insert on public.personal_shared_goals
 for insert to authenticated with check (created_by=auth.uid() and public.personal_shared_is_member(space_id));
 drop policy if exists personal_shared_goals_update on public.personal_shared_goals;
-create policy personal_shared_goals_update on public.personal_shared_goals
-for update to authenticated using (public.personal_shared_is_member(space_id))
-with check (public.personal_shared_is_member(space_id));
 
 drop policy if exists personal_shared_goal_contributions_select on public.personal_shared_goal_contributions;
 create policy personal_shared_goal_contributions_select on public.personal_shared_goal_contributions
