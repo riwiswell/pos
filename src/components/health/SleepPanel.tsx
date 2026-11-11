@@ -135,6 +135,28 @@ export function SleepPanel() {
   const average = history.length
     ? history.reduce((sum, row) => sum + row.hours, 0) / history.length
     : null;
+
+  const weeklyComparison = useMemo(() => {
+    const shiftDate = (offset: number) => {
+      const value = new Date(date + "T12:00:00");
+      value.setDate(value.getDate() + offset);
+      return [value.getFullYear(), String(value.getMonth() + 1).padStart(2, "0"), String(value.getDate()).padStart(2, "0")].join("-");
+    };
+    const currentStart = shiftDate(-6);
+    const previousStart = shiftDate(-13);
+    const currentWeek = history.filter((row) => row.date >= currentStart && row.date <= date);
+    const previousWeek = history.filter((row) => row.date >= previousStart && row.date < currentStart);
+    const mean = (rows: typeof history) => rows.length ? rows.reduce((sum, row) => sum + row.hours, 0) / rows.length : null;
+    const currentAverage = mean(currentWeek);
+    const previousAverage = mean(previousWeek);
+    return {
+      currentAverage,
+      previousAverage,
+      difference: currentAverage !== null && previousAverage !== null ? currentAverage - previousAverage : null,
+      currentCount: currentWeek.length,
+      previousCount: previousWeek.length,
+    };
+  }, [history, date]);
   const latest = history.at(-1) ?? null;
   const maxHours = Math.max(10, Math.ceil(Math.max(...history.map((row) => row.hours), 0) + 1));
 
@@ -249,6 +271,15 @@ export function SleepPanel() {
             <p className="text-[10px] text-muted-foreground">{latest ? latest.date : "Aún sin datos"}</p>
           </div>
         </div>
+      </section>
+
+      <section className="glass space-y-3 rounded-2xl p-4">
+        <div><h3 className="font-semibold">Comparación semanal</h3><p className="text-xs text-muted-foreground">Promedio de las últimas 7 noches frente a las 7 anteriores, hasta la fecha seleccionada.</p></div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl border bg-background/60 p-3"><p className="text-[11px] text-muted-foreground">Últimos 7 días</p><p className="mt-1 text-xl font-semibold tabular-nums">{weeklyComparison.currentAverage===null?"—":formatSleepHours(weeklyComparison.currentAverage)}</p><p className="text-[10px] text-muted-foreground">{weeklyComparison.currentCount} registros</p></div>
+          <div className="rounded-xl border bg-background/60 p-3"><p className="text-[11px] text-muted-foreground">7 días anteriores</p><p className="mt-1 text-xl font-semibold tabular-nums">{weeklyComparison.previousAverage===null?"—":formatSleepHours(weeklyComparison.previousAverage)}</p><p className="text-[10px] text-muted-foreground">{weeklyComparison.previousCount} registros</p></div>
+        </div>
+        {weeklyComparison.difference!==null?<p className="text-xs text-muted-foreground">{weeklyComparison.difference>0.05?"Estás durmiendo en promedio "+formatSleepHours(weeklyComparison.difference)+" más por noche.":weeklyComparison.difference< -0.05?"Estás durmiendo en promedio "+formatSleepHours(Math.abs(weeklyComparison.difference))+" menos por noche.":"Tu promedio se mantiene prácticamente igual."}</p>:<p className="text-xs text-muted-foreground">Registra noches en ambos periodos para comparar las semanas.</p>}
       </section>
 
       <section className="glass space-y-3 rounded-2xl p-4">
