@@ -221,11 +221,25 @@ export const medicationsService = {
   ): Promise<{ rows: MedicationDose[]; total: number }> {
     const safePage = Math.max(0, Math.floor(page));
     const safeSize = Math.max(1, Math.min(100, Math.floor(pageSize) || 50));
+
+    // History is for confirmed actions only. A past scheduled dose that was
+    // never marked taken/skipped is not a medication-history event.
+    const medications = await medicationsService.list();
+    const cycleFilters = medications
+      .filter((med) => Boolean(med.id && med.start_date))
+      .map((med) => `and(medication_id.eq.${med.id},dose_date.gte.${med.start_date})`);
+
+    if (cycleFilters.length === 0) return { rows: [], total: 0 };
+
+    // A medication whose course was restarted must not leak doses from its
+    // previous course into the current history list.
     const { data, error, count } = await supabase
       .from("medication_doses")
       .select("*", { count: "exact" })
       .gte("dose_date", fromDate)
       .lte("dose_date", toDate)
+      .in("status", ["taken", "skipped"])
+      .or(cycleFilters.join(","))
       .order("scheduled_at", { ascending: false })
       .order("id", { ascending: false })
       .range(safePage * safeSize, safePage * safeSize + safeSize - 1);
@@ -233,23 +247,93 @@ export const medicationsService = {
     return { rows: (data ?? []) as MedicationDose[], total: count ?? 0 };
   },
 
-  /** Number of taken doses per medication (for remaining quantity). */
+  /**
+   * Number of taken doses in the current medication cycle.
+   *
+   * total_quantity is the physical stock counted when the current start_date
+   * was set. Older taken doses belong to a previous course and must not be
+   * deducted again after the medication is reactivated or its stock is reset.
+   */
   async takenCounts(): Promise<Record<string, number>> {
     const out: Record<string, number> = {};
+    const medications = await medicationsService.list();
+    if (medications.length === 0) return out;
+
+    const startByMedication = new Map(
+      medications.map((med) => [med.id, med.start_date]),
+    );
+    const startDates = medications
+      .map((med) => med.start_date)
+      .filter((date): date is string => Boolean(date))
+      .sort();
+    const firstStartDate = startDates[0];
+    if (!firstStartDate) return out;
+
+    const medicationIds = medications.map((med) => med.id);
     const pageSize = 1000;
     for (let from = 0; ; from += pageSize) {
       const { data, error } = await supabase
         .from("medication_doses")
-        .select("id,medication_id")
+        .select("id,medication_id,dose_date")
+        .in("medication_id", medicationIds)
         .eq("status", "taken")
+        .gte("dose_date", firstStartDate)
         .order("id", { ascending: true })
         .range(from, from + pageSize - 1);
       if (error) throw error;
       const page = data ?? [];
-      for (const row of page) out[row.medication_id] = (out[row.medication_id] ?? 0) + 1;
+      for (const row of page) {
+        const cycleStart = startByMedication.get(row.medication_id);
+        if (!cycleStart || row.dose_date < cycleStart) continue;
+        out[row.medication_id] = (out[row.medication_id] ?? 0) + 1;
+      }
       if (page.length < pageSize) break;
     }
     return out;
+  },
+
+  /** Sum of explicit stock additions per medication. Original quantity stays on the medication record. */
+  async stockTotals(): Promise<Record<string, number>> {
+    const totals: Record<string, number> = {};
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("medication_stock_movements")
+        .select("id,medication_id,quantity")
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      for (const row of page) {
+        totals[row.medication_id] = (totals[row.medication_id] ?? 0) + Number(row.quantity ?? 0);
+      }
+      if (page.length < pageSize) break;
+    }
+    return totals;
+  },
+
+  /** A refill is an append-only movement; it never overwrites the initial stock or dose history. */
+  async addStock(medicationId: string, quantity: number, note?: string): Promise<void> {
+    const user_id = await currentUserId();
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 100000) {
+      throw new Error("La cantidad para reponer debe ser mayor que cero.");
+    }
+    const { data: medication, error: medicationError } = await supabase
+      .from("medications")
+      .select("id")
+      .eq("id", medicationId)
+      .eq("user_id", user_id)
+      .maybeSingle();
+    if (medicationError) throw medicationError;
+    if (!medication) throw new Error("No encontramos el medicamento para reponer su inventario.");
+    const { error } = await supabase.from("medication_stock_movements").insert({
+      user_id,
+      medication_id: medicationId,
+      quantity,
+      movement_type: "restock",
+      note: note?.trim() || null,
+    });
+    if (error) throw error;
   },
 
   /** Water belongs to the dose row: changing it updates, never duplicates. */
