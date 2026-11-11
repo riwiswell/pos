@@ -10,6 +10,23 @@ alter table public.bible_reading_cycles
 alter table public.bible_reading_cycles
   add constraint bible_reading_cycles_mode_check check (mode in ('annual_plan','free'));
 
+-- Attach any existing annual cycle to the user's La Biblia item so its history
+-- remains visible in the new per-book interface.
+update public.bible_reading_cycles c
+set learning_item_id = (
+  select li.id from public.learning_items li
+  where li.user_id=c.user_id and li.kind='book'
+    and lower(trim(li.title)) in ('la biblia','biblia')
+  order by li.created_at asc
+  limit 1
+)
+where c.learning_item_id is null
+  and exists (
+    select 1 from public.learning_items li
+    where li.user_id=c.user_id and li.kind='book'
+      and lower(trim(li.title)) in ('la biblia','biblia')
+  );
+
 create index if not exists bible_reading_cycles_user_item_idx
   on public.bible_reading_cycles(user_id,learning_item_id,created_at desc);
 
