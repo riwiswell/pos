@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-type TableName="alarms"|"health_metrics"|"shopping_items"|"learning_items"|"relationships"|"work_items"|"spiritual_entries"|"ai_insights"|"gamification_profiles"|"shopping_lists";
+type TableName="alarms"|"health_metrics"|"journal_entries"|"shopping_items"|"learning_items"|"relationships"|"work_items"|"spiritual_entries"|"ai_insights"|"gamification_profiles"|"shopping_lists";
 const db=supabase as any;
 export const personalDomainsService={
  async personalInsights(){const optional=async(q:any)=>{const r=await q;return r.error&&["42P01","PGRST205"].includes(r.error.code)?{data:[],error:null}:r};const [health,goals,learning,relations,work,alarms]=await Promise.all([
@@ -64,20 +64,32 @@ export const personalDomainsService={
   const bodyKeys=["neck_cm","shoulders_cm","chest_cm","waist_cm","left_arm_cm","right_arm_cm","hips_cm","left_thigh_cm","right_thigh_cm","left_calf_cm"];
   const marker="__POS_BODY_MEASURES__";
   let previousBody:Record<string,unknown>={};
+  let previousSleep:Record<string,unknown>={};
   let previousNotes=typeof existingRead.data?.notes==="string"?existingRead.data.notes:"";
   if(previousNotes){
     try{
       const decoded=JSON.parse(previousNotes);
       if(decoded?.marker===marker){
         previousBody=decoded.body&&typeof decoded.body==="object"?decoded.body:{};
+        previousSleep=decoded.sleep&&typeof decoded.sleep==="object"?decoded.sleep:{};
         previousNotes=typeof decoded.notes==="string"?decoded.notes:"";
       }
     }catch{}
   }
   const body=Object.fromEntries(bodyKeys.map(k=>[k,payload[k]!==undefined?payload[k]:(previousBody[k]??null)]));
   for(const k of bodyKeys)delete fallback[k];
-  const userNotes=payload["notes"]!==undefined?(typeof payload["notes"]==="string"?String(payload["notes"]):""):previousNotes;
-  fallback["notes"]=JSON.stringify({marker,body,notes:userNotes});
+  let userNotes=payload["notes"]!==undefined?(typeof payload["notes"]==="string"?String(payload["notes"]):""):previousNotes;
+  let sleepToSave=previousSleep;
+  if(typeof payload["notes"]==="string"){
+    try{
+      const incoming=JSON.parse(String(payload["notes"]));
+      if(incoming?.marker===marker){
+        userNotes=typeof incoming.notes==="string"?incoming.notes:"";
+        if(incoming.sleep&&typeof incoming.sleep==="object")sleepToSave=incoming.sleep;
+      }
+    }catch{}
+  }
+  fallback["notes"]=JSON.stringify({marker,body,notes:userNotes,sleep:sleepToSave});
   const retry=await db.from("health_metrics").upsert(fallback,{onConflict:"user_id,metric_date"}).select("*").single();
   if(retry.error)throw retry.error;
   return retry.data;
