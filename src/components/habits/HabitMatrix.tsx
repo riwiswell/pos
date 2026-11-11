@@ -139,7 +139,10 @@ function MatrixTable({
               {rows.map((row) => (
                 <tr key={row.item.id}>
                   <td className="sticky left-0 z-10 max-w-[17rem] border-t border-border/50 bg-card/95 px-3 py-2 text-xs font-medium backdrop-blur">
-                    <span className="block whitespace-normal break-words">{row.item.name}</span>
+                    <span className="flex items-start gap-2">
+                      <span aria-hidden className="shrink-0 text-base">{row.item.icon || (row.item.kind === "activity" ? "🎯" : "✨")}</span>
+                      <span className="whitespace-normal break-words">{row.item.name}</span>
+                    </span>
                     <span className="mt-1 block text-[9px] font-normal uppercase tracking-wide text-muted-foreground">
                       {row.item.kind === "activity" ? "Actividad" : "Hábito"}
                     </span>
