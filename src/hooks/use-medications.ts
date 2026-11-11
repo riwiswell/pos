@@ -8,6 +8,7 @@ export const medKeys = {
   all: ["medications"] as const,
   doses: (date: string) => ["medication_doses", date] as const,
   history: (from: string, to: string) => ["medication_history", from, to] as const,
+  stock: ["medication_stock_movements"] as const,
 };
 
 function onError(error: unknown) {
@@ -28,6 +29,10 @@ export function useDoses(date: string) {
 
 export function useTakenCounts() {
   return useQuery({ queryKey: ["medication_taken_counts"], queryFn: medicationsService.takenCounts });
+}
+
+export function useMedicationStockTotals() {
+  return useQuery({ queryKey: medKeys.stock, queryFn: medicationsService.stockTotals });
 }
 
 const WATER_KEY = "personal-os:med-water";
@@ -56,6 +61,7 @@ export function useMedicationMutations() {
     void qc.invalidateQueries({ queryKey: ["medication_doses"] });
     void qc.invalidateQueries({ queryKey: ["medication_history"] });
     void qc.invalidateQueries({ queryKey: ["medication_taken_counts"] });
+    void qc.invalidateQueries({ queryKey: medKeys.stock });
   };
 
   const create = useMutation({
@@ -83,6 +89,15 @@ export function useMedicationMutations() {
     },
     onError,
   });
+  const addStock = useMutation({
+    mutationFn: (v: { medicationId: string; quantity: number; note?: string }) =>
+      medicationsService.addStock(v.medicationId, v.quantity, v.note),
+    onSuccess: () => {
+      refresh();
+      toast.success("Inventario repuesto");
+    },
+    onError,
+  });
   const setStatus = useMutation({
     mutationFn: (v: { id: string; status: DoseStatus; water?: number; takenAt?: string }) =>
       medicationsService.setStatus(v.id, v.status, v.status === "taken" ? (v.water ?? lastWater()) : undefined, v.takenAt),
@@ -98,5 +113,5 @@ export function useMedicationMutations() {
     onError,
   });
 
-  return { create, update, remove, setStatus, setWater };
+  return { create, update, remove, addStock, setStatus, setWater };
 }
