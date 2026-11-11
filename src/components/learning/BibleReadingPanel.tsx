@@ -19,9 +19,9 @@ type Cycle = {
   id: string;
   user_id: string;
   learning_item_id: string;
-  mode: "annual" | "free";
+  mode: "annual_plan" | "free";
   start_date: string;
-  status: "active" | "completed" | "archived";
+  status: "active" | "completed" | "paused";
   completed_at: string | null;
 };
 type DayProgress = {
@@ -79,7 +79,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
       if (error) throw error;
       return (data ?? []) as DayProgress[];
     },
-    enabled: activeCycle?.mode === "annual",
+    enabled: activeCycle?.mode === "annual_plan",
   });
   const freeReadingsQuery = useQuery({
     queryKey: ["bible-free-readings", learningItemId],
@@ -99,12 +99,18 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
   };
 
   const createCycle = useMutation({
-    mutationFn: async (mode: "annual" | "free") => {
+    mutationFn: async (mode: "annual_plan" | "free") => {
       if (!user?.id) throw new Error("Inicia sesión para guardar tu plan.");
+      const { error: pauseError } = await db.from("bible_reading_cycles")
+        .update({ status: "paused" }).eq("user_id", user.id).eq("status", "active");
+      if (pauseError) throw pauseError;
       const { data, error } = await db.from("bible_reading_cycles").insert({
         user_id: user.id, learning_item_id: learningItemId, mode, start_date: todayISO(), status: "active",
       }).select("*").single();
       if (error) throw error;
+      const { error: preferenceError } = await db.from("bible_reading_preferences")
+        .upsert({ user_id: user.id, mode }, { onConflict: "user_id" });
+      if (preferenceError) throw preferenceError;
       return data as Cycle;
     },
     onSuccess: (cycle) => {
@@ -153,6 +159,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
       if (!passage.trim()) throw new Error("Escribe el pasaje que leíste.");
       const { error } = await db.from("bible_free_readings").insert({
         user_id: user.id, learning_item_id: learningItemId, reading_date: readingDate,
+        scripture_reference: passage.trim(), notes: note.trim() || null,
         passage: passage.trim(), note: note.trim() || null,
       });
       if (error) throw error;
@@ -180,7 +187,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
 
   useEffect(() => {
     if (cyclesQuery.isLoading || cyclesQuery.isError || !user?.email || (cyclesQuery.data ?? []).length > 0) return;
-    if (DEFAULT_ANNUAL_EMAILS.has(user.email.toLowerCase())) createCycle.mutate("annual");
+    if (DEFAULT_ANNUAL_EMAILS.has(user.email.toLowerCase())) createCycle.mutate("annual_plan");
   }, [cyclesQuery.data, cyclesQuery.isError, cyclesQuery.isLoading, user?.email]);
 
   useEffect(() => {
