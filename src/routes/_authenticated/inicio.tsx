@@ -79,6 +79,8 @@ function HomePage() {
   const logsQuery = useLogs(date, showHabits);
   const weekStart = useMemo(() => addDaysISO(date, -6), [date]);
   const weekLogsQuery = useLogsRange(weekStart, date, showHabits);
+  const usageStart = useMemo(() => addDaysISO(date, -29), [date]);
+  const usageLogsQuery = useLogsRange(usageStart, date, showHabits);
   const habitMutations = useHabitMutations(date);
   const journalQuery = useJournalEntriesByDate(date);
   const [journalDialogOpen, setJournalDialogOpen] = useState(false);
@@ -116,6 +118,26 @@ function HomePage() {
   const total = onlyHabits.length;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
   const activitiesDone = activities.filter((habit) => isDone(habit, logByHabit.get(habit.id))).length;
+  const usageCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const habitById = new Map(onlyHabits.map((habit) => [habit.id, habit]));
+    for (const log of usageLogsQuery.data ?? []) {
+      const habit = habitById.get(log.habit_id);
+      if (!habit) continue;
+      const wasUsed = habit.type === "check"
+        ? Boolean(log.completed)
+        : Number(log.value ?? 0) > 0;
+      if (wasUsed) counts.set(habit.id, (counts.get(habit.id) ?? 0) + 1);
+    }
+    return counts;
+  }, [onlyHabits, usageLogsQuery.data]);
+  const rankedHabits = useMemo(
+    () => onlyHabits
+      .map((habit, index) => ({ habit, index, uses: usageCounts.get(habit.id) ?? 0 }))
+      .sort((a, b) => b.uses - a.uses || a.index - b.index)
+      .map(({ habit }) => habit),
+    [onlyHabits, usageCounts],
+  );
   const weeklyRhythm = useMemo(() => {
     const habitById = new Map<string, Habit>();
     for (const habit of onlyHabits) habitById.set(habit.id, habit);
@@ -210,15 +232,21 @@ function HomePage() {
       <div className="inicio-dashboard-grid grid gap-3">
         <div className="inicio-habits-column min-w-0">
           {showHabits && (
-            habitsQuery.isLoading || logsQuery.isLoading ? <LoadingState /> :
-            habitsQuery.isError || logsQuery.isError ? (
-              <ErrorState message={habitsQuery.error instanceof Error ? habitsQuery.error.message : logsQuery.error instanceof Error ? logsQuery.error.message : "No se pudieron cargar los hábitos y sus registros de esta fecha."} />
+            habitsQuery.isLoading || logsQuery.isLoading || usageLogsQuery.isLoading ? <LoadingState /> :
+            habitsQuery.isError || logsQuery.isError || usageLogsQuery.isError ? (
+              <ErrorState message={
+                habitsQuery.error instanceof Error ? habitsQuery.error.message :
+                logsQuery.error instanceof Error ? logsQuery.error.message :
+                usageLogsQuery.error instanceof Error ? usageLogsQuery.error.message :
+                "No se pudieron cargar los hábitos y su historial de uso."
+              } />
             ) : (
               <section className="inicio-habits-card overflow-hidden rounded-[26px] border border-violet-400/20 bg-gradient-to-br from-violet-500/[.08] via-card to-card shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-4">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-primary">Tu progreso</p>
                     <h2 className="mt-1 text-lg font-semibold">Hábitos del día <HelpTip helpKey="habits.summary" /></h2>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">Ordenados por uso en los últimos 30 días.</p>
                   </div>
                   <Link to="/habitos" search={(prev: Record<string, unknown>) => prev} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
                     Ver hábitos <ArrowUpRight className="h-3.5 w-3.5" />
@@ -241,7 +269,7 @@ function HomePage() {
                       </div>
                       <Progress value={percent} className="h-2.5" />
                       <div className="mt-3 grid grid-cols-1 gap-1.5">
-                        {onlyHabits.slice(0, 4).map((habit) => {
+                        {rankedHabits.slice(0, 4).map((habit) => {
                           const habitLog = logByHabit.get(habit.id);
                           const complete = isDone(habit, habitLog);
                           const value = habitLog?.value ?? 0;
@@ -252,7 +280,12 @@ function HomePage() {
                                 {complete ? <Check className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-xs font-medium">{habit.name}</p>
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <p className="min-w-0 flex-1 truncate text-xs font-medium">{habit.name}</p>
+                                  <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground" title={`Registrado en ${usageCounts.get(habit.id) ?? 0} de los últimos 30 días`}>
+                                    {usageCounts.get(habit.id) ?? 0}/30 días
+                                  </span>
+                                </div>
                                 {habit.type === "counter" && (
                                   <p className="text-[10px] text-muted-foreground">
                                     {value}{habit.target ? ` / ${habit.target}` : ""} {habit.unit ?? ""}
