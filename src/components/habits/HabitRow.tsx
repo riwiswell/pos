@@ -54,6 +54,7 @@ export function HabitRow({
       return () => window.clearTimeout(timeout);
     }
     previousGoalCompleted.current = goalCompleted;
+    return undefined;
   }, [goalCompleted]);
 
   const [draft, setDraft] = useState(String(value));
