@@ -30,6 +30,7 @@ interface Props {
 }
 
 const NO_CATEGORY = "__none__";
+const HABIT_ICONS = ["✨","🌅","💧","🙏","📖","🎨","🚶","🏃","🚴","🧘","💪","🎮","🎵","🍽️","❤️","😘","🌙","🧠","✍️","🌱","🏆","📚","🛠️","🎯"];
 
 export function HabitDialog({
   open,
@@ -46,6 +47,7 @@ export function HabitDialog({
   const [categoryId, setCategoryId] = useState<string>(NO_CATEGORY);
   const [target, setTarget] = useState("");
   const [unit, setUnit] = useState("");
+  const [icon, setIcon] = useState("✨");
   const [more, setMore] = useState(false);
 
   // Reset only when the dialog opens, never while the user types.
@@ -57,7 +59,8 @@ export function HabitDialog({
     setCategoryId(habit?.category_id ?? defaultCategoryId ?? NO_CATEGORY);
     setTarget(habit?.target != null ? String(habit.target) : "");
     setUnit(habit?.unit ?? "");
-    setMore(Boolean(habit?.target || habit?.unit));
+    setIcon(habit?.icon ?? (mode === "activity" ? "🎯" : "✨"));
+    setMore(Boolean(habit?.target || habit?.unit || habit?.category_id));
   }, [open, habit, defaultCategoryId, mode]);
 
   function submit(event: React.FormEvent) {
@@ -66,6 +69,7 @@ export function HabitDialog({
     const parsedTarget = Number(target.replace(",", "."));
     onSubmit({
       name: name.trim(),
+      icon,
       type,
       kind: mode === "activity" ? "activity" : kind,
       category_id: categoryId === NO_CATEGORY ? null : categoryId,
@@ -96,6 +100,29 @@ export function HabitDialog({
               autoFocus
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Icono</Label>
+            <div className="grid grid-cols-8 gap-2">
+              {HABIT_ICONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-label={`Elegir icono ${option}`}
+                  aria-pressed={icon === option}
+                  onClick={() => setIcon(option)}
+                  className={
+                    "grid h-9 w-9 place-items-center rounded-xl border text-lg transition-colors " +
+                    (icon === option
+                      ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                      : "border-border/60 bg-muted/40 hover:bg-accent")
+                  }
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
           </div>
 
           {mode === "habit" && (
