@@ -4,8 +4,33 @@ import { personalDomainsService } from "@/services/personal-domains.service";
 export function usePersonalList<T>(table:Parameters<typeof personalDomainsService.list>[0],order="created_at"){return useQuery({queryKey:["personal-domain",table,order],queryFn:()=>personalDomainsService.list<T>(table,order)});}
 export function usePersonalRecentList<T>(table:Parameters<typeof personalDomainsService.listLatest>[0],order="created_at",limit=100){return useQuery({queryKey:["personal-domain",table,"latest",order,limit],queryFn:()=>personalDomainsService.listLatest<T>(table,order,limit)});}
 export function usePersonalDateList<T>(table:Parameters<typeof personalDomainsService.byDate>[0],column:string,date:string){return useQuery({queryKey:["personal-domain",table,column,date],queryFn:()=>personalDomainsService.byDate<T>(table,column,date)});}
-export function usePersonalMutations(table:Parameters<typeof personalDomainsService.create>[0]){const qc=useQueryClient();const invalidate=()=>void qc.invalidateQueries({queryKey:["personal-domain",table]});const onError=(error:unknown)=>toast.error(error instanceof Error?error.message:"No se pudo completar la operación.");return{create:useMutation({mutationFn:(input:Record<string,unknown>)=>personalDomainsService.create(table,input),onSuccess:invalidate,onError}),update:useMutation({mutationFn:({id,patch}:{id:string;patch:Record<string,unknown>})=>personalDomainsService.update(table,id,patch),onSuccess:invalidate,onError}),remove:useMutation({mutationFn:(id:string)=>personalDomainsService.remove(table,id),onSuccess:invalidate,onError})};}
+export function usePersonalMutations(table:Parameters<typeof personalDomainsService.create>[0]){
+ const qc=useQueryClient();
+ const invalidateGraph=()=>{
+  void qc.invalidateQueries({queryKey:["lg","life_links"]});
+  void qc.invalidateQueries({queryKey:["lg","life_events"]});
+  for(const key of ["gamification_profiles","gamification_xp_events","gamification_achievements","gamification_challenges"]){
+   void qc.invalidateQueries({queryKey:["lg",key]});
+  }
+ };
+ const invalidate=()=>{
+  void qc.invalidateQueries({queryKey:["personal-domain",table]});
+  invalidateGraph();
+ };const onError=(error:unknown)=>toast.error(error instanceof Error?error.message:"No se pudo completar la operación.");return{create:useMutation({mutationFn:(input:Record<string,unknown>)=>personalDomainsService.create(table,input),onSuccess:invalidate,onError}),update:useMutation({mutationFn:({id,patch}:{id:string;patch:Record<string,unknown>})=>personalDomainsService.update(table,id,patch),onSuccess:invalidate,onError}),remove:useMutation({mutationFn:(id:string)=>personalDomainsService.remove(table,id),onSuccess:invalidate,onError})};}
 export function usePersonalInsights(){return useQuery({queryKey:["personal-domain","ai-insights"],queryFn:personalDomainsService.personalInsights});}
 export function usePersonalSummary(){return useQuery({queryKey:["personal-domain","summary"],queryFn:personalDomainsService.summary});}
 
-export function useHealthMetricMutation(){const qc=useQueryClient();return useMutation({mutationFn:(input:Record<string,unknown>)=>personalDomainsService.upsertHealth(input),onSuccess:()=>void qc.invalidateQueries({queryKey:["personal-domain","health_metrics"]})});}
+export function useHealthMetricMutation(){
+ const qc=useQueryClient();
+ return useMutation({
+  mutationFn:(input:Record<string,unknown>)=>personalDomainsService.upsertHealth(input),
+  onSuccess:()=>{
+   void qc.invalidateQueries({queryKey:["personal-domain","health_metrics"]});
+   void qc.invalidateQueries({queryKey:["lg","life_links"]});
+   void qc.invalidateQueries({queryKey:["lg","life_events"]});
+   for(const key of ["gamification_profiles","gamification_xp_events","gamification_achievements","gamification_challenges"]){
+    void qc.invalidateQueries({queryKey:["lg",key]});
+   }
+  }
+ });
+}
