@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Flag, HeartHandshake, Plus, Share2, Trophy, Users } from "lucide-react";
+import { Copy, Flag, HeartHandshake, Plus, Share2, Trophy, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -277,8 +277,12 @@ export function SharedSpacesPanel() {
   const invites = invitesQuery.data ?? [];
   const acceptedInviteByUser = new Map<string, string>(invites.filter((invite: any) => invite.status === "accepted" && invite.accepted_by).map((invite: any) => [String(invite.accepted_by), String(invite.invited_email)] as [string, string]));
   const totalPoints = Number(pointsQuery.data ?? 0);
-  const loading = spacesQuery.isLoading || (Boolean(selectedSpaceId) && (membersQuery.isLoading || habitsQuery.isLoading || goalsQuery.isLoading));
-  const queryError = spacesQuery.error ?? membersQuery.error ?? habitsQuery.error ?? goalsQuery.error;
+  const loading = spacesQuery.isLoading || (Boolean(selectedSpaceId) && (
+    membersQuery.isLoading || invitesQuery.isLoading || habitsQuery.isLoading ||
+    logsQuery.isLoading || goalsQuery.isLoading || pointsQuery.isLoading
+  ));
+  const queryError = spacesQuery.error ?? membersQuery.error ?? invitesQuery.error ??
+    habitsQuery.error ?? logsQuery.error ?? goalsQuery.error ?? pointsQuery.error;
 
   return (
     <div className="space-y-5">
@@ -358,8 +362,34 @@ export function SharedSpacesPanel() {
                 const done = habit.tracking_type === "counter" ? Number(mine?.value ?? 0) >= Number(habit.target ?? 1) : Boolean(mine?.completed);
                 return <article key={habit.id} className="flex items-center gap-3 rounded-xl border bg-background/60 p-3">
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-2xl">{habit.icon || (habit.kind === "activity" ? "🎯" : "✨")}</span>
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{habit.name}</p><p className="text-xs text-muted-foreground">{habit.kind === "activity" ? "Actividad" : "Hábito"} · {habit.tracking_type === "counter" ? String(mine?.value ?? 0) + "/" + String(habit.target ?? 1) + " " + (habit.unit ?? "") : done ? "Registrado hoy" : "Pendiente hoy"}</p></div>
-                  <Button size="sm" variant={done ? "secondary" : "default"} disabled={saveLog.isPending || (done && habit.tracking_type === "check")} onClick={() => saveLog.mutate({ habit, current: mine })}>{habit.tracking_type === "counter" ? "+1" : done ? <Check className="h-4 w-4" /> : "Hecho"}</Button>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{habit.name}</p>
+                    <p className="text-xs text-muted-foreground">{habit.kind === "activity" ? "Actividad" : "Hábito"} · {habit.tracking_type === "counter" ? "Contador" : "Casilla"}</p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {(membersQuery.data ?? []).map((member: any, memberIndex: number) => {
+                        const memberLog = byHabit.get(habit.id + "|" + member.user_id) as any;
+                        const memberValue = Number(memberLog?.value ?? 0);
+                        const memberDone = habit.tracking_type === "counter"
+                          ? memberValue >= Number(habit.target ?? 1)
+                          : Boolean(memberLog?.completed);
+                        const invitedEmail = acceptedInviteByUser.get(member.user_id);
+                        const memberLabel = member.user_id === user?.id
+                          ? "Tú"
+                          : invitedEmail?.split("@")[0] || (member.user_id === activeSpace?.owner_id ? "Propietario" : "Miembro " + (memberIndex + 1));
+                        const memberProgress = habit.tracking_type === "counter"
+                          ? memberValue + "/" + String(habit.target ?? 1) + " " + (habit.unit ?? "")
+                          : memberDone ? "Hecho" : "Pendiente";
+                        return (
+                          <span key={member.user_id} className="rounded-md bg-muted/70 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            {memberLabel}: {memberProgress}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <Button size="sm" variant={done ? "secondary" : "default"} disabled={saveLog.isPending} onClick={() => saveLog.mutate({ habit, current: mine })}>
+                    {habit.tracking_type === "counter" ? "+1" : done ? "Desmarcar" : "Hecho"}
+                  </Button>
                 </article>;
               })}
             </div>
