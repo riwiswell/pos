@@ -335,8 +335,12 @@ function kindIcon(kind:string){
   return "📚";
 }
 
-function OtherLearningCard({item,onEdit,onDelete,onSaveCover}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>}){
+function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onSaveProgress}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;onSaveProgress:(progress:number)=>Promise<unknown>}){
   const[uploading,setUploading]=useState(false);
+  const[gameProgress,setGameProgress]=useState(String(item.progress??0));
+  const isGame=item.kind==="video_game"||item.kind==="game";
+  useEffect(()=>setGameProgress(String(item.progress??0)),[item.progress]);
+  const saveGameProgress=async()=>{const value=Number(gameProgress);if(!Number.isInteger(value)||value<0||value>100){toast.error("El avance del videojuego debe estar entre 0 y 100 %.");return;}try{await onSaveProgress(value);toast.success("Avance del videojuego guardado.");}catch(error){toast.error(error instanceof Error?error.message:"No se pudo guardar el avance.");}};
   const input=useRef<HTMLInputElement>(null);
   const path=item.cover_path?String(item.cover_path):null;
   const photoQuery=usePrivatePhotos(path?[path]:[],Boolean(path));
@@ -368,7 +372,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover}:{item:any;onEdit:(
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
     </div>
     <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
-      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
+      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}{isGame&&<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[11px] text-muted-foreground"><span>Avance: {Number(item.progress??0)}%</span><span>Meta: {Number(item.target_progress??100)}%{item.target_date?" · "+item.target_date:""}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{width:Math.max(0,Math.min(100,Number(item.progress)||0))+"%"}}/></div><div className="flex items-center gap-2"><Input aria-label={"Avance de "+item.title} className="h-8 w-20" type="number" min="0" max="100" value={gameProgress} onChange={e=>setGameProgress(e.target.value)}/><Button size="sm" variant="outline" onClick={()=>void saveGameProgress()}>Guardar avance</Button></div></div>}</div>
       <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
     </div>
   </article>;
@@ -383,18 +387,24 @@ function OtherLearning(){
   const[title,setTitle]=useState("");
   const[kind,setKind]=useState("course");
   const[notes,setNotes]=useState("");
+  const[targetProgress,setTargetProgress]=useState("100");
+  const[targetDate,setTargetDate]=useState("");
   const[filter,setFilter]=useState("all");
   const items=(q.data||[]).filter((item:any)=>item.kind!=="book"&&item.kind!=="language");
   const visibleItems=items.filter((item:any)=>filter==="all"||item.kind===filter||(filter==="video_game"&&item.kind==="game"));
-  const resetForm=()=>{setTitle("");setKind("course");setNotes("");setEditingId(null);setAdding(false);};
-  const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind||"other");setNotes(item.notes||"");setEditingId(item.id);setAdding(true);};
+  const resetForm=()=>{setTitle("");setKind("course");setNotes("");setTargetProgress("100");setTargetDate("");setEditingId(null);setAdding(false);};
+  const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind||"other");setNotes(item.notes||"");setTargetProgress(String(item.target_progress??100));setTargetDate(String(item.target_date||""));setEditingId(item.id);setAdding(true);};
   const saveItem=async()=>{
     if(!title.trim()){toast.error("Escribe el nombre del elemento.");return;}
+    const isGame=kind==="video_game"||kind==="game";
+    const goal=Number(targetProgress);
+    if(isGame&&(!Number.isInteger(goal)||goal<1||goal>100)){toast.error("La meta del videojuego debe estar entre 1 y 100 %.");return;}
+    const goalFields={target_progress:isGame?goal:null,target_date:isGame?(targetDate||null):null};
     if(editingId){
-      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null}});
+      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,...goalFields}});
       toast.success("Elemento actualizado.");
     }else{
-      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active"});
+      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",progress:0,...goalFields});
       toast.success("Elemento agregado.");
     }
     resetForm();
@@ -424,6 +434,7 @@ function OtherLearning(){
         <Button size="sm" disabled={!title.trim()||m.create.isPending||m.update.isPending} onClick={()=>void saveItem()}><Save className="mr-1 h-3.5 w-3.5"/>{editingId?"Guardar":"Agregar"}</Button>
       </div>
       {editingId&&<textarea className="min-h-16 w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm" rows={2} placeholder="Notas o descripción (opcional)" value={notes} onChange={e=>setNotes(e.target.value)}/>}
+      {(kind==="video_game"||kind==="game")&&<div className="grid gap-2 sm:grid-cols-2"><label className="space-y-1 text-xs text-muted-foreground">Meta de avance (%)<Input type="number" min="1" max="100" value={targetProgress} onChange={e=>setTargetProgress(e.target.value)}/></label><label className="space-y-1 text-xs text-muted-foreground">Fecha objetivo<Input type="date" value={targetDate} onChange={e=>setTargetDate(e.target.value)}/></label></div>}
       {editingId&&<p className="text-xs text-muted-foreground">Puedes actualizar el nombre, la categoría y la descripción.</p>}
     </div>}
     <div className="flex flex-wrap gap-1.5">
@@ -432,7 +443,7 @@ function OtherLearning(){
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno.</div>}
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {visibleItems.map((item:any)=><OtherLearningCard key={item.id} item={item} onEdit={()=>startEdit(item)} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>) }
+      {visibleItems.map((item:any)=><OtherLearningCard key={item.id} item={item} onEdit={()=>startEdit(item)} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})} onSaveProgress={(progress:number)=>m.update.mutateAsync({id:item.id,patch:{progress}})}/>) }
     </div>
   </section>;
 }
