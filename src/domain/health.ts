@@ -17,6 +17,8 @@ export interface Medication {
   notes: string | null;
   remind_offset_min: number;
   total_quantity: number | null;
+  stock_unit: string;
+  units_per_dose: number;
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +35,8 @@ export interface MedicationInput {
   notes: string | null;
   remind_offset_min: number;
   total_quantity: number | null;
+  stock_unit: string;
+  units_per_dose: number;
 }
 
 export interface MedicationDose {
@@ -104,6 +108,74 @@ export function doseLabel(med: Pick<Medication, "dose" | "unit">): string {
   return `${med.dose}${med.unit ? ` ${med.unit}` : ""}`;
 }
 
+function normalizeMedicationUnit(unit: string): string {
+  return unit.toLocaleLowerCase("es-CO")
+    .replace(/á/g, "a").replace(/é/g, "e").replace(/í/g, "i")
+    .replace(/ó/g, "o").replace(/ú/g, "u");
+}
+
+/** Formats stock with correct Spanish singular/plural labels. */
+export function formatStockQuantity(quantity: number, unit: string | null | undefined): string {
+  const rawUnit = String(unit || "unidades").trim();
+  const key = normalizeMedicationUnit(rawUnit);
+  const forms: Record<string, { one: string; many: string }> = {
+    tableta: { one: "tableta", many: "tabletas" },
+    tabletas: { one: "tableta", many: "tabletas" },
+    pastilla: { one: "pastilla", many: "pastillas" },
+    pastillas: { one: "pastilla", many: "pastillas" },
+    capsula: { one: "cápsula", many: "cápsulas" },
+    capsulas: { one: "cápsula", many: "cápsulas" },
+    comprimido: { one: "comprimido", many: "comprimidos" },
+    comprimidos: { one: "comprimido", many: "comprimidos" },
+    sobre: { one: "sobre", many: "sobres" },
+    sobres: { one: "sobre", many: "sobres" },
+    gota: { one: "gota", many: "gotas" },
+    gotas: { one: "gota", many: "gotas" },
+    aplicacion: { one: "aplicación", many: "aplicaciones" },
+    aplicaciones: { one: "aplicación", many: "aplicaciones" },
+    puff: { one: "puff", many: "puffs" },
+    puffs: { one: "puff", many: "puffs" },
+    unidad: { one: "unidad", many: "unidades" },
+    unidades: { one: "unidad", many: "unidades" },
+    cucharadita: { one: "cucharadita", many: "cucharaditas" },
+    cucharaditas: { one: "cucharadita", many: "cucharaditas" },
+    cucharada: { one: "cucharada", many: "cucharadas" },
+    cucharadas: { one: "cucharada", many: "cucharadas" },
+  };
+  const pair = forms[key];
+  const number = quantity.toLocaleString("es-CO", { maximumFractionDigits: 3 });
+  return `${number} ${pair ? quantity === 1 ? pair.one : pair.many : rawUnit}`;
+}
+
+/**
+ * Human-readable daily schedule summary.
+ * units_per_dose is physical inventory consumed at each scheduled time;
+ * dose/unit may instead describe the medication strength (for example, 50 mg).
+ */
+export function medicationScheduleLabel(
+  med: Pick<Medication, "dose" | "unit" | "times" | "frequency" | "stock_unit" | "units_per_dose">,
+): string {
+  const times = normalizeTimes(med.times ?? []);
+  const perDose = Number(med.units_per_dose ?? 1);
+  const dailyQuantity = Math.max(0, perDose * times.length);
+  const stockUnit = med.stock_unit || med.unit || "unidades";
+  const amount = formatStockQuantity(dailyQuantity, stockUnit);
+  const frequencyText = med.frequency === "alternate"
+    ? `${amount} en cada día de toma`
+    : `${amount} al día`;
+
+  const strengthUnit = normalizeMedicationUnit(String(med.unit ?? ""));
+  const isPhysicalDoseUnit = [
+    "tableta", "pastilla", "capsula", "comprimido", "sobre", "gota",
+    "aplicacion", "puff", "cucharadita", "cucharada", "otro",
+  ].includes(strengthUnit);
+  const strength = !isPhysicalDoseUnit && med.dose != null
+    ? `${doseLabel(med)} por toma · `
+    : "";
+
+  return `${strength}${frequencyText}${times.length ? ` · ${times.join(", ")}` : ""}`;
+}
+
 export function normalizeTimes(times: string[]): string[] {
   return Array.from(new Set(times.filter((t) => /^\d{2}:\d{2}$/.test(t)))).sort();
 }
@@ -113,11 +185,37 @@ export const DOSE_UNITS = [
   "Aplicación", "Puff", "Cucharadita", "Cucharada", "Otro",
 ] as const;
 
+export const WATER_GLASS_ML = 325;
 export const WATER_OPTIONS = [0, 0.5, 1, 1.5, 2] as const;
+
+export const STOCK_UNITS = ["Tabletas", "Cápsulas", "Comprimidos", "Sobres", "ml", "Gotas", "Aplicaciones", "Puffs", "Unidades"] as const;
+
+export type BeverageType = "water" | "coffee" | "tea" | "milk" | "other";
+export interface HydrationEntry {
+  id: string;
+  user_id: string;
+  consumed_on: string;
+  consumed_at: string;
+  beverage_type: BeverageType;
+  amount_ml: number;
+  note: string | null;
+  created_at: string;
+}
 
 export function formatGlasses(n: number): string {
   const v = String(n).replace(".", ",");
   return `${v} ${n === 1 ? "vaso" : "vasos"}`;
+}
+
+/** Convert a glass fraction to milliliters using the user's 325 ml glass. */
+export function waterGlassesToMl(glasses: number): number {
+  return Math.max(0, Number.isFinite(glasses) ? glasses : 0) * WATER_GLASS_ML;
+}
+
+/** Shows the selected glass fraction and its milliliter equivalent. */
+export function formatWaterGlassOption(glasses: number): string {
+  const ml = waterGlassesToMl(glasses).toLocaleString("es-CO", { maximumFractionDigits: 1 });
+  return `${formatGlasses(glasses)} · ${ml} ml`;
 }
 
 /** Average doses per day (alternate-day schedules count half). */
@@ -127,16 +225,16 @@ export function dosesPerDay(med: Pick<Medication, "times" | "frequency">): numbe
 
 /** Days the total quantity lasts: total / (dose × doses per day). Null when not derivable. */
 export function durationDays(
-  med: Pick<Medication, "times" | "frequency" | "dose" | "total_quantity">,
+  med: Pick<Medication, "times" | "frequency" | "total_quantity"> & Partial<Pick<Medication, "units_per_dose">>,
 ): number | null {
-  const per = (med.dose ?? 0) * dosesPerDay(med);
-  if (!med.total_quantity || med.total_quantity <= 0 || per <= 0) return null;
+  const per = Number(med.units_per_dose ?? 1) * dosesPerDay(med);
+  if (med.total_quantity == null || med.total_quantity <= 0 || per <= 0) return null;
   return Math.floor(med.total_quantity / per);
 }
 
 /** Last day with doses derived from the quantity (start counts as day 1). */
 export function estimatedEndDate(
-  med: Pick<Medication, "times" | "frequency" | "dose" | "total_quantity" | "start_date">,
+  med: Pick<Medication, "times" | "frequency" | "total_quantity" | "start_date"> & Partial<Pick<Medication, "units_per_dose">>,
 ): string | null {
   const days = durationDays(med);
   if (!days) return null;
@@ -145,14 +243,19 @@ export function estimatedEndDate(
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Manual end date wins; otherwise the one derived from the quantity. */
+/** A medication stays scheduled until the user sets an explicit end date or pauses it. */
 export function effectiveEndDate(med: Medication): string | null {
-  return med.end_date ?? estimatedEndDate(med);
+  return med.end_date;
 }
 
-export function remainingQuantity(med: Pick<Medication, "total_quantity" | "dose">, takenCount: number): number | null {
+export function remainingQuantity(
+  med: Pick<Medication, "total_quantity"> & Partial<Pick<Medication, "units_per_dose">>,
+  takenCount: number,
+  restocked = 0,
+): number | null {
   if (med.total_quantity == null) return null;
-  return Math.max(0, med.total_quantity - takenCount * (med.dose ?? 0));
+  const consumed = Math.max(0, takenCount) * Number(med.units_per_dose ?? 1);
+  return Math.max(0, Number(med.total_quantity) + Math.max(0, restocked) - consumed);
 }
 
 /** Water drunk with doses that are currently marked as taken. */
