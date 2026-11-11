@@ -29,7 +29,7 @@ import { useGlobalDate } from "@/hooks/use-global-date";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { useHabits, useLogs, useLogsRange, useHabitMutations } from "@/hooks/use-habits";
-import { useJournalEntriesByDate } from "@/hooks/use-journal";
+import { useJournalEntries } from "@/hooks/use-journal";
 import { JOURNAL_META, entrySnippet, type JournalEntry } from "@/domain/journal";
 import { usePersonalDateList } from "@/hooks/use-personal-domains";
 import { useDoses } from "@/hooks/use-medications";
@@ -82,7 +82,11 @@ function HomePage() {
   const usageStart = useMemo(() => addDaysISO(date, -29), [date]);
   const usageLogsQuery = useLogsRange(usageStart, date, showHabits);
   const habitMutations = useHabitMutations(date);
-  const journalQuery = useJournalEntriesByDate(date);
+  const journalQuery = useJournalEntries();
+  const journalEntries = useMemo(
+    () => (journalQuery.data ?? []).filter((entry) => entry.entry_date === date),
+    [journalQuery.data, date],
+  );
   const [journalDialogOpen, setJournalDialogOpen] = useState(false);
   const [editingJournalEntry, setEditingJournalEntry] = useState<JournalEntry | null>(null);
   const plannerQuery = usePlannerItems(date, showPlanner);
@@ -388,7 +392,7 @@ function HomePage() {
         <aside className="inicio-wellbeing-column min-w-0">
           <HydrationOverview date={date} compact />
           <DiaryOverview
-            entries={journalQuery.data ?? []}
+            entries={journalEntries}
             loading={journalQuery.isLoading}
             error={journalQuery.isError}
             onCreate={() => {
