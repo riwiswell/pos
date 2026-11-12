@@ -49,7 +49,7 @@ export function IconPicker({
                 <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {group.label}
                 </p>
-                <div className="grid grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-5 gap-2 sm:grid-cols-6">
                   {icons.map((name) => {
                     const Icon = getIcon(name);
                     return (
@@ -57,16 +57,18 @@ export function IconPicker({
                         key={name}
                         type="button"
                         title={name}
+                        aria-label={"Icono "+name}
+                        aria-pressed={value===name}
                         onClick={() => {
                           onChange(name);
                           setOpen(false);
                         }}
                         className={cn(
-                          "flex h-9 items-center justify-center rounded-lg border border-transparent hover:bg-accent",
-                          value === name && "border-primary bg-accent",
+                          "flex h-11 items-center justify-center rounded-xl border border-border/60 bg-background/70 text-muted-foreground transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-accent hover:text-foreground",
+                          value === name && "border-primary bg-primary/10 text-primary shadow-sm",
                         )}
                       >
-                        <Icon className="h-4 w-4" />
+                        <Icon className="h-5 w-5" />
                       </button>
                     );
                   })}

@@ -29,6 +29,13 @@ function flagForLanguageProfile(profile:any){
   const fallback=LANGS.find((lang:any)=>lang.code===profile.language_code)?.variants?.[0]?.[0]||"";
   return flagForLocale(profile.locale_code||fallback);
 }
+type LearningSort = "used_desc" | "used_asc" | "title_asc" | "title_desc" | "recent";
+function sortLearningItems(items:any[],sessions:any[],sort:LearningSort){
+ const usage=new Map<string,number>(),latest=new Map<string,string>();
+ for(const session of sessions){const id=String(session.learning_item_id||"");if(!id)continue;usage.set(id,(usage.get(id)||0)+1);const date=String(session.session_date||session.created_at||"");if(date>String(latest.get(id)||""))latest.set(id,date);}
+ return [...items].sort((a,b)=>{const aId=String(a.id),bId=String(b.id),aCount=usage.get(aId)||0,bCount=usage.get(bId)||0;const names=String(a.title||"").localeCompare(String(b.title||""),"es",{sensitivity:"base",numeric:true});if(sort==="title_asc")return names;if(sort==="title_desc")return -names;if(sort==="used_asc")return aCount-bCount||names;if(sort==="recent")return String(latest.get(bId)||b.updated_at||b.created_at||"").localeCompare(String(latest.get(aId)||a.updated_at||a.created_at||""))||names;return bCount-aCount||names;});
+}
+function LearningSortControl({value,onChange}:{value:LearningSort;onChange:(value:LearningSort)=>void}){return <select aria-label="Ordenar elementos" title="Ordenar elementos" className="h-9 max-w-[148px] rounded-lg border border-input bg-background px-2 text-xs text-foreground" value={value} onChange={event=>onChange(event.target.value as LearningSort)}><option value="used_desc">Más usado</option><option value="used_asc">Menos usado</option><option value="title_asc">A–Z</option><option value="title_desc">Z–A</option><option value="recent">Más reciente</option></select>;}
 function LearningPage(){
   const[tab,setTab]=useState("books");
   const{data:profile}=useProfile();
@@ -59,6 +66,8 @@ function isBibleBook(title:string){
 function Books(){
   const q=useLGList("learning_items");
   const notes=useLGList("learning_notes");
+  const sessions=useLGList("learning_sessions","session_date");
+  const[sort,setSort]=useState<LearningSort>("used_desc");
   const m=useLGMutations("learning_items");
   const nm=useLGMutations("learning_notes");
   const{user}=useAuth();
@@ -66,7 +75,7 @@ function Books(){
   const[title,setTitle]=useState("");
   const[pages,setPages]=useState("");
   const[targetPages,setTargetPages]=useState("");
-  const books=(q.data||[]).filter((x:any)=>x.kind==="book");
+  const books=sortLearningItems((q.data||[]).filter((x:any)=>x.kind==="book"),sessions.data||[],sort);
   const deleteBook=async(book:any)=>{
     if(book.cover_path)await privateMediaService.removePhoto(String(book.cover_path)).catch(()=>undefined);
     await m.remove.mutateAsync(book.id);
@@ -95,9 +104,7 @@ function Books(){
         <h2 className="font-semibold">Mi biblioteca</h2>
         <p className="text-xs text-muted-foreground">Avance de lectura, resúmenes y apuntes.</p>
       </div>
-      <Button size="sm" variant={adding?"outline":"default"} onClick={()=>setAdding(v=>!v)}>
-        {adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}
-      </Button>
+      <div className="flex items-center gap-2"><LearningSortControl value={sort} onChange={setSort}/><Button size="sm" variant={adding?"outline":"default"} onClick={()=>setAdding(v=>!v)}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button></div>
     </div>
     {adding&&<div className="glass max-w-2xl rounded-2xl p-3">
       <div className="grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]">
@@ -131,7 +138,7 @@ function Books(){
 
 function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:{book:any;notes:any[];coverPath:string|null;onSave:(p:any)=>Promise<unknown>;onDelete:()=>Promise<unknown>;onAddNote:(p:any)=>Promise<unknown>;onDeleteNote:(id:string)=>Promise<unknown>}){
   const isBible=isBibleBook(String(book.title||""));
-  const total=Number(book.total_pages)||0;
+  const total=isBible?1189:(Number(book.total_pages)||0);
   const[page,setPage]=useState(String(book.current_page||0));
   const[summary,setSummary]=useState(book.summary||"");
   const[note,setNote]=useState("");
@@ -189,7 +196,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
     await onSave({current_page:nextPage,progress:nextProgress,completed_on:total&&nextPage>=total?new Date().toISOString().slice(0,10):null});
     setPage(String(nextPage));
     setPanel(null);
-    toast.success("Avance de lectura guardado.");
+    toast.success(isBible?"Avance de capítulos guardado.":"Avance de lectura guardado.");
   };
   const saveDetails=async()=>{
     if(!newTitle.trim()){toast.error("El título no puede quedar vacío.");return;}
@@ -235,22 +242,15 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-2 font-semibold leading-snug">{book.title}</h3>
-            {isBible
-              ? <p className="mt-1 text-xs text-muted-foreground">Plan de lectura anual o libre</p>
-              : <><p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>{Number(book.target_pages)>0&&<p className="mt-1 text-xs text-primary">Meta intermedia: {book.target_pages} páginas · {Math.max(0,Number(book.target_pages)-pageValue)} restantes</p>}</>}
+            {isBible?<p className="mt-1 text-xs text-muted-foreground">{total.toLocaleString("es-CO")} capítulos · {Math.round(progress)}% · {remain.toLocaleString("es-CO")} restantes</p>:<><p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>{Number(book.target_pages)>0&&<p className="mt-1 text-xs text-primary">Meta intermedia: {book.target_pages} páginas · {Math.max(0,Number(book.target_pages)-pageValue)} restantes</p>}</>}
           </div>
           <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={()=>void onDelete()} aria-label={"Eliminar "+book.title}>
             <Trash2 className="h-4 w-4 text-destructive"/>
           </Button>
         </div>
-        {!isBible&&<>
-          <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:progress+"%"}}/></div>
-          {total>0&&progress>=100&&<p className="text-[11px] font-medium text-emerald-600">Lectura completada</p>}
-        </>}
+        <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:progress+"%"}}/></div>{total>0&&progress>=100&&<p className="text-[11px] font-medium text-emerald-600">{isBible?"Capítulos registrados completos":"Lectura completada"}</p>}
         <div className="flex flex-wrap gap-1.5">
-          {isBible
-            ? <a href="/biblia" target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"><BookOpen className="mr-1 h-3.5 w-3.5"/>Abrir Plan Bíblico <span className="ml-1">↗</span></a>
-            : <>
+          {isBible?<><Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Capítulos</Button><a href="/biblia" target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"><BookOpen className="mr-1 h-3.5 w-3.5"/>Abrir Plan Bíblico <span className="ml-1">↗</span></a></>:<>
               <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>
               <Button size="sm" variant={panel==="summary"?"default":"outline"} onClick={()=>setPanel(panel==="summary"?null:"summary")}><FileText className="mr-1 h-3.5 w-3.5"/>Resumen</Button>
               <Button size="sm" variant={panel==="notes"?"default":"outline"} onClick={()=>setPanel(panel==="notes"?null:"notes")}><NotebookPen className="mr-1 h-3.5 w-3.5"/>Notas ({mine.length})</Button>
@@ -270,16 +270,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
       </div>
     </div>}
 
-    {panel==="progress"&&!isBible&&<div className="space-y-2 border-t p-3">
-      <p className="text-sm font-medium">Actualizar progreso</p>
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="w-36 text-xs text-muted-foreground">Página actual
-          <Input className="mt-1" type="number" min="0" max={total||undefined} value={page} onChange={e=>setPage(e.target.value)}/>
-        </label>
-        <Button size="sm" onClick={()=>void saveProgress()}><Save className="mr-1 h-3.5 w-3.5"/>Guardar página</Button>
-        {total>0&&<span className="pb-2 text-xs text-muted-foreground">{remain} páginas restantes</span>}
-      </div>
-    </div>}
+    {panel==="progress"&&<div className="space-y-2 border-t p-3"><p className="text-sm font-medium">{isBible?"Actualizar capítulos leídos":"Actualizar progreso"}</p><div className="flex flex-wrap items-end gap-2"><label className="w-40 text-xs text-muted-foreground">{isBible?"Capítulos leídos":"Página actual"}<Input className="mt-1" type="number" min="0" max={total||undefined} value={page} onChange={e=>setPage(e.target.value)}/></label><Button size="sm" onClick={()=>void saveProgress()}><Save className="mr-1 h-3.5 w-3.5"/>{isBible?"Guardar capítulos":"Guardar página"}</Button>{total>0&&<span className="pb-2 text-xs text-muted-foreground">{remain.toLocaleString("es-CO")} {isBible?"capítulos":"páginas"} restantes</span>}</div></div>}
 
     {panel==="summary"&&!isBible&&<div className="space-y-2 border-t p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -380,7 +371,9 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover}:{item:any;onEdit:(
 }
 function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const q=useLGList("learning_items");
+  const sessions=useLGList("learning_sessions","session_date");
   const m=useLGMutations("learning_items");
+  const[sort,setSort]=useState<LearningSort>("used_desc");
   const{user}=useAuth();
   const isGames=mode==="games";
   const[adding,setAdding]=useState(false);
@@ -395,7 +388,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const isGameItem=(item:any)=>item.kind==="video_game"||item.kind==="game";
   const allItems=(q.data||[]).filter((item:any)=>item.kind!=="book"&&item.kind!=="language");
   const items=allItems.filter((item:any)=>isGames?isGameItem(item):!isGameItem(item));
-  const visibleItems=isGames?items:items.filter((item:any)=>filter==="all"||item.kind===filter);
+  const visibleItems=sortLearningItems(isGames?items:items.filter((item:any)=>filter==="all"||item.kind===filter),sessions.data||[],sort);
   const resetForm=()=>{setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setEditingId(null);setAdding(false);};
   const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setEditingId(item.id);setAdding(true);};
   const saveItem=async()=>{
@@ -413,8 +406,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   };
   return <section className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, objetivos y avance de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div>
-      <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
+      <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, objetivos y avance de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div><div className="flex items-center gap-2"><LearningSortControl value={sort} onChange={setSort}/><Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button></div>
     </div>
     {adding&&<div className="glass max-w-2xl space-y-2 rounded-2xl p-3">
       <div className="grid gap-2 sm:grid-cols-[1fr_190px_auto]">
@@ -478,6 +470,8 @@ function Languages(){
   };
   const skills:Record<string,string>={speaking:"Conversación",listening:"Escucha",reading:"Lectura",writing:"Escritura",vocabulary:"Vocabulario",grammar:"Gramática"};
   const localeSessions=(s.data||[]).filter((entry:any)=>entry.resource_url===locale);
+  const[sort,setSort]=useState<LearningSort>("used_desc");
+  const sortedLanguages=[...(q.data||[])].sort((a:any,b:any)=>{const aCount=(s.data||[]).filter((entry:any)=>entry.resource_url===a.locale_code).length,bCount=(s.data||[]).filter((entry:any)=>entry.resource_url===b.locale_code).length;const names=String(a.language_name||"").localeCompare(String(b.language_name||""),"es",{sensitivity:"base"});if(sort==="title_asc")return names;if(sort==="title_desc")return -names;if(sort==="used_asc")return aCount-bCount||names;if(sort==="recent")return String(b.updated_at||b.created_at||"").localeCompare(String(a.updated_at||a.created_at||""))||names;return bCount-aCount||names;});
   return <section className="space-y-4">
     {(q.isError||s.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:s.error instanceof Error?s.error.message:"No se pudieron cargar idiomas o sesiones."}/>}
     <div className="grid grid-cols-1 gap-3">
@@ -505,8 +499,8 @@ function Languages(){
       </div>
     </div>
     <div className="glass space-y-3 rounded-2xl p-4">
-      <div className="flex items-center justify-between gap-2"><div><h2 className="font-semibold">Mis idiomas</h2><p className="text-xs text-muted-foreground">Selecciona una tarjeta para editar el nivel y la meta.</p></div><span className="text-xs text-muted-foreground">{(q.data||[]).length} registrados</span></div>
-      {(q.data||[]).length===0?<p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">Todavía no has agregado idiomas. Usa el formulario de arriba para comenzar.</p>:<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{(q.data||[]).map((x:any)=><button type="button" key={x.id} onClick={()=>{setCode(x.language_code);setLocale(x.locale_code||((LANGS.find((l:any)=>l.code===x.language_code)||LANGS[0]).variants[0][0]));}} className={"flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition hover:border-primary "+(selectedProfile?.id===x.id?"border-primary bg-primary/5":"bg-background/50")}>
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Mis idiomas</h2><p className="text-xs text-muted-foreground">Selecciona una tarjeta para editar el nivel y la meta.</p></div><LearningSortControl value={sort} onChange={setSort}/></div>
+      {(q.data||[]).length===0?<p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">Todavía no has agregado idiomas. Usa el formulario de arriba para comenzar.</p>:<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{sortedLanguages.map((x:any)=><button type="button" key={x.id} onClick={()=>{setCode(x.language_code);setLocale(x.locale_code||((LANGS.find((l:any)=>l.code===x.language_code)||LANGS[0]).variants[0][0]));}} className={"flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition hover:border-primary "+(selectedProfile?.id===x.id?"border-primary bg-primary/5":"bg-background/50")}>
         <FlagIcon locale={x.locale_code||((LANGS.find((l:any)=>l.code===x.language_code)||LANGS[0]).variants[0][0])}/>
         <span className="min-w-0 flex-1"><b className="block text-sm">{x.language_name} · {x.country_name||x.locale_code}</b><span className="text-xs text-muted-foreground">Nivel {x.level} → meta {x.target_level||"—"}</span><span className="block text-[11px] text-muted-foreground">{(x.focus_areas||[]).join(" · ")||"Sin enfoque definido"}</span></span>
         <span className="text-right text-xs text-muted-foreground">{(s.data||[]).filter((z:any)=>z.resource_url===x.locale_code).length}<span className="block">sesiones</span></span>
