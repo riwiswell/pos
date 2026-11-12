@@ -34,6 +34,13 @@ begin
       and h.beverage_type = 'water'
       and h.amount_ml = 325
       and h.note like 'Reconstruido el 11/11/2026:%'
+  )
+  and not exists (
+    select 1
+    from public.health_metrics old
+    where old.user_id = v_user
+      and old.metric_date = date '2026-11-10'
+      and coalesce(old.water_liters,0) >= 0.30
   );
 end $$;
 
