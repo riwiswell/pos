@@ -188,10 +188,11 @@ function HomePage() {
     <div className="inicio-dashboard flex flex-col gap-4">
       <GlobalDateHeader compact />
 
+      <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
       <section className="inicio-hero relative isolate overflow-hidden rounded-[26px] border border-white/10 bg-gradient-to-br from-[#202342] via-[#171b2b] to-[#10262f] px-5 py-4 shadow-[0_22px_55px_-34px_rgba(75,105,255,.55)]">
         <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="pointer-events-none absolute bottom-[-100px] left-[38%] h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="relative grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(290px,360px)]">
+        <div className="relative grid gap-3">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[11px] font-medium tracking-wide text-slate-300">
               <Sparkles className="h-3.5 w-3.5 text-amber-300" />
@@ -208,11 +209,9 @@ function HomePage() {
             <ProactiveBriefing date={date}/>
           </div>
 
-          <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.05] p-2 backdrop-blur-sm">
-            <WeatherCard compact />
-          </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:col-span-2">
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {showHabits && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur">
                 <div className="flex items-center gap-2 text-xs text-slate-300"><Target className="h-4 w-4 text-cyan-300" /> Hábitos</div>
@@ -237,11 +236,10 @@ function HomePage() {
           </div>
         </div>
       </section>
-
-      <Link to="/gamificacion" hash="desafios" search={(prev: Record<string, unknown>) => prev} className="group flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]">
+       <Link to="/gamificacion" hash="desafios" search={(prev: Record<string, unknown>) => prev} className="group flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Target className="h-5 w-5"/></span>
-        <span className="min-w-0 flex-1"><b className="block text-sm">Retos compartidos</b><span className="text-xs text-muted-foreground">Crea un desafío o revisa los que ya tienes en marcha.</span></span>
-        <span className="shrink-0 text-xs font-semibold text-primary">Abrir desafíos</span>
+        <span className="min-w-0 flex-1"><b className="block text-sm">Crea un reto</b><span className="text-xs text-muted-foreground">Define una meta, gana XP y sigue tu avance desde Desafíos.</span></span>
+        <span className="shrink-0 text-xs font-semibold text-primary">Crear desafío</span>
         <ArrowUpRight className="h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"/>
       </Link>
       <div className="inicio-dashboard-grid grid gap-3">
