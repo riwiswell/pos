@@ -199,11 +199,12 @@
 }
 
 /*
- * Inicio: natural document flow and a responsive 12-column card canvas.
- * No viewport locking: cards expand vertically instead of overlapping or being clipped.
+ * Inicio: full-width responsive card canvas with natural document flow.
+ * Every row intentionally uses the available width; cards never overlap or clip.
  */
 .inicio-dashboard {
   display: flex;
+  width: 100%;
   min-width: 0;
   min-height: 100%;
   flex-direction: column;
@@ -228,8 +229,9 @@
 }
 
 .inicio-widget--weather,
-.inicio-widget--diary {
-  grid-column: span 6;
+.inicio-widget--activity,
+.inicio-widget--shared-challenges {
+  grid-column: 1 / -1;
 }
 
 .inicio-widget--habits {
@@ -240,18 +242,11 @@
   grid-column: span 5;
 }
 
+.inicio-widget--hydration,
+.inicio-widget--diary,
 .inicio-widget--reading,
-.inicio-widget--games,
-.inicio-widget--hydration {
-  grid-column: span 4;
-}
-
-.inicio-widget--activity {
-  grid-column: span 8;
-}
-
-.inicio-widget--shared-challenges {
-  grid-column: span 4;
+.inicio-widget--games {
+  grid-column: span 6;
 }
 
 .inicio-habits-column,
@@ -263,6 +258,7 @@
 
 .inicio-hero {
   min-width: 0;
+  width: 100%;
 }
 
 @media (max-width: 1100px) {
@@ -271,16 +267,16 @@
   }
 
   .inicio-widget,
-  .inicio-widget--weather,
   .inicio-widget--habits,
   .inicio-widget--agenda,
-  .inicio-widget--reading,
-  .inicio-widget--games,
   .inicio-widget--hydration,
-  .inicio-widget--diary {
+  .inicio-widget--diary,
+  .inicio-widget--reading,
+  .inicio-widget--games {
     grid-column: span 1;
   }
 
+  .inicio-widget--weather,
   .inicio-widget--activity,
   .inicio-widget--shared-challenges {
     grid-column: 1 / -1;
@@ -297,10 +293,10 @@
   .inicio-widget--weather,
   .inicio-widget--habits,
   .inicio-widget--agenda,
-  .inicio-widget--reading,
-  .inicio-widget--games,
   .inicio-widget--hydration,
   .inicio-widget--diary,
+  .inicio-widget--reading,
+  .inicio-widget--games,
   .inicio-widget--activity,
   .inicio-widget--shared-challenges {
     grid-column: 1 / -1;

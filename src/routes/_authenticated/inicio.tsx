@@ -87,8 +87,6 @@ function HomePage() {
   const loadHabits = showHabits || showHabitsCard;
   const habitsQuery = useHabits(false, loadHabits);
   const logsQuery = useLogs(date, loadHabits);
-  const weekStart = useMemo(() => addDaysISO(date, -6), [date]);
-  const weekLogsQuery = useLogsRange(weekStart, date, loadHabits);
   const usageStart = useMemo(() => addDaysISO(date, -29), [date]);
   const usageLogsQuery = useLogsRange(usageStart, date, loadHabits);
   const habitMutations = useHabitMutations(date);
@@ -149,36 +147,6 @@ function HomePage() {
       .map(({ habit }) => habit),
     [habits, usageCounts],
   );
-  const weeklyRhythm = useMemo(() => {
-    const habitById = new Map<string, Habit>();
-    for (const habit of onlyHabits) habitById.set(habit.id, habit);
-    const logsByDate = new Map<string, HabitLog[]>();
-    for (const log of weekLogsQuery.data ?? []) {
-      if (!habitById.has(log.habit_id)) continue;
-      const dayLogs = logsByDate.get(log.date) ?? [];
-      dayLogs.push(log);
-      logsByDate.set(log.date, dayLogs);
-    }
-
-    const days: { date: string; label: string; dayNumber: number; recorded: number; completed: number; percent: number | null }[] = [];
-    for (let day = weekStart; day <= date; day = addDaysISO(day, 1)) {
-      const dayLogs = logsByDate.get(day) ?? [];
-      const completed = dayLogs.filter((log) => {
-        const habit = habitById.get(log.habit_id);
-        return habit ? isDone(habit, log) : false;
-      }).length;
-      days.push({
-        date: day,
-        label: new Intl.DateTimeFormat("es-CO", { weekday: "short" }).format(new Date(day + "T12:00:00")).replace(".", ""),
-        dayNumber: Number(day.slice(-2)),
-        recorded: dayLogs.length,
-        completed,
-        percent: dayLogs.length ? Math.round((completed / dayLogs.length) * 100) : null,
-      });
-    }
-    return days;
-  }, [date, onlyHabits, weekLogsQuery.data, weekStart]);
-
   const name =
     profileQuery.data?.display_name ??
     profileQuery.data?.full_name ??
@@ -382,11 +350,6 @@ function HomePage() {
                     </div>
                   </div>
                 )}
-                {habits.length > 0 && (
-                  <div className="border-t border-border/70 px-4 py-3">
-                    <WeeklyHabitRhythm days={weeklyRhythm} loading={weekLogsQuery.isLoading} error={weekLogsQuery.isError} />
-                  </div>
-                )}
               </section>
               )}
             </div>
@@ -475,35 +438,77 @@ function HomePage() {
 
 
 
-function CurrentBookCard(){
- const query=useLGList("learning_items","updated_at");
- const allBooks=(query.data??[]).filter((item:any)=>item.kind==="book") as any[];
- const progressOf=(item:any)=>{
-  const total=Number(item.total_pages??0), page=Number(item.current_page??0);
-  return total>0?Math.min(100,Math.max(0,page/total*100)):Math.min(100,Math.max(0,Number(item.progress??0)));
- };
- const completedBooks=allBooks.filter((item:any)=>Boolean(item.completed_on)||item.status==="completed"||progressOf(item)>=100);
- const completedBook=[...completedBooks].sort((a,b)=>(Date.parse(b.completed_on??b.updated_at??b.created_at??"")||0)-(Date.parse(a.completed_on??a.updated_at??a.created_at??"")||0))[0];
- const activeBooks=allBooks.filter((item:any)=>item.status!=="archived"&&!completedBooks.some((done:any)=>done.id===item.id)&&progressOf(item)<100);
- const book=[...activeBooks].sort((a,b)=>{
-  const byProgress=progressOf(b)-progressOf(a);
-  return byProgress!==0?byProgress:(Date.parse(b.updated_at??b.created_at??"")||0)-(Date.parse(a.updated_at??a.created_at??"")||0);
- })[0];
- const total=Number(book?.total_pages??0), page=Number(book?.current_page??0), progress=book?progressOf(book):0;
- const completedPageCount=Number(completedBook?.current_page??completedBook?.total_pages??0);
- return <section className="inicio-learning-card relative min-w-0 overflow-hidden rounded-[24px] border border-sky-400/20 bg-gradient-to-br from-[#152a3b] via-[#172331] to-card p-4 shadow-sm">
-  <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-400/10 blur-2xl"/>
-  <div className="relative">
-   <div className="flex items-center justify-between gap-2">
-    <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-400/15 text-sky-300"><BookOpen className="h-5 w-5"/></span><div><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-sky-300">Aprendizaje</p><h2 className="text-sm font-semibold text-white">{book?"Lectura actual":"Tu recorrido de lectura"}</h2></div></div>
-    <Link to="/aprendizaje" search={(prev:Record<string,unknown>)=>prev} className="text-[11px] font-medium text-sky-300 hover:underline">Biblioteca <ArrowUpRight className="ml-0.5 inline h-3 w-3"/></Link>
-   </div>
-   {query.isLoading?<p className="mt-4 text-xs text-slate-300">Buscando tu lectura…</p>:query.isError?<p className="mt-4 text-xs text-slate-300">No se pudo consultar Aprendizaje.</p>:<>
-    {completedBook&&<div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/10 p-2.5 text-amber-100"><Trophy className="mt-0.5 h-4 w-4 shrink-0 text-amber-300"/><div className="min-w-0 text-xs"><b>¡Felicitaciones! Terminaste {completedBook.title}.</b><p className="mt-0.5 text-amber-100/80">{completedPageCount>0?completedPageCount+" páginas completadas · ":""}{completedBooks.length} {completedBooks.length===1?"libro terminado":"libros terminados"} en tu biblioteca.</p></div></div>}
-    {book?<><p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-sky-300">La lectura más cerca de terminar</p><p className="mt-1 line-clamp-2 text-base font-semibold text-white">{book.title}</p><div className="mt-3 flex items-end justify-between gap-3"><p className="text-2xl font-semibold tabular-nums text-white">{Math.round(progress)}%</p><p className="text-right text-[11px] text-slate-300">{total>0?"Página "+page+" de "+total+" · "+Math.max(0,total-page)+" restantes":"Progreso registrado"}</p></div><Progress value={progress} className="mt-2 h-2 bg-white/10"/></>:<div className="mt-3 rounded-xl border border-white/10 bg-white/[.04] p-3"><p className="text-sm font-medium text-white">{completedBook?"¡Has completado todas tus lecturas registradas!":"Aún no tienes una lectura activa"}</p><p className="mt-1 text-xs text-slate-300">{completedBook?"Agrega el siguiente libro a tu biblioteca para continuar tu recorrido.":"Añade un libro en Aprendizaje y aparecerá aquí con su progreso real."}</p></div>}
-   </>}
-  </div>
- </section>;
+function CurrentBookCard() {
+  const query = useLGList("learning_items", "updated_at");
+  const progressOf = (item: any) => {
+    const total = Number(item.total_pages ?? 0);
+    const page = Number(item.current_page ?? 0);
+    return total > 0
+      ? Math.min(100, Math.max(0, (page / total) * 100))
+      : Math.min(100, Math.max(0, Number(item.progress ?? 0)));
+  };
+  const activeBooks = (query.data ?? []).filter(
+    (item: any) =>
+      item.kind === "book" &&
+      item.status !== "archived" &&
+      item.status !== "completed" &&
+      !item.completed_on &&
+      progressOf(item) < 100,
+  ) as any[];
+  const book = [...activeBooks].sort((a, b) => {
+    const byProgress = progressOf(b) - progressOf(a);
+    return byProgress !== 0
+      ? byProgress
+      : (Date.parse(b.updated_at ?? b.created_at ?? "") || 0) -
+          (Date.parse(a.updated_at ?? a.created_at ?? "") || 0);
+  })[0];
+  const total = Number(book?.total_pages ?? 0);
+  const page = Number(book?.current_page ?? 0);
+  const progress = book ? progressOf(book) : 0;
+
+  return (
+    <section className="inicio-learning-card relative min-w-0 overflow-hidden rounded-[24px] border border-sky-400/20 bg-gradient-to-br from-[#152a3b] via-[#172331] to-card p-4 shadow-sm">
+      <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-400/10 blur-2xl" />
+      <div className="relative">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-400/15 text-sky-300">
+              <BookOpen className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[.15em] text-sky-300">Aprendizaje</p>
+              <h2 className="text-sm font-semibold text-white">Lectura actual</h2>
+            </div>
+          </div>
+          <Link to="/aprendizaje" search={(prev: Record<string, unknown>) => prev} className="text-[11px] font-medium text-sky-300 hover:underline">
+            Biblioteca <ArrowUpRight className="ml-0.5 inline h-3 w-3" />
+          </Link>
+        </div>
+        {query.isLoading ? (
+          <p className="mt-4 text-xs text-slate-300">Buscando tu lectura…</p>
+        ) : query.isError ? (
+          <p className="mt-4 text-xs text-slate-300">No se pudo consultar Aprendizaje.</p>
+        ) : book ? (
+          <>
+            <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-sky-300">En curso</p>
+            <p className="mt-1 line-clamp-2 text-base font-semibold text-white">{book.title}</p>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <p className="text-2xl font-semibold tabular-nums text-white">{Math.round(progress)}%</p>
+              <p className="text-right text-[11px] text-slate-300">
+                {total > 0 ? `Página ${page} de ${total} · ${Math.max(0, total - page)} restantes` : "Progreso registrado"}
+              </p>
+            </div>
+            <Progress value={progress} className="mt-2 h-2 bg-white/10" />
+          </>
+        ) : (
+          <div className="mt-3 rounded-xl border border-white/10 bg-white/[.04] p-3">
+            <p className="text-sm font-medium text-white">No tienes una lectura activa</p>
+            <p className="mt-1 text-xs text-slate-300">Cuando empieces un libro, su progreso aparecerá aquí.</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 function CurrentGameCard() {
@@ -628,115 +633,89 @@ function DiaryOverview({
   );
 }
 
-type WeeklyHabitDay = {
-  date: string;
-  label: string;
-  dayNumber: number;
-  recorded: number;
-  completed: number;
-  percent: number | null;
-};
-
-function WeeklyHabitRhythm({
-  days,
-  loading,
-  error,
-}: {
-  days: WeeklyHabitDay[];
-  loading: boolean;
-  error: boolean;
-}) {
-  const activeDays = days.filter((day) => day.recorded > 0);
-  const average = activeDays.length
-    ? Math.round(activeDays.reduce((sum, day) => sum + (day.percent ?? 0), 0) / activeDays.length)
-    : null;
-
-  return (
-    <section>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold">Ritmo semanal</h3>
-          <p className="text-[11px] text-muted-foreground">Solo cuenta los hábitos que registraste</p>
-        </div>
-        {average !== null && (
-          <div className="text-right">
-            <p className="text-lg font-semibold tabular-nums">{average}%</p>
-            <p className="text-[10px] text-muted-foreground">promedio registrado</p>
-          </div>
-        )}
-      </div>
-
-      {error ? (
-        <p className="rounded-xl bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">
-          No se pudo cargar el historial semanal.
-        </p>
-      ) : loading ? (
-        <div className="grid h-[76px] grid-cols-7 items-end gap-2" aria-label="Cargando ritmo semanal">
-          {days.map((day) => <div key={day.date} className="h-12 animate-pulse rounded-lg bg-muted/70" />)}
-        </div>
-      ) : activeDays.length === 0 ? (
-        <p className="rounded-xl bg-muted/45 px-3 py-2.5 text-xs text-muted-foreground">
-          Aún no hay registros en estos siete días. Los días vacíos se mantienen neutrales; no se cuentan como fallos.
-        </p>
-      ) : (
-        <div className="grid grid-cols-7 gap-2">
-          {days.map((day) => (
-            <div
-              key={day.date}
-              className="flex min-w-0 flex-col items-center gap-1.5"
-              title={day.recorded
-                ? `${day.label} ${day.dayNumber}: ${day.completed} de ${day.recorded} registros completados`
-                : `${day.label} ${day.dayNumber}: sin registros`}
-            >
-              <span className="text-[10px] tabular-nums text-muted-foreground">
-                {day.percent === null ? "—" : `${day.percent}%`}
-              </span>
-              <div className="flex h-10 w-full items-end overflow-hidden rounded-lg bg-muted/65">
-                {day.percent !== null && (
-                  <div
-                    className="w-full rounded-lg bg-gradient-to-t from-violet-600 to-cyan-400 transition-[height]"
-                    style={{ height: `${Math.max(8, day.percent)}%` }}
-                  />
-                )}
-              </div>
-              <span className="text-[10px] capitalize text-muted-foreground">{day.label}</span>
-              <span className="text-[10px] tabular-nums text-muted-foreground">{day.dayNumber}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
 function HydrationOverview({ date, compact = false }: { date: string; compact?: boolean }) {
   const metrics = usePersonalDateList<{ water_liters: number | null }>("health_metrics", "metric_date", date);
   const doses = useDoses(date);
   const entries = useHydrationEntries(date);
-  const legacyWaterMl = (Number(metrics.data?.[0]?.water_liters ?? 0) || 0) * 1000;
-  const recordedWaterMl = (entries.data ?? []).filter((entry) => entry.beverage_type === "water").reduce((sum, entry) => sum + Number(entry.amount_ml || 0), 0);
-  const otherFluidMl = (entries.data ?? []).filter((entry) => entry.beverage_type !== "water").reduce((sum, entry) => sum + Number(entry.amount_ml || 0), 0);
-  const medicineWaterMl = waterGlassesToMl(medicationWater(doses.data ?? []));
+
+  const failedSources = [
+    metrics.isError ? "el resumen de salud" : null,
+    doses.isError ? "los registros de medicamentos" : null,
+    entries.isError ? "las bebidas registradas" : null,
+  ].filter((value): value is string => Boolean(value));
+  const allFailed = failedSources.length === 3;
+  const ready = !metrics.isLoading && !doses.isLoading && !entries.isLoading;
+
+  // A failed source should not hide values returned successfully by the others.
+  const legacyWaterMl = metrics.isError ? 0 : (Number(metrics.data?.[0]?.water_liters ?? 0) || 0) * 1000;
+  const recordedWaterMl = entries.isError ? 0 : (entries.data ?? [])
+    .filter((entry) => entry.beverage_type === "water")
+    .reduce((sum, entry) => sum + Number(entry.amount_ml || 0), 0);
+  const otherFluidMl = entries.isError ? 0 : (entries.data ?? [])
+    .filter((entry) => entry.beverage_type !== "water")
+    .reduce((sum, entry) => sum + Number(entry.amount_ml || 0), 0);
+  const medicineWaterMl = doses.isError ? 0 : waterGlassesToMl(medicationWater(doses.data ?? []));
   const waterMl = legacyWaterMl + recordedWaterMl + medicineWaterMl;
   const totalFluidMl = waterMl + otherFluidMl;
   const targetLiters = 2.25;
   const percent = Math.min(100, Math.round((waterMl / (targetLiters * 1000)) * 100));
   const waterAmount = (waterMl / 1000).toLocaleString("es-CO", { maximumFractionDigits: 2 });
   const fmtMl = (value: number) => Math.round(value).toLocaleString("es-CO");
+  const retry = () => void Promise.all([metrics.refetch(), doses.refetch(), entries.refetch()]);
 
   return (
-    <section className="relative overflow-hidden rounded-[24px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[.13] via-card to-card p-3.5 shadow-sm">
-      <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-400/10 blur-2xl" />
+    <section className="relative min-w-0 overflow-hidden rounded-[24px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[.13] via-card to-card p-3.5 shadow-sm">
+      <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-400/10" />
       <div className="relative">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400/15 text-cyan-400"><Droplets className="h-5 w-5" /></span><div><p className="text-[11px] font-semibold uppercase tracking-[.14em] text-cyan-500">Bienestar</p><h2 className="font-semibold">Hidratación</h2></div></div>
-          <Button asChild size="sm" variant="ghost" className="rounded-xl"><Link to="/salud" search={(prev: Record<string, unknown>) => prev}>Registrar <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link></Button>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-400/15 text-cyan-400">
+              <Droplets className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-cyan-500">Bienestar</p>
+              <h2 className="font-semibold">Hidratación</h2>
+            </div>
+          </div>
+          <Button asChild size="sm" variant="ghost" className="shrink-0 rounded-xl">
+            <Link to="/salud" search={(prev: Record<string, unknown>) => prev}>
+              Registrar <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+            </Link>
+          </Button>
         </div>
-        {metrics.isError || doses.isError || entries.isError ? <p className="mt-4 text-xs text-muted-foreground">No se pudo cargar el resumen de hidratación.</p> : (
+
+        {allFailed ? (
+          <div className="mt-3 rounded-xl border border-dashed border-border/70 bg-background/30 p-3">
+            <p className="text-xs text-muted-foreground">
+              No pude consultar Hidratación: fallaron {failedSources.join(", ")}.
+            </p>
+            <Button type="button" size="sm" variant="outline" className="mt-2 h-8" onClick={retry}>
+              Reintentar
+            </Button>
+          </div>
+        ) : (
           <>
-            <div className="mt-3 flex items-end justify-between gap-3"><p className="text-2xl font-semibold tabular-nums">{metrics.isLoading || doses.isLoading || entries.isLoading ? "…" : waterAmount}<span className="ml-1 text-sm font-normal text-muted-foreground">/ {targetLiters.toLocaleString("es-CO")} L</span></p><span className="text-sm font-semibold text-cyan-500 tabular-nums">{metrics.isLoading || doses.isLoading || entries.isLoading ? " " : `${percent}%`}</span></div>
-            <Progress value={metrics.isLoading || doses.isLoading || entries.isLoading ? 0 : percent} className="mt-3 h-2.5" />
-            {!metrics.isLoading && !doses.isLoading && !entries.isLoading && <div className="mt-2 space-y-0.5 text-[11px] text-muted-foreground"><p>Agua simple: {fmtMl(waterMl)} ml · Otros líquidos: {fmtMl(otherFluidMl)} ml</p><p>Total registrado: {fmtMl(totalFluidMl)} ml</p></div>}
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <p className="text-2xl font-semibold tabular-nums">
+                {!ready ? "…" : waterAmount}
+                <span className="ml-1 text-sm font-normal text-muted-foreground">/ {targetLiters.toLocaleString("es-CO")} L</span>
+              </p>
+              <span className="text-sm font-semibold text-cyan-500 tabular-nums">
+                {!ready ? " " : `${percent}%`}
+              </span>
+            </div>
+            <Progress value={!ready || allFailed ? 0 : percent} className="mt-3 h-2.5" />
+            {ready && (
+              <div className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
+                <p>Agua simple: {fmtMl(waterMl)} ml · Otros líquidos: {fmtMl(otherFluidMl)} ml</p>
+                <p>Total registrado: {fmtMl(totalFluidMl)} ml</p>
+              </div>
+            )}
+            {failedSources.length > 0 && (
+              <p className="mt-2 text-[10px] leading-4 text-amber-500">
+                Resumen parcial: no se pudieron consultar {failedSources.join(" y ")}.
+              </p>
+            )}
           </>
         )}
       </div>
