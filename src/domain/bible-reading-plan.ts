@@ -428,11 +428,17 @@ function chaptersInReference(reference: string): string[] {
 
   const book = match[1]!.trim().replace(/\s+/g, " ").toLowerCase();
   const start = Number(match[2]);
+  const startVerse = match[3] ? Number(match[3]) : null;
   const rest = match[4] ?? "";
   const range = rest.match(/^[—–-]\s*(\d+)(?:\.(\d+))?/);
-  const end = range ? Number(range[1]) : start;
+  const endNumber = range ? Number(range[1]) : start;
+  const endVerse = range?.[2] ? Number(range[2]) : null;
+  // A bare end number after a verse (e.g. 1.1-25) is a verse range;
+  // when the ending chapter differs and carries a verse, it spans chapters.
+  const end = range && endNumber !== start && (startVerse === null || endVerse !== null)
+    ? endNumber
+    : start;
 
-  // Expand chapter ranges even if a verse is specified at only one endpoint.
   return Array.from({ length: Math.max(1, end - start + 1) }, (_, index) => book + "|" + (start + index));
 }
 
