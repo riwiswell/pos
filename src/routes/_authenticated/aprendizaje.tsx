@@ -144,7 +144,7 @@ function Books(){
         <Input placeholder="Autor" value={author} onChange={e=>setAuthor(e.target.value)}/>
         <Input type="number" min="0" max="3000" placeholder="Año" value={publicationYear} onChange={e=>setPublicationYear(e.target.value)}/>
         <Input type="number" min="1" placeholder="Páginas reales" value={pages} onChange={e=>setPages(e.target.value)}/>
-        <Input type="number" min="1" placeholder="Meta páginas" value={targetPages} onChange={e=>setTargetPages(e.target.value)}/
+        <Input type="number" min="1" placeholder="Meta páginas" value={targetPages} onChange={e=>setTargetPages(e.target.value)}/>
         <Button disabled={!title.trim()||m.create.isPending||(isBibleBook(title)&&books.some((book:any)=>isBibleBook(book.title)))} onClick={()=>void addBook()}>
           <Plus className="mr-1 h-4 w-4"/>Agregar
         </Button>
@@ -301,8 +301,10 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
 
     {panel==="details"&&!isBible&&<div className="space-y-2 border-t p-3">
       <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-medium">Editar libro</p><Button size="sm" type="button" variant="outline" onClick={()=>coverInput.current?.click()} disabled={uploadingCover}><ImagePlus className="mr-1 h-3.5 w-3.5"/>{uploadingCover?"Subiendo…":coverPath?"Cambiar portada":"Agregar portada"}</Button></div>
-      <div className="grid gap-2 sm:grid-cols-[1fr_130px_130px_auto]">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.3fr_1fr_110px_130px_130px_auto]">
         <Input aria-label="Título" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/>
+        <Input aria-label="Autor" placeholder="Autor" value={newAuthor} onChange={e=>setNewAuthor(e.target.value)}/>
+        <Input aria-label="Año de publicación" type="number" min="0" max="3000" placeholder="Año" value={newPublicationYear} onChange={e=>setNewPublicationYear(e.target.value)}/>
         <Input aria-label="Páginas reales" type="number" min="1" placeholder="Páginas reales" value={newTotal} onChange={e=>setNewTotal(e.target.value)}/>
         <Input aria-label="Meta intermedia de páginas" type="number" min="1" placeholder="Meta páginas" value={newTargetPages} onChange={e=>setNewTargetPages(e.target.value)}/>
         <Button size="sm" onClick={()=>void saveDetails()}><Save className="mr-1 h-3.5 w-3.5"/>Guardar</Button>
@@ -370,7 +372,7 @@ function kindIcon(kind:string){
   return "📚";
 }
 
-function OtherLearningCard({item,onEdit,onDelete,onSaveCover,minutesPlayed=0}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;minutesPlayed?:number}){
+function OtherLearningCard({item,onEdit,onDelete,onSaveCover,minutesPlayed=0,sessionCount=0}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;minutesPlayed?:number;sessionCount?:number}){
   const[uploading,setUploading]=useState(false);
   const input=useRef<HTMLInputElement>(null);
   const path=item.cover_path?String(item.cover_path):null;
@@ -403,7 +405,25 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,minutesPlayed=0}:{i
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
     </div>
     <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
-      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game")&&<div className="mt-2 space-y-1.5">{Number(item.progress)>0&&<><div className="flex items-center justify-between text-[11px]"><span className="font-medium text-muted-foreground">Progreso de la historia</span><span className="font-semibold tabular-nums">{Math.min(100,Math.max(0,Number(item.progress)||0)).toLocaleString("es-CO",{maximumFractionDigits:1})}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div></>}<p className="text-[11px] text-muted-foreground">{minutesPlayed>0?`Tiempo jugado: ${minutesPlayed>=60?(minutesPlayed/60).toLocaleString("es-CO",{maximumFractionDigits:1})+" h":minutesPlayed+" min"}`:"Sin tiempo de juego registrado"}{Number(item.progress)===0?" · Avance de historia sin registrar":""}</p></div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
+      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game")&&<div className="mt-2 space-y-2">
+        {Number(item.progress)>0&&<>
+          <div className="flex items-center justify-between text-[11px]"><span className="font-medium text-muted-foreground">Progreso de la historia</span><span className="font-semibold tabular-nums">{Math.min(100,Math.max(0,Number(item.progress)||0)).toLocaleString("es-CO",{maximumFractionDigits:1})}%</span></div>
+          <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div>
+        </>}
+        <div className="rounded-xl border border-border/60 bg-muted/25 px-2.5 py-2">
+          <div className="flex items-center justify-between gap-2 text-[11px]">
+            <span className="font-medium text-muted-foreground">Tiempo jugado</span>
+            <span className="font-semibold tabular-nums">{minutesPlayed>0?(minutesPlayed>=60?(minutesPlayed/60).toLocaleString("es-CO",{maximumFractionDigits:1})+" h "+(minutesPlayed%60?minutesPlayed%60+" min":""):minutesPlayed+" min"):"Sin sesiones"}</span>
+          </div>
+          {minutesPlayed>0&&Number(item.progress)<=0&&<>
+            <div className="mt-2 flex gap-1" aria-label={sessionCount+" sesiones de juego registradas"}>
+              {Array.from({length:Math.min(8,sessionCount)},(_,index)=><span key={index} className="h-1.5 flex-1 rounded-full bg-primary/70"/>)}
+            </div>
+            <p className="mt-1 text-[10px] text-muted-foreground">Actividad registrada · {sessionCount} {sessionCount===1?"sesión":"sesiones"}; la historia aún no tiene porcentaje.</p>
+          </>}
+          {Number(item.progress)>0&&minutesPlayed===0&&<p className="mt-1 text-[10px] text-muted-foreground">Porcentaje de historia registrado; todavía no hay tiempo de juego anotado.</p>}
+        </div>
+      </div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
       <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
     </div>
   </article>;
@@ -465,7 +485,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">{isGames?"Todavía no has agregado videojuegos. Pulsa Agregar para registrar el que estás jugando.":"Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno."}</div>}
     <div className={isGames?"grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3":"grid grid-cols-1 gap-3 sm:grid-cols-2"}>
-      {visibleItems.map((item:any)=>{const minutesPlayed=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} onEdit={()=>startEdit(item)} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
+      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id);const minutesPlayed=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={itemSessions.length} onEdit={()=>startEdit(item)} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
     </div>
   </section>;
 }
@@ -526,12 +546,12 @@ function Languages(){
         <Button className="w-full sm:w-auto" onClick={()=>void saveLanguage()} disabled={m.create.isPending||m.update.isPending}><Plus className="mr-1 h-4 w-4"/>{selectedProfile?"Guardar cambios":"Agregar idioma"}</Button>
       </div>
       <div className="glass order-1 space-y-3 rounded-2xl p-4">
-        <div><h2 className="font-semibold">Registrar práctica</h2><p className="text-xs text-muted-foreground">Anota qué idioma practicaste, qué hiciste y cuánto tiempo le dedicaste.</p></div>
+        <div><h2 className="font-semibold">Registrar práctica</h2><p className="text-xs text-muted-foreground">Guarda cada sesión para medir tu constancia y tiempo de estudio.</p></div>
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1 text-xs text-muted-foreground">Idioma<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]);}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select></label>
           <label className="space-y-1 text-xs text-muted-foreground">Variante<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={locale} onChange={e=>setLocale(e.target.value)}>{(LANGS.find((x:any)=>x.code===code)||LANGS[0]).variants.map((x:any)=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
-          <label className="space-y-1 text-xs text-muted-foreground">¿Qué practicaste?<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={skill} onChange={e=>setSkill(e.target.value)}>{Object.entries(skills).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
-          <label className="space-y-1 text-xs text-muted-foreground">Tiempo dedicado (minutos)<Input type="number" min="1" max="1440" placeholder="Ej. 25" value={minutes} onChange={e=>setMinutes(e.target.value)}/></label>
+          <label className="space-y-1 text-xs text-muted-foreground">Actividad<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={skill} onChange={e=>setSkill(e.target.value)}>{Object.entries(skills).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">Duración (minutos)<Input type="number" min="1" max="1440" placeholder="Ej. 25" value={minutes} onChange={e=>setMinutes(e.target.value)}/></label>
         </div>
         <Button className="w-full sm:w-auto" disabled={!minutes||!selectedProfile||sm.create.isPending} onClick={()=>void saveSession()}><Save className="mr-1 h-4 w-4"/>{sm.create.isPending?"Guardando…":"Registrar sesión"}</Button>
         {!selectedProfile&&<p className="text-xs text-amber-600">Agrega primero el idioma y la variante para habilitar el registro.</p>}
