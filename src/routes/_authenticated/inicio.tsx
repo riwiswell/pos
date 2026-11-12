@@ -39,10 +39,11 @@ import { medicationWater, waterGlassesToMl } from "@/domain/health";
 import { usePlannerItems } from "@/hooks/use-planner";
 import { compareChronologically, shortTime } from "@/domain/planner";
 import { addDaysISO, greeting } from "@/lib/date";
-import { normalizeDashboardWidgets } from "@/domain/dashboard";
+import { normalizeDashboardWidgets, normalizeHomeDashboardLayout } from "@/domain/dashboard";
 import { useLGList } from "@/hooks/use-life-graph";
 import { useHydrationEntries } from "@/hooks/use-hydration";
 import { LifeActivityFeed } from "@/components/dashboard/LifeActivityFeed";
+import { DashboardPersonalizer } from "@/components/dashboard/DashboardPersonalizer";
 import type { Habit, HabitLog } from "@/domain/types";
 
 export const Route = createFileRoute("/_authenticated/inicio")({
@@ -75,9 +76,10 @@ function HomePage() {
   const { user } = useAuth();
   const profileQuery = useProfile();
   const dashboardWidgets = normalizeDashboardWidgets(profileQuery.data?.dashboard_widgets);
-  const showPlanner = dashboardWidgets.includes("planner");
+  const homeLayout = normalizeHomeDashboardLayout(profileQuery.data?.dashboard_widgets);
+  const showPlanner = dashboardWidgets.includes("planner") && homeLayout.visible.includes("agenda");
   const showFocus = dashboardWidgets.includes("focus");
-  const showHabits = dashboardWidgets.includes("habits");
+  const showHabits = dashboardWidgets.includes("habits") && homeLayout.visible.includes("habits");
   const habitsQuery = useHabits(false, showHabits);
   const logsQuery = useLogs(date, showHabits);
   const weekStart = useMemo(() => addDaysISO(date, -6), [date]);
@@ -187,8 +189,11 @@ function HomePage() {
   return (
     <div className="inicio-dashboard flex flex-col gap-4">
       <GlobalDateHeader compact />
+      <div className="flex justify-end">
+        <DashboardPersonalizer />
+      </div>
 
-      <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+      <div className="grid gap-3">
       <section className="inicio-hero relative isolate overflow-hidden rounded-[26px] border border-white/10 bg-gradient-to-br from-[#202342] via-[#171b2b] to-[#10262f] px-5 py-4 shadow-[0_22px_55px_-34px_rgba(75,105,255,.55)]">
         <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="pointer-events-none absolute bottom-[-100px] left-[38%] h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
@@ -241,18 +246,25 @@ function HomePage() {
           </div>
         </div>
       </section>
-      <div className="min-w-0"><WeatherCard compact /></div>
+      
       </div>
-      <Link to="/habitos" search={{ tab: "compartidos" } as never} className="group flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]">
+
+      <div className="inicio-dashboard-grid">
+        {homeLayout.visible.includes("weather") && (
+          <div className="inicio-widget inicio-widget--weather" style={{ order: homeLayout.order.indexOf("weather") }}>
+            <WeatherCard compact />
+          </div>
+        )}
+              <Link to="/habitos" search={{ tab: "compartidos" } as never} className="inicio-widget inicio-widget--shared-challenges group flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]" style={{ order: homeLayout.order.indexOf("shared-challenges") }}>
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Target className="h-5 w-5"/></span>
         <span className="min-w-0 flex-1"><b className="block text-sm">Retos compartidos</b><span className="text-xs text-muted-foreground">Invita a otra persona y avancen juntos en metas, hábitos y desafíos.</span></span>
         <span className="shrink-0 text-xs font-semibold text-primary">Invitar y participar</span>
         <ArrowUpRight className="h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"/>
       </Link>
-      <div className="inicio-dashboard-grid grid gap-3">
         <div className="inicio-habits-column min-w-0">
           {showHabits && (
-            habitsQuery.isLoading || logsQuery.isLoading || usageLogsQuery.isLoading ? <LoadingState /> :
+            <div className="inicio-widget inicio-widget--habits" style={{ order: homeLayout.order.indexOf("habits") }}>
+              {habitsQuery.isLoading || logsQuery.isLoading || usageLogsQuery.isLoading ? <LoadingState /> :
             habitsQuery.isError || logsQuery.isError || usageLogsQuery.isError ? (
               <ErrorState message={
                 habitsQuery.error instanceof Error ? habitsQuery.error.message :
@@ -371,7 +383,8 @@ function HomePage() {
                   </div>
                 )}
               </section>
-            )
+              )}
+            </div>
           )}
 
         </div>
@@ -379,6 +392,7 @@ function HomePage() {
         <div className="inicio-planner-column min-w-0">
           <div className="flex h-full min-w-0 flex-col gap-3">
           {showPlanner && (
+            <div className="inicio-widget inicio-widget--agenda" style={{ order: homeLayout.order.indexOf("agenda") }}>
             <section className="rounded-[26px] border border-amber-400/20 bg-gradient-to-br from-amber-500/[.07] via-card to-card p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -407,15 +421,16 @@ function HomePage() {
                 </div>
               }
             </section>
+            </div>
           )}
-          <CurrentBookCard />
-          <CurrentGameCard />
+          {homeLayout.visible.includes("reading") && <div className="inicio-widget inicio-widget--reading" style={{ order: homeLayout.order.indexOf("reading") }}><CurrentBookCard /></div>}
+          {homeLayout.visible.includes("games") && <div className="inicio-widget inicio-widget--games" style={{ order: homeLayout.order.indexOf("games") }}><CurrentGameCard /></div>}
           </div>
         </div>
 
         <aside className="inicio-wellbeing-column min-w-0">
-          <HydrationOverview date={date} compact />
-          <DiaryOverview
+          {homeLayout.visible.includes("hydration") && <div className="inicio-widget inicio-widget--hydration" style={{ order: homeLayout.order.indexOf("hydration") }}><HydrationOverview date={date} compact /></div>}
+          {homeLayout.visible.includes("diary") && <div className="inicio-widget inicio-widget--diary" style={{ order: homeLayout.order.indexOf("diary") }}><DiaryOverview
             entries={journalQuery.data ?? []}
             loading={journalQuery.isLoading}
             error={journalQuery.isError}
@@ -427,15 +442,14 @@ function HomePage() {
               setEditingJournalEntry(entry);
               setJournalDialogOpen(true);
             }}
-          />
+          /></div>}
         </aside>
+        {homeLayout.visible.includes("activity") && <div className="inicio-widget inicio-widget--activity" style={{ order: homeLayout.order.indexOf("activity") }}><LifeActivityFeed connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} /></div>}
       </div>
 
-      <LifeActivityFeed connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} />
-
-      {dashboardWidgets.length === 0 && (
+      {homeLayout.visible.length === 0 && (
         <p className="rounded-xl border border-dashed border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-slate-300">
-          Inicio no tiene widgets activos. Puedes configurarlos desde Perfil.
+          No hay tarjetas visibles. Abre «Personalizar Inicio» para elegir cuáles mostrar.
         </p>
       )}
 
