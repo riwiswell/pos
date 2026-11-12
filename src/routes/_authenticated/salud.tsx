@@ -23,11 +23,14 @@ type HydrationConfig = { enabled: boolean; start_time: string; end_time: string;
 const DEFAULT_HYDRATION: HydrationConfig = { enabled: true, start_time: "08:00", end_time: "21:30", interval_minutes: 90, amount_ml: WATER_GLASS_ML };
 
 function normalizeHydrationTime(value: unknown): string | null {
- const match=String(value??"").trim().match(/^(\d{1,2}):([0-5]\d)(?::[0-5]\d(?:\\.\d+)?)?$/);
+ const raw=String(value??"").trim();
+ const match=/^([0-9]{1,2}):([0-9]{2})(?::([0-9]{2})(?:[.]([0-9]+))?)?$/.exec(raw);
  if(!match)return null;
  const hour=Number(match[1]);
- if(!Number.isInteger(hour)||hour<0||hour>23)return null;
- return String(hour).padStart(2,"0")+":"+match[2];
+ const minute=Number(match[2]);
+ const second=match[3]===undefined?0:Number(match[3]);
+ if(!Number.isInteger(hour)||hour<0||hour>23||!Number.isInteger(minute)||minute<0||minute>59||!Number.isInteger(second)||second<0||second>59)return null;
+ return String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0");
 }
 function hydrationMinutes(value: string): number {
  const [hour,minute]=value.split(":").map(Number);
@@ -112,7 +115,7 @@ function HydrationCard(){
   const startTime=normalizeHydrationTime(schedule.start_time);
   const endTime=normalizeHydrationTime(schedule.end_time);
   if(!startTime||!endTime){
-   toast.error("Introduce horas válidas, por ejemplo 09:40 y 23:30.");return;
+   toast.error("Introduce horas válidas, por ejemplo 9:30 y 23:30.");return;
   }
   if(hydrationMinutes(endTime)<=hydrationMinutes(startTime)){
    toast.error("La hora final debe ser posterior a la hora inicial.");return;
