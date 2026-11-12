@@ -32,6 +32,50 @@ export function IconPicker({
           if (!term) return true;
           const aliases: Record<string, string> = {
             Necktie: "corbata traje oficina ropa",
+            Dress: "vestido ropa mujer",
+            Shoes: "zapatos calzado tenis",
+            Handbag: "bolso cartera",
+            Glasses: "gafas lentes",
+            Backpack: "mochila maleta",
+            Perfume: "perfume fragancia",
+            Ring: "anillo joya",
+            Luggage: "equipaje maleta",
+            Passport: "pasaporte viaje",
+            Motorcycle: "motocicleta moto",
+            Scooter: "scooter motoneta",
+            Basketball: "baloncesto basquet",
+            Football: "futbol balón",
+            Tennis: "tenis raqueta",
+            Running: "correr atletismo",
+            Yoga: "yoga ejercicio",
+            Medal: "medalla premio",
+            Trophy: "trofeo premio",
+            Plant: "planta jardin",
+            Flower: "flor jardin",
+            Butterfly: "mariposa naturaleza",
+            Fish: "pez mascota",
+            PawPrint: "huella mascota",
+            Burger: "hamburguesa comida",
+            Cake: "pastel torta postre",
+            Bread: "pan panadería",
+            Sushi: "sushi comida japonesa",
+            Milk: "leche bebida",
+            Juice: "jugo zumo",
+            Shampoo: "champu cabello",
+            Toothbrush: "cepillo dientes",
+            Soap: "jabón aseo",
+            Hairdryer: "secador cabello",
+            Calculator: "calculadora oficina",
+            Printer: "impresora oficina",
+            Folder: "carpeta archivo",
+            Paperclip: "clip sujetapapeles",
+            Notebook: "cuaderno libreta",
+            Mail: "correo carta",
+            Tablet: "tableta tecnologia",
+            Monitor: "monitor pantalla",
+            Projector: "proyector",
+            Battery: "bateria energía",
+            Earbuds: "audifonos auriculares",
             Banknote: "billete efectivo dinero",
             PiggyBank: "alcancia ahorro",
             HeartPulse: "salud medicina",
@@ -61,7 +105,7 @@ export function IconPicker({
             <p className="text-sm font-semibold">Elige un icono</p>
             <p className="text-[11px] text-muted-foreground">Explora por categorías o busca uno específico.</p>
           </div>
-          <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">{ICON_GROUPS.reduce((total, group) => total + group.icons.length, 0)} iconos</span>
+          <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">{new Set(ICON_GROUPS.flatMap((group) => group.icons)).size} iconos</span>
         </div>
         <Input
           value={query}
