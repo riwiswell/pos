@@ -354,7 +354,7 @@ export const medicationsService = {
     if (status === "snoozed") {
       // Same row, new reminder time: never duplicates the original dose.
       patch.snoozed_until = new Date(Date.now() + SNOOZE_MINUTES * 60_000).toISOString();
-    } else if (status === "pending") {
+    } else {
       patch.snoozed_until = null;
     }
     const { error } = await supabase.from("medication_doses").update(patch).eq("id", id);
