@@ -206,6 +206,7 @@ export interface HydrationEntry {
   consumed_on: string;
   consumed_at: string;
   beverage_type: BeverageType;
+  icon: string | null;
   amount_ml: number;
   note: string | null;
   created_at: string;

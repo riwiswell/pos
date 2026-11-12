@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
+import { Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -105,7 +105,6 @@ function useSignOut() {
 export function AppShell({ children }: { children: ReactNode }) {
   const { collapsed, toggle, expand } = useCollapsed();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [menuEditing, setMenuEditing] = useState(false);
   const [menuSaving, setMenuSaving] = useState(false);
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
@@ -160,7 +159,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
   const activeGroup = currentNavItem?.group ?? null;
-  useEffect(() => { setExpandedGroup(activeGroup); }, [activeGroup]);
 
   const background = profile?.background_url ?? null;
   const isColor = Boolean(background?.startsWith("#"));
@@ -211,34 +209,25 @@ export function AppShell({ children }: { children: ReactNode }) {
             {!collapsed && <span>{menuEditing ? "Terminar" : "Organizar módulos"}</span>}
           </Button>
           {(!menuEditing && !collapsed) ? (
-            <>
-              {menuItems.filter((item) => item.key === "inicio").map((item) => (
-                <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p} title={item.label} className={cn("flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", pathname.startsWith(item.to) && "bg-sidebar-accent")}>
-                  <item.icon className="h-5 w-5 shrink-0" /><span>{item.label}</span>
-                </Link>
+            <div className="space-y-0.5">
+              {menuItems.map((item) => (
+                <div key={item.key} className="flex min-w-0 items-center gap-1">
+                  <Link
+                    to={item.to}
+                    search={(p: Record<string, unknown>) => p}
+                    title={item.label}
+                    className={cn(
+                      "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
+                      pathname.startsWith(item.to) && "bg-sidebar-accent",
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                  <HelpTip helpKey={item.helpKey}/>
+                </div>
               ))}
-              {NAV_GROUPS.map((group) => {
-                const groupItems = menuItems.filter((item) => item.group === group);
-                if (groupItems.length === 0) return null;
-                const expanded = expandedGroup === group;
-                return (
-                  <section key={group} className="space-y-1">
-                    <button type="button" onClick={() => setExpandedGroup(expanded ? null : group)} aria-expanded={expanded} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[.12em] text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground">
-                      <span>{group}</span><ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")}/>
-                    </button>
-                    {expanded && <div className="space-y-0.5 pl-1">{groupItems.map((item) => (
-                      <div key={item.key} className="flex min-w-0 items-center gap-1">
-                        <Link to={item.to} search={(p: Record<string, unknown>) => p} title={item.label} className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent", pathname.startsWith(item.to) && "bg-sidebar-accent")}>
-                          <item.icon className="h-4 w-4 shrink-0"/><span className="truncate">{item.label}</span>
-                        </Link>
-                        <HelpTip helpKey={item.helpKey}/>
-                      </div>
-                    ))}</div>}
-                  </section>
-                );
-              })}
-            </>
-          ) : (
+            </div>          ) : (
             <>
               {menuItems.map((item) => {
             const visible = !hiddenModules.includes(item.key);
@@ -322,7 +311,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <GripVertical className="h-4 w-4" />
                   </button>
                 )}
-                <Link to={item.to} search={(p: Record<string, unknown>) => p} title={item.label} className={cn(
+                <Link to={item.to} title={item.label} className={cn(
                   "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-sidebar-accent",
                   collapsed && "flex-none justify-center px-0",
                   pathname.startsWith(item.to) && "bg-sidebar-accent",

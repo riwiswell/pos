@@ -572,6 +572,7 @@ export type Database = {
           consumed_on: string
           created_at: string
           id: string
+          icon: string | null
           note: string | null
           user_id: string
         }
@@ -582,6 +583,7 @@ export type Database = {
           consumed_on?: string
           created_at?: string
           id?: string
+          icon?: string | null
           note?: string | null
           user_id: string
         }
@@ -592,6 +594,7 @@ export type Database = {
           consumed_on?: string
           created_at?: string
           id?: string
+          icon?: string | null
           note?: string | null
           user_id?: string
         }

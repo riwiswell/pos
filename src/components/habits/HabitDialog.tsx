@@ -46,6 +46,7 @@ const HABIT_ICON_GROUPS: { label: string; icons: string[] }[] = [
   { label: "Viajes y cultura", icons: ["🧳","🎒","🗺️","🧭","🛫","🛬","✈️","🚆","🚄","🚉","🚗","🚙","🚌","🚲","🛵","🚢","⛴️","🚤","🏝️","🏜️","🏞️","🏛️","🗽","🗼","🏰","⛩️","🕌","⛪","🎎","🎏"] },
   { label: "Mascotas y animales", icons: ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄️","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐔","🐧","🐦","🦆","🦉","🦋","🐝","🐢","🦎","🐠","🐟","🐬","🐳","🦜","🐾","🦴","🪶"] },
   { label: "Naturaleza y jardinería", icons: ["🌱","🌿","☘️","🍀","🪴","🌵","🌴","🌳","🌲","🌾","🌷","🌹","🪻","🌺","🌸","🌼","🌻","🪷","🍄","🪺","🪹","🌎","🌍","🌏","🌙","⭐","🔥","💧","🌊","☀️","🌧️","⛈️"] },
+  { label: "Bebidas", icons: ["💧","🚰","🥛","🍼","☕","🫖","🍵","🧋","🧃","🥤","🍶","🍹","🧉","🧊","🍯","🥥","🍋","🍊","🍓","🫐","🍉","🍍","🥭","🍑","🍒","🍇","🫗"] },
   { label: "Cocina y repostería", icons: ["🧑‍🍳","👩‍🍳","👨‍🍳","🥐","🥖","🥨","🧇","🥞","🧈","🧀","🥩","🍗","🥓","🌭","🍔","🍟","🍕","🥪","🌮","🌯","🥙","🍜","🍝","🍣","🍱","🍰","🎂","🧁","🍪","🍩","🍫","🍬","🍯","🫙"] },
   { label: "Música y espectáculos", icons: ["🎵","🎶","🎼","🎤","🎧","🎹","🎸","🪕","🎻","🪈","🥁","🪇","🎷","🎺","📯","🪗","🪘","🎙️","🎚️","🎛️","🎭","🎪","🎟️","🎫","🎬","🎞️","📽️","🩰","💃","🕺"] },
   { label: "Deportes y juegos", icons: ["⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱","🏓","🏸","🏒","🏑","🥍","🏏","🪃","🥊","🥋","⛳","🏹","🎣","🤿","🛷","⛸️","🎿","🛼","🛹","🏆","🥇","🎮","🕹️","🎲","♟️"] },
@@ -103,7 +104,7 @@ export function HabitDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] flex-col overflow-hidden p-4 sm:max-h-[90vh] sm:max-w-md sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {habit
@@ -111,7 +112,8 @@ export function HabitDialog({
               : mode === "activity" ? "Nueva actividad" : "Nuevo hábito"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1 pb-3">
           <div className="space-y-1.5">
             <Label htmlFor="habit-name">Nombre</Label>
             <Input
@@ -199,7 +201,7 @@ export function HabitDialog({
                     <SelectItem value={NO_CATEGORY}>Sin categoría</SelectItem>
                     {categories.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.name}
+                        {c.icon ? c.icon + " " : "📁 "}{c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -232,7 +234,8 @@ export function HabitDialog({
             </div>
           )}
 
-          <DialogFooter>
+          </div>
+          <DialogFooter className="shrink-0 border-t border-border/60 bg-background pt-3 pb-[env(safe-area-inset-bottom)]">
             <Button type="submit">{habit ? "Guardar" : "Crear"}</Button>
           </DialogFooter>
         </form>

@@ -7,6 +7,7 @@ import type { PlannerCategoryInput, PlannerItemInput } from "@/domain/planner";
 export const plannerKeys = {
   categories: ["planner_categories"] as const,
   items: (date: string) => ["planner_items", date] as const,
+  range: (startDate: string, endDate: string) => ["planner_items", "range", startDate, endDate] as const,
 };
 
 function onError(error: unknown) {
@@ -31,9 +32,18 @@ export function usePlannerItems(date: string, enabled = true) {
   });
 }
 
+export function usePlannerItemsRange(startDate: string, endDate: string, enabled = true) {
+  return useQuery({
+    queryKey: plannerKeys.range(startDate, endDate),
+    queryFn: () => plannerService.listByRange(startDate, endDate),
+    staleTime: 30_000,
+    enabled,
+  });
+}
+
 export function usePlannerMutations(date: string) {
   const qc = useQueryClient();
-  const invalidateItems = () => qc.invalidateQueries({ queryKey: plannerKeys.items(date) });
+  const invalidateItems = () => qc.invalidateQueries({ queryKey: ["planner_items"] });
   const invalidateCategories = () => qc.invalidateQueries({ queryKey: plannerKeys.categories });
 
   const createCategory = useMutation({
