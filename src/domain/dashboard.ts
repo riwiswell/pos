@@ -30,13 +30,13 @@ export interface HomeDashboardLayout {
 export const DEFAULT_HOME_DASHBOARD_ORDER: HomeDashboardWidgetKey[] = [
   "weather",
   "habits",
-  "agenda",
+  "shared-challenges",
   "hydration",
+  "agenda",
   "diary",
   "reading",
   "games",
   "activity",
-  "shared-challenges",
 ];
 export const DEFAULT_HOME_DASHBOARD_VISIBLE: HomeDashboardWidgetKey[] = [
   "weather",
@@ -83,9 +83,23 @@ export function normalizeHomeDashboardLayout(value: unknown): HomeDashboardLayou
     const order = requestedOrder.filter((key): key is HomeDashboardWidgetKey =>
       HOME_DASHBOARD_WIDGETS.some((widget) => widget.key === key),
     );
-    const completeOrder = [
-      ...new Set([...order, ...DEFAULT_HOME_DASHBOARD_ORDER]),
+    const previousDefaultOrder: HomeDashboardWidgetKey[] = [
+      "weather",
+      "habits",
+      "agenda",
+      "hydration",
+      "diary",
+      "reading",
+      "games",
+      "activity",
+      "shared-challenges",
     ];
+    const wasPreviousDefault =
+      order.length === previousDefaultOrder.length &&
+      order.every((key, index) => key === previousDefaultOrder[index]);
+    const completeOrder = wasPreviousDefault
+      ? [...DEFAULT_HOME_DASHBOARD_ORDER]
+      : [...new Set([...order, ...DEFAULT_HOME_DASHBOARD_ORDER])];
     const requestedVisible = Array.isArray(saved.visible)
       ? saved.visible
       : DEFAULT_HOME_DASHBOARD_VISIBLE;
