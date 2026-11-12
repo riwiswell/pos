@@ -10,11 +10,11 @@ as $$
 declare
   payload jsonb;
 begin
-  if coalesce(new.status, '') <> 'done' then
+  if coalesce(new.status::text, '') <> 'done' then
     return new;
   end if;
 
-  if tg_op = 'UPDATE' and coalesce(old.status, '') = 'done' then
+  if tg_op = 'UPDATE' and coalesce(old.status::text, '') = 'done' then
     return new;
   end if;
 
@@ -35,7 +35,7 @@ begin
   values(
     new.user_id,
     'planner_items:' || new.id::text || ':completed',
-    'completed',
+    'recorded',
     'planner_items',
     new.id,
     coalesce(
