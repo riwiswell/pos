@@ -101,8 +101,11 @@ export function isOpen(dose: MedicationDose) {
   // Stock-reconstructed doses are estimates, not user confirmations. Keep a
   // future estimated dose eligible for the local reminder until the user
   // confirms "Sí la tomé" or "No la tomé".
+  const scheduledAt = Date.parse(dose.scheduled_at);
+  // Keep the reminder actionable for 30 minutes after its scheduled time as
+  // well, so opening Personal OS slightly late still asks the user to confirm.
   return dose.status === "taken" && dose.entry_origin === "stock_estimate" &&
-    Number.isFinite(Date.parse(dose.scheduled_at)) && Date.parse(dose.scheduled_at) > Date.now();
+    Number.isFinite(scheduledAt) && scheduledAt > Date.now() - 30 * 60_000;
 }
 
 export function formatTime12(date: Date): string {
