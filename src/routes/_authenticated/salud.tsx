@@ -342,6 +342,7 @@ function Cycle() {
           profile={profile}
           records={records.data || []}
           dailyLogs={dailyLogs.data || []}
+          profileMutations={m}
           periodMutations={rm}
           dailyMutations={dm}
         />
@@ -351,11 +352,12 @@ function Cycle() {
 }
 
 function CycleProfile({
-  profile, records, dailyLogs, periodMutations, dailyMutations,
+  profile, records, dailyLogs, profileMutations, periodMutations, dailyMutations,
 }: {
   profile: any;
   records: any[];
   dailyLogs: any[];
+  profileMutations: any;
   periodMutations: any;
   dailyMutations: any;
 }) {
@@ -510,7 +512,7 @@ function CycleProfile({
           aria-label={"Eliminar perfil " + profile.subject_name}
           onClick={() => {
             if (window.confirm("¿Eliminar el perfil y todo su historial menstrual? Esta acción no se puede deshacer.")) {
-              void periodMutations.remove.mutateAsync(profile.id);
+              void profileMutations.remove.mutateAsync(profile.id);
             }
           }}
         >
