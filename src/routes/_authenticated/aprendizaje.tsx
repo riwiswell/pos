@@ -110,11 +110,13 @@ function Books(){
   };
   const addBook=async()=>{
     if(!title.trim())return;
+    const parsedYear=Number(publicationYear);
+    if(publicationYear.trim()&&(!Number.isInteger(parsedYear)||parsedYear<0||parsedYear>3000)){toast.error("El año debe ser un número entero válido.");return;}
     await m.create.mutateAsync({
       user_id:user?.id,
       title:title.trim(),
       author:author.trim()||null,
-      publication_year:publicationYear.trim()?Number(publicationYear):null,
+      publication_year:publicationYear.trim()?parsedYear:null,
       kind:"book",
       total_pages:Number(pages)>0?Number(pages):null,
       target_pages:Number(targetPages)>0?Number(targetPages):null,
@@ -375,6 +377,7 @@ function kindIcon(kind:string){
 function OtherLearningCard({item,onEdit,onDelete,onSaveCover,minutesPlayed=0,sessionCount=0}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;minutesPlayed?:number;sessionCount?:number}){
   const[uploading,setUploading]=useState(false);
   const input=useRef<HTMLInputElement>(null);
+  const totalPlayedMinutes=Math.round(minutesPlayed);
   const path=item.cover_path?String(item.cover_path):null;
   const photoQuery=usePrivatePhotos(path?[path]:[],Boolean(path));
   const photoUrl=photoQuery.data?.find(photo=>photo.path===path)?.url;
@@ -413,7 +416,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,minutesPlayed=0,ses
         <div className="rounded-xl border border-border/60 bg-muted/25 px-2.5 py-2">
           <div className="flex items-center justify-between gap-2 text-[11px]">
             <span className="font-medium text-muted-foreground">Tiempo jugado</span>
-            <span className="font-semibold tabular-nums">{minutesPlayed>0?(minutesPlayed>=60?(minutesPlayed/60).toLocaleString("es-CO",{maximumFractionDigits:1})+" h "+(minutesPlayed%60?minutesPlayed%60+" min":""):minutesPlayed+" min"):"Sin sesiones"}</span>
+            <span className="font-semibold tabular-nums">{totalPlayedMinutes>0?(totalPlayedMinutes>=60?Math.floor(totalPlayedMinutes/60)+" h"+(totalPlayedMinutes%60?" "+(totalPlayedMinutes%60)+" min":""):totalPlayedMinutes+" min"):"Sin sesiones"}</span>
           </div>
           {minutesPlayed>0&&Number(item.progress)<=0&&<>
             <div className="mt-2 flex gap-1" aria-label={sessionCount+" sesiones de juego registradas"}>
@@ -533,7 +536,7 @@ function Languages(){
   const sortedLanguages=[...(q.data||[])].sort((a:any,b:any)=>{const aCount=(s.data||[]).filter((entry:any)=>entry.resource_url===a.locale_code).length,bCount=(s.data||[]).filter((entry:any)=>entry.resource_url===b.locale_code).length;const names=String(a.language_name||"").localeCompare(String(b.language_name||""),"es",{sensitivity:"base"});if(sort==="title_asc")return names;if(sort==="title_desc")return -names;if(sort==="used_asc")return aCount-bCount||names;if(sort==="recent")return String(b.updated_at||b.created_at||"").localeCompare(String(a.updated_at||a.created_at||""))||names;if(sort==="oldest")return String(a.created_at||"").localeCompare(String(b.created_at||""))||names;return bCount-aCount||names;});
   return <section className="space-y-4">
     {(q.isError||s.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:s.error instanceof Error?s.error.message:"No se pudieron cargar idiomas o sesiones."}/>}
-    <div className="grid grid-cols-1 gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-start">
       <div className="glass order-2 space-y-3 rounded-2xl p-4">
         <div><h2 className="font-semibold">Agregar o configurar un idioma</h2><p className="text-xs text-muted-foreground">Elige el idioma y su variante regional, define tu nivel actual y tu meta.</p></div>
         <div className="grid gap-2 sm:grid-cols-2">
