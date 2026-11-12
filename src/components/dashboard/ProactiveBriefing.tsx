@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles } from "lucide-react";
+import { LoaderCircle, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +34,23 @@ export function ProactiveBriefing({ date }: Props) {
       return result.briefing;
     },
   });
+
+  if (query.isLoading) {
+    return (
+      <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs text-slate-300">
+        <LoaderCircle className="h-3.5 w-3.5 animate-spin text-amber-200" />
+        POS está revisando tus tareas, citas y notas…
+      </div>
+    );
+  }
+
+  if (query.isError) {
+    return (
+      <p className="mt-3 text-xs text-slate-300/70">
+        Hoy no pude completar el análisis automático de tus pendientes.
+      </p>
+    );
+  }
 
   if (!query.data) return null;
 
