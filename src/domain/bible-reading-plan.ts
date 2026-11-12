@@ -448,10 +448,12 @@ export interface BibleDayChapterProgress {
  * This maps the annual RVR1960 plan to its canonical 1,189 chapters.
  */
 export function bibleChapterProgress(rows: BibleDayChapterProgress[]) {
-  const completedByDay = new Map(rows.map((row) => [
-    row.day_number,
-    [row.first_done, row.second_done, row.third_done],
-  ]));
+  const completedByDay = new Map<number, boolean[]>(
+    rows.map((row): [number, boolean[]] => [
+      row.day_number,
+      [row.first_done, row.second_done, row.third_done],
+    ]),
+  );
   const requiredSegments = new Map<string, Set<string>>();
 
   for (const day of BIBLE_READING_PLAN) {
