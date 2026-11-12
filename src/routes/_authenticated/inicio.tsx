@@ -8,6 +8,7 @@ import {
   Clock3,
   Droplets,
   Gamepad2,
+  HeartHandshake,
   Plus,
   Sparkles,
   Target,
@@ -233,6 +234,11 @@ function HomePage() {
       </section>
 
       <div className="mb-1"><WeatherCard compact /></div>
+      <Link to="/relaciones" search={(prev: Record<string, unknown>) => prev} className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><HeartHandshake className="h-5 w-5"/></span>
+        <span className="min-w-0 flex-1"><b className="block text-sm">Retos y hábitos compartidos</b><span className="text-xs text-muted-foreground">Accede directamente a tus espacios con amigos y pareja.</span></span>
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-primary"/>
+      </Link>
       <div className="inicio-dashboard-grid grid gap-3">
         <div className="inicio-habits-column min-w-0">
           {showHabits && (
