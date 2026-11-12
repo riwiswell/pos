@@ -9,12 +9,12 @@ export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetKey[] = ["planner", "focu
 
 export const HOME_DASHBOARD_WIDGETS = [
   { key: "weather", label: "Clima", description: "Condiciones y pronóstico de tu ciudad." },
-  { key: "habits", label: "Hábitos del día", description: "Tu avance y ritmo semanal." },
+  { key: "habits", label: "Hábitos del día", description: "Tu avance de hoy." },
   { key: "agenda", label: "Agenda", description: "Tareas y eventos de la fecha." },
-  { key: "reading", label: "Lectura actual", description: "Progreso de tus libros." },
-  { key: "games", label: "Juego actual", description: "El videojuego que tienes en curso." },
   { key: "hydration", label: "Hidratación", description: "Agua y otros líquidos registrados." },
   { key: "diary", label: "Diario del día", description: "Ideas, pensamientos y capturas." },
+  { key: "reading", label: "Lectura actual", description: "Progreso de tus libros." },
+  { key: "games", label: "Juego actual", description: "El videojuego que tienes en curso." },
   { key: "activity", label: "Actividad reciente", description: "Tu historial conectado." },
   { key: "shared-challenges", label: "Retos compartidos", description: "Metas que avanzas con otras personas." },
 ] as const;
@@ -26,11 +26,28 @@ export interface HomeDashboardLayout {
   visible: HomeDashboardWidgetKey[];
 }
 
-export const DEFAULT_HOME_DASHBOARD_ORDER: HomeDashboardWidgetKey[] =
-  HOME_DASHBOARD_WIDGETS.map((widget) => widget.key);
+/** A useful, compact first screen. The remaining cards can be enabled by each user. */
+export const DEFAULT_HOME_DASHBOARD_ORDER: HomeDashboardWidgetKey[] = [
+  "weather",
+  "habits",
+  "agenda",
+  "hydration",
+  "diary",
+  "reading",
+  "games",
+  "activity",
+  "shared-challenges",
+];
+export const DEFAULT_HOME_DASHBOARD_VISIBLE: HomeDashboardWidgetKey[] = [
+  "weather",
+  "habits",
+  "agenda",
+  "hydration",
+  "diary",
+];
 export const DEFAULT_HOME_DASHBOARD_LAYOUT: HomeDashboardLayout = {
   order: [...DEFAULT_HOME_DASHBOARD_ORDER],
-  visible: [...DEFAULT_HOME_DASHBOARD_ORDER],
+  visible: [...DEFAULT_HOME_DASHBOARD_VISIBLE],
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -56,8 +73,8 @@ export function normalizeDashboardWidgets(value: unknown): DashboardWidgetKey[] 
 }
 
 /**
- * Old profiles only stored the three legacy switches. Their initial home view
- * therefore keeps all previous cards except the ones they had disabled.
+ * Existing profiles keep their explicit homeLayout choices. Profiles that still
+ * have the legacy settings get five useful cards instead of all nine at once.
  */
 export function normalizeHomeDashboardLayout(value: unknown): HomeDashboardLayout {
   if (isRecord(value) && isRecord(value.homeLayout)) {
@@ -69,7 +86,9 @@ export function normalizeHomeDashboardLayout(value: unknown): HomeDashboardLayou
     const completeOrder = [
       ...new Set([...order, ...DEFAULT_HOME_DASHBOARD_ORDER]),
     ];
-    const requestedVisible = Array.isArray(saved.visible) ? saved.visible : DEFAULT_HOME_DASHBOARD_ORDER;
+    const requestedVisible = Array.isArray(saved.visible)
+      ? saved.visible
+      : DEFAULT_HOME_DASHBOARD_VISIBLE;
     const visible = Array.from(new Set(requestedVisible.filter((key): key is HomeDashboardWidgetKey =>
       HOME_DASHBOARD_WIDGETS.some((widget) => widget.key === key),
     )));
@@ -77,7 +96,7 @@ export function normalizeHomeDashboardLayout(value: unknown): HomeDashboardLayou
   }
 
   const legacy = normalizeDashboardWidgets(value);
-  const visible = DEFAULT_HOME_DASHBOARD_ORDER.filter((key) => {
+  const visible = DEFAULT_HOME_DASHBOARD_VISIBLE.filter((key) => {
     if (key === "agenda") return legacy.includes("planner");
     if (key === "habits") return legacy.includes("habits");
     return true;
