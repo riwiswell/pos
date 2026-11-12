@@ -95,7 +95,7 @@ function PlannerPage() {
   return (
     <div className="space-y-5 pb-24">
       <GlobalDateHeader />
-      <WeatherCard />
+      <WeatherCard planner />
 
       <div className="sticky top-14 z-20 -mx-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border/60 bg-background/90 px-4 py-2 backdrop-blur md:top-0 md:-mx-2 md:px-2">
         <h1 className="truncate text-xl font-semibold">Planeador</h1>
