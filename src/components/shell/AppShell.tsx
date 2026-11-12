@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -146,10 +146,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     void persistMenu(allItems.map((item) => item.key), hidden);
   };
 
-  const beginMenuEdit = () => {
-    if (collapsed) expand();
-    setMenuEditing((current) => !current);
-  };
   const mobilePrimaryItems = items.filter((item) => MOBILE_PRIMARY_KEYS.has(item.key));
   const mobileMoreItems = items.filter((item) => !MOBILE_PRIMARY_KEYS.has(item.key));
   const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
@@ -202,10 +198,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3">
-          <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Editar menú">
-            <SlidersHorizontal className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>{menuEditing ? "Terminar de editar" : "Editar menú"}</span>}
-          </Button>
           {(!menuEditing && !collapsed) ? (
             <>
               {menuItems.filter((item) => item.key === "inicio").map((item) => (
