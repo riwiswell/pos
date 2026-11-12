@@ -140,8 +140,8 @@ function PlannerPage() {
         </div>
       </div>
 
-      <section className="glass flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-start">
-        <div className="min-w-0 flex-1">
+      <section className="glass flex flex-col gap-3 rounded-2xl p-3">
+        <div className="mx-auto w-full md:w-1/2">
           <div className="mb-1 flex items-center justify-between gap-2 px-2">
             <div><h2 className="text-sm font-semibold">Calendario</h2><p className="text-xs text-muted-foreground">Selecciona un día para ver o programar tus tareas y eventos.</p></div>
             <Button type="button" size="sm" variant="outline" onClick={goToday}>Hoy</Button>
@@ -163,7 +163,7 @@ function PlannerPage() {
             className="mx-auto w-full [--cell-size:clamp(2.75rem,10vw,3.25rem)] sm:mx-0"
           />
         </div>
-        <div className="min-w-0 flex-1 self-center rounded-xl bg-muted/30 p-3">
+        <div className="w-full rounded-xl bg-muted/30 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Día seleccionado</p>
           <p className="mt-1 text-base font-semibold capitalize">{formatDayLabel(date)}</p>
           <p className="mt-1 text-xs text-muted-foreground">
