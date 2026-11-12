@@ -41,8 +41,9 @@ export const DEFAULT_HOME_DASHBOARD_ORDER: HomeDashboardWidgetKey[] = [
 export const DEFAULT_HOME_DASHBOARD_VISIBLE: HomeDashboardWidgetKey[] = [
   "weather",
   "habits",
-  "agenda",
+  "shared-challenges",
   "hydration",
+  "agenda",
   "diary",
 ];
 export const DEFAULT_HOME_DASHBOARD_LAYOUT: HomeDashboardLayout = {
@@ -106,12 +107,18 @@ export function normalizeHomeDashboardLayout(value: unknown): HomeDashboardLayou
     const visible = Array.from(new Set(requestedVisible.filter((key): key is HomeDashboardWidgetKey =>
       HOME_DASHBOARD_WIDGETS.some((widget) => widget.key === key),
     )));
-    // The previous release preselected every card. Treat that generated
-    // nine-card setup as the old default (not a deliberate user selection)
-    // and compact it once; manually selected subsets remain untouched.
-    const compactVisible = visible.length === HOME_DASHBOARD_WIDGETS.length
-      ? [...DEFAULT_HOME_DASHBOARD_VISIBLE]
-      : visible;
+    // Upgrade the previous five-card default and the older all-card default
+    // to the new six-card first screen; preserve deliberately customized sets.
+    const previousDefaultVisible: HomeDashboardWidgetKey[] = [
+      "weather", "habits", "agenda", "hydration", "diary",
+    ];
+    const wasPreviousDefaultVisible =
+      visible.length === previousDefaultVisible.length &&
+      previousDefaultVisible.every((key) => visible.includes(key));
+    const compactVisible =
+      visible.length === HOME_DASHBOARD_WIDGETS.length || wasPreviousDefaultVisible
+        ? [...DEFAULT_HOME_DASHBOARD_VISIBLE]
+        : visible;
     return { order: completeOrder, visible: compactVisible };
   }
 
