@@ -6,7 +6,7 @@ type ChatRole="system"|"user"|"assistant";
 type WorkersAiBinding={
  run:(model:string,input:{messages:Array<{role:ChatRole;content:string}>;max_tokens?:number;temperature?:number})=>Promise<unknown>;
 };
-type Env={SUPABASE_URL?:string;SUPABASE_SERVICE_ROLE_KEY?:string;SUPABASE_PUBLISHABLE_KEY?:string;VITE_SUPABASE_PUBLISHABLE_KEY?:string;VAPID_PUBLIC_KEY?:string;VAPID_PRIVATE_KEY?:string;VAPID_SUBJECT?:string;AI?:WorkersAiBinding};
+type Env={SUPABASE_URL?:string;SUPABASE_SECRET_KEY?:string;SUPABASE_SERVICE_ROLE_KEY?:string;SUPABASE_PUBLISHABLE_KEY?:string;VITE_SUPABASE_PUBLISHABLE_KEY?:string;VAPID_PUBLIC_KEY?:string;VAPID_PRIVATE_KEY?:string;VAPID_SUBJECT?:string;AI?:WorkersAiBinding};
 type ServerEntry={fetch:(request:Request,env:unknown,ctx:unknown)=>Promise<Response>|Response};
 const ALLOWED_PUSH_HOSTS = [
  "fcm.googleapis.com",
@@ -26,7 +26,8 @@ function isAllowedPushEndpoint(value:string){
 let serverEntryPromise:Promise<ServerEntry>|undefined;
 async function getServerEntry(){if(!serverEntryPromise)serverEntryPromise=import("@tanstack/react-start/server-entry").then(m=>(m.default??m) as ServerEntry);return serverEntryPromise}
 function json(data:unknown,status=200){return new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json;charset=utf-8"}})}
-async function supabaseFetch(env:Env,path:string,init:RequestInit={}){if(!env.SUPABASE_URL||!env.SUPABASE_SERVICE_ROLE_KEY)throw new Error("Supabase server credentials are not configured");const headers=new Headers(init.headers);headers.set("apikey",env.SUPABASE_SERVICE_ROLE_KEY);headers.set("Authorization","Bearer "+env.SUPABASE_SERVICE_ROLE_KEY);headers.set("Content-Type","application/json");if(!headers.has("Prefer"))headers.set("Prefer","return=representation");return fetch(env.SUPABASE_URL+"/rest/v1/"+path,{...init,headers})}
+function getPrivilegedSupabaseKey(env:Env){return env.SUPABASE_SECRET_KEY??env.SUPABASE_SERVICE_ROLE_KEY??"";}
+async function supabaseFetch(env:Env,path:string,init:RequestInit={}){const key=getPrivilegedSupabaseKey(env);if(!env.SUPABASE_URL||!key)throw new Error("Supabase server credentials are not configured");const headers=new Headers(init.headers);headers.set("apikey",key);if(key.startsWith("sb_secret_"))headers.delete("Authorization");else headers.set("Authorization","Bearer "+key);headers.set("Content-Type","application/json");if(!headers.has("Prefer"))headers.set("Prefer","return=representation");return fetch(env.SUPABASE_URL+"/rest/v1/"+path,{...init,headers})}
 function getPublishableKey(env:Env){return env.SUPABASE_PUBLISHABLE_KEY??env.VITE_SUPABASE_PUBLISHABLE_KEY??"";}
 async function userFromBearer(request:Request,env:Env){const auth=request.headers.get("Authorization");const key=getPublishableKey(env);if(!auth||!env.SUPABASE_URL||!key)return null;const r=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:key,Authorization:auth}});if(!r.ok)return null;return await r.json() as {id:string}}
 function annualDate(reference:string,year:number):Date|null{const month=Number(reference.slice(5,7)),day=Number(reference.slice(8,10));if(!Number.isInteger(month)||!Number.isInteger(day)||month<1||month>12||day<1||day>31)return null;const date=new Date(Date.UTC(year,month-1,day));if(date.getUTCMonth()!==month-1)return new Date(Date.UTC(year,month,0));return date}
@@ -276,7 +277,7 @@ async function syncHydrationJobs(env:Env,userId:string,input?:unknown) {
  // The browser saves the schedule in the user's profile. Without server-only
  // Supabase credentials we keep the in-app reminder path available and report
  // that background push cannot be provisioned yet.
- if(!env.SUPABASE_SERVICE_ROLE_KEY){
+ if(!getPrivilegedSupabaseKey(env)){
   const schedule=normalizeHydrationSchedule(input&&typeof input==="object"&&(input as Record<string,unknown>).sync===true?DEFAULT_HYDRATION_SCHEDULE:input??DEFAULT_HYDRATION_SCHEDULE,DEFAULT_HYDRATION_SCHEDULE);
   return {enabled:schedule.enabled,scheduled:0,pushRequired:schedule.enabled};
  }
@@ -409,7 +410,7 @@ async function finalizeAlarmOccurrence(env:Env,job:any){
 }
 
 async function dispatchDueNotifications(env:Env){
- if(!env.SUPABASE_URL||!env.SUPABASE_SERVICE_ROLE_KEY||!env.VAPID_PUBLIC_KEY||!env.VAPID_PRIVATE_KEY||!env.VAPID_SUBJECT)return;
+ if(!env.SUPABASE_URL||!getPrivilegedSupabaseKey(env)||!env.VAPID_PUBLIC_KEY||!env.VAPID_PRIVATE_KEY||!env.VAPID_SUBJECT)return;
  webpush.setVapidDetails(env.VAPID_SUBJECT,env.VAPID_PUBLIC_KEY,env.VAPID_PRIVATE_KEY);
  // Only dequeue jobs for users who can receive them. Otherwise the first 100
  // pending jobs belonging to unsubscribed users can starve every later job.
