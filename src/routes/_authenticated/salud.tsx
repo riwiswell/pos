@@ -38,7 +38,9 @@ function HydrationCard(){
  const{date}=useGlobalDate();
  const metrics=usePersonalDateList<any>("health_metrics","metric_date",date);
  const doses=useDoses(date);
+ const yesterdayDate=useMemo(()=>{const d=new Date(date+"T12:00:00");d.setDate(d.getDate()-1);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")},[date]);
  const entries=useHydrationEntries(date);
+ const yesterdayEntries=useHydrationEntries(yesterdayDate);
  const hydration=useHydrationMutations(date);
  const profileQuery=useProfile();const profile=profileQuery.data;const profileMutations=useProfileMutations();
  const [customMl,setCustomMl]=useState("300");
@@ -60,6 +62,7 @@ function HydrationCard(){
  const dayEntries=entries.data??[];
  const recordedWaterMl=dayEntries.filter(x=>x.beverage_type==="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
  const otherFluidMl=dayEntries.filter(x=>x.beverage_type!=="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
+ const yesterdayWaterMl=(yesterdayEntries.data??[]).filter(x=>x.beverage_type==="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
  const medicineWaterMl=waterGlassesToMl(medicationWater(doses.data??[]));
  const waterMl=legacyWaterMl+recordedWaterMl+medicineWaterMl;
  const totalFluidMl=waterMl+otherFluidMl;
@@ -110,7 +113,7 @@ function HydrationCard(){
   }catch(error){toast.error(error instanceof Error?error.message:"No se pudieron activar las notificaciones.");}
   finally{setPushBusy(false);}
  };
- const disabled=busy||entries.isLoading||entries.isError;
+ const disabled=busy||entries.isLoading;
  const reminderWaterOptions=WATER_OPTIONS.filter(glasses=>glasses>0).map(glasses=>({glasses,amount_ml:Math.round(waterGlassesToMl(glasses))}));
  return <section className="glass space-y-4 rounded-2xl p-4">
   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -134,7 +137,8 @@ function HydrationCard(){
    <Input className="h-9" type="number" min="1" max="3000" step="25" value={otherMl} onChange={e=>setOtherMl(e.target.value)}/>
    <Button size="sm" variant="outline" disabled={disabled||!Number.isInteger(Number(otherMl))||Number(otherMl)<1||Number(otherMl)>3000} onClick={()=>void addDrink(otherType,Number(otherMl))}>Registrar</Button>
   </div>
-  {entries.isError&&<p className="text-xs text-destructive">No se pudo cargar el registro de bebidas. El dato antiguo de agua se conserva.</p>}
+  <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-muted-foreground">Ayer ({yesterdayDate}): {yesterdayEntries.isLoading?"cargando…":yesterdayEntries.isError?"sin conexión al historial":fmt(yesterdayWaterMl)+" ml de agua"}</span>{(entries.isError||yesterdayEntries.isError)&&<Button type="button" size="sm" variant="outline" className="h-7" onClick={()=>{void entries.refetch();void yesterdayEntries.refetch()}}>Reintentar carga</Button>}</div>
+  {entries.isError&&<p className="text-xs text-destructive">No se pudo cargar el registro de bebidas. Puedes intentar registrar de todas formas; el error no bloquea el formulario. Detalle: {entries.error instanceof Error?entries.error.message:"error desconocido"}</p>}
   <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/[.04] p-3 space-y-3">
    <div className="flex items-center justify-between gap-3">
     <div><p className="text-sm font-semibold">Avisos para tomar agua</p><p className="text-xs text-muted-foreground">Recordatorios automáticos; no crean un hábito duplicado.</p></div>
