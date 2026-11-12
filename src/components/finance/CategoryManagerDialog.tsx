@@ -23,6 +23,24 @@ interface Props {
   categories: FinanceCategory[];
 }
 
+function categoryIconForDisplay(category: FinanceCategory): string {
+  const name = category.name.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+  if (/moto|gasolina|combustible/.test(name)) return /gasolina|combustible/.test(name) ? "Fuel" : "Bike";
+  if (/comida|mercado|restaurante|pan|alimento/.test(name)) return "Utensils";
+  if (/transporte|taxi|bus|parqueadero/.test(name)) return "Car";
+  if (/juego|videojuego|entretenimiento/.test(name)) return "Gamepad2";
+  if (/salud|medic|farmacia/.test(name)) return "HeartPulse";
+  if (/internet|servicio|telefono|celular|tv|streaming/.test(name)) return "Wifi";
+  if (/wiswellart|arte|clase|material/.test(name)) return "Palette";
+  if (/diezmo|iglesia|ofrenda/.test(name)) return "Church";
+  if (/casa|arriendo|hogar|vivienda/.test(name)) return "Home";
+  if (/libro|educaci|estudio/.test(name)) return "BookOpen";
+  if (/banco|credito|tarjeta|deuda/.test(name)) return "CreditCard";
+  if (/ahorro|reserva|alcancia/.test(name)) return "PiggyBank";
+  if (/regalo|ayuda|angela|reembolso/.test(name)) return "HandCoins";
+  return category.icon;
+}
+
 /** Full CRUD for finance categories, reachable from the Finanzas screen. */
 export function CategoryManagerDialog({ open, onOpenChange, categories }: Props) {
   const mutations = useFinanceMutations();
@@ -73,17 +91,17 @@ export function CategoryManagerDialog({ open, onOpenChange, categories }: Props)
               </li>
             )}
             {list.map((category) => {
-              const Icon = getIcon(category.icon);
+              const Icon = getIcon(categoryIconForDisplay(category));
               return (
                 <li
                   key={category.id}
                   className="flex items-center gap-3 rounded-xl border border-border/60 px-3 py-2"
                 >
                   <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                    style={{ backgroundColor: `${category.color}22` }}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 shadow-sm"
+                    style={{ background: `linear-gradient(145deg, ${category.color}30, ${category.color}12)`, color: category.color }}
                   >
-                    <Icon className="h-4 w-4" style={{ color: category.color }} />
+                    <Icon className="h-5 w-5" strokeWidth={2.1} />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm">
                     {category.name}
