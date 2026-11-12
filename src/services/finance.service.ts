@@ -29,6 +29,23 @@ export function normalizeName(value: string): string {
  * - only an EXPENSE can be an actual tithe payment.
  * The UI hides the fields, but the truth is enforced here too.
  */
+function addCurrentOccurrenceTime<T extends Partial<TransactionInput>>(input: T): T {
+  if (input.occurred_time || !input.occurred_on) return input;
+
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+  // A same-day movement needs a clock time to compare it safely with a
+  // balance cutoff. Historical dates remain date-only unless the user gave a time.
+  if (input.occurred_on !== today) return input;
+
+  return {
+    ...input,
+    occurred_time: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
+  } as T;
+}
+
 function normalizeTitheFlags<T extends Partial<TransactionInput>>(input: T): T {
   if (!input.type) return input;
   return {
@@ -244,7 +261,7 @@ export const financeService = {
     for (let from = 0; ; from += pageSize) {
       const { data, error } = await supabase
         .from("finance_transactions")
-        .select("id,account_id,transfer_account_id,type,amount")
+        .select("id,account_id,transfer_account_id,type,amount,occurred_on,occurred_time")
         .order("id", { ascending: true })
         .range(from, from + pageSize - 1);
       if (error) throw error;
@@ -259,7 +276,7 @@ export const financeService = {
     const user_id = await currentUserId();
     const { data, error } = await supabase
       .from("finance_transactions")
-      .insert({ ...normalizeTitheFlags(input), user_id })
+      .insert({ ...normalizeTitheFlags(addCurrentOccurrenceTime(input)), user_id })
       .select()
       .single();
     if (error) throw error;
@@ -269,7 +286,7 @@ export const financeService = {
   async updateTransaction(id: string, patch: Partial<TransactionInput>) {
     const { error } = await supabase
       .from("finance_transactions")
-      .update(normalizeTitheFlags(patch))
+      .update(normalizeTitheFlags(addCurrentOccurrenceTime(patch)))
       .eq("id", id);
     if (error) throw error;
   },
