@@ -1,6 +1,6 @@
 import { useEffect,useMemo,useRef,useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { CalendarHeart,ChevronDown,ChevronUp,ClipboardList,Coffee,CupSoda,Droplets,HeartPulse,Leaf,Pencil,Pill,Plus,Trash2 } from "lucide-react";
+import { CalendarDays,CalendarHeart,ChevronDown,ChevronLeft,ChevronRight,ChevronUp,ClipboardList,Coffee,CupSoda,Droplets,HeartPulse,Leaf,Pencil,Pill,Plus,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label"; import { Switch } from "@/components/ui/switch";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { SleepPanel } from "@/components/health/SleepPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
 import { useGlobalDate } from "@/hooks/use-global-date";
@@ -262,7 +262,198 @@ function Medications(){const{date}=useGlobalDate();const meds=useMedications();c
   </div>
 </div>
 </div></section><div className="grid gap-3 md:grid-cols-2">{displayedMeds.map((x:any)=>{const remaining=remainingQuantity(x,Number(taken.data?.[x.id]??0),Number(stock.data?.[x.id]??0));const days=remaining===null?null:durationDays({...x,total_quantity:remaining});return <article key={x.id} className={"glass rounded-2xl border p-4 "+(x.active?"border-border":"border-dashed border-muted-foreground/40 opacity-90")}><div className="flex items-start gap-3"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{x.name}</h2><span className={"rounded-full px-2 py-0.5 text-[10px] font-semibold "+(x.active?"bg-primary/10 text-primary":"bg-muted text-muted-foreground")}>{x.active?"Activo":"Pausado"}</span></div><p className="text-xs text-muted-foreground">{medicationScheduleLabel(x)}</p>{remaining!==null&&<p className="mt-2 text-sm">Restantes: <b>{formatStockQuantity(remaining,x.stock_unit||"unidades")}</b> <HelpTip helpKey="medication.remaining"/></p>}{days!==null&&<p className="text-xs text-muted-foreground">Duración estimada: {days} días aproximados </p>}</div></div>{remaining!==null&&remaining<=0&&<p className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300">Sin existencias. El registro y los recordatorios siguen activos; repón el inventario cuando compres más.</p>}<div className="mt-3 grid grid-cols-[1fr_auto] gap-2 border-t border-border pt-3"><Input aria-label={"Cantidad para reponer "+x.name} type="number" min="0.001" step="0.001" className="h-9" placeholder={"Reponer ("+(x.stock_unit||"unidades")+")"} value={restockInputs[x.id]??""} onChange={e=>setRestockInputs(current=>({...current,[x.id]:e.target.value}))}/><Button size="sm" variant="outline" disabled={!Number.isFinite(Number(restockInputs[x.id]))||Number(restockInputs[x.id])<=0||m.addStock.isPending} onClick={()=>void m.addStock.mutateAsync({medicationId:x.id,quantity:Number(restockInputs[x.id])}).then(()=>setRestockInputs(current=>({...current,[x.id]:""})))}><Plus className="mr-1 h-3.5 w-3.5"/>Reponer</Button></div><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>{setEditing(x);setOpen(true)}}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="sm" variant={x.active?"ghost":"default"} onClick={()=>{if(x.active){void m.remove.mutateAsync(x.id).catch(()=>undefined)}else{setEditing({...x,active:true,start_date:x.start_date<todayISO()?todayISO():x.start_date,end_date:null});setOpen(true)}}}>{x.active?"Pausar medicamento":"Reactivar medicamento"}</Button></div></article>})}</div>{displayedMeds.length===0&&<p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{showPaused?"No hay medicamentos registrados todavía.":"No tienes medicamentos activos. Puedes mostrar los pausados o registrar uno nuevo."}</p>}<MedicationDialog open={open} onOpenChange={o=>{setOpen(o);if(!o)setEditing(null)}} medication={editing} pending={m.create.isPending||m.update.isPending} onSubmit={async input=>{if(editing)await m.update.mutateAsync({id:editing.id,patch:input});else await m.create.mutateAsync(input);}}/></section>}
-function Cycle(){const q=useLGList("menstrual_profiles");const records=useLGList("menstrual_records","start_date");const m=useLGMutations("menstrual_profiles");const rm=useLGMutations("menstrual_records");const{user}=useAuth();const[subject,setSubject]=useState(""),[type,setType]=useState("self"),[cycle,setCycle]=useState("28"),[period,setPeriod]=useState("5"),[start,setStart]=useState(""),[notes,setNotes]=useState("");const profiles=q.data||[];return <section className="space-y-4"><div className="glass space-y-3 rounded-2xl p-4"><div className="flex items-center gap-2"><CalendarHeart className="h-4 w-4"/><h2 className="font-semibold">Registro menstrual</h2><HelpTip helpKey="health.cycle"/></div><p className="text-xs text-muted-foreground">Puede ser para ti o para la persona cuyo ciclo registras. La próxima fecha se calcula automáticamente con el ciclo promedio o el ciclo indicado.</p><div className="grid gap-2 sm:grid-cols-4"><Input placeholder="Persona" value={subject} onChange={e=>setSubject(e.target.value)}/><select className="h-10 rounded-md border bg-background px-3" value={type} onChange={e=>setType(e.target.value)}><option value="self">Yo</option><option value="partner">Pareja</option><option value="family">Familiar</option><option value="other">Otra persona</option></select><Input type="number" min="15" max="60" placeholder="Ciclo días" value={cycle} onChange={e=>setCycle(e.target.value)}/><Input type="number" min="1" max="14" placeholder="Duración periodo" value={period} onChange={e=>setPeriod(e.target.value)}/></div><RichTextEditor value={notes} onChange={setNotes} placeholder="Notas del perfil…"/><Button disabled={!subject.trim()} onClick={()=>void m.create.mutateAsync({user_id:user?.id,subject_name:subject.trim(),subject_type:type,average_cycle_days:Number(cycle)||28,average_period_days:Number(period)||5,notes:notes||null}).then(()=>setSubject(""))}><Plus className="mr-1 h-4 w-4"/>Crear perfil</Button></div>{profiles.map((p:any)=><CycleProfile key={p.id} profile={p} records={records.data||[]} rm={rm}/>)}</section>}
-function CycleProfile({profile,records,rm}:{profile:any;records:any[];rm:any}){const{user}=useAuth();const[start,setStart]=useState(""),[end,setEnd]=useState(""),[flow,setFlow]=useState(""),[notes,setNotes]=useState("");const own=records.filter(r=>r.profile_id===profile.id);const latest=own[0];return <article className="glass space-y-3 rounded-2xl p-4"><div className="flex gap-2"><div className="flex-1"><h3 className="font-semibold">{profile.subject_name}</h3><p className="text-xs text-muted-foreground">Ciclo {profile.average_cycle_days} días · duración {profile.average_period_days} días</p></div><Button size="icon" variant="ghost" onClick={()=>void rm.remove.mutateAsync(profile.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div><div className="grid gap-2 sm:grid-cols-4"><Input type="date" value={start} onChange={e=>setStart(e.target.value)}/><Input type="date" value={end} onChange={e=>setEnd(e.target.value)}/><Input placeholder="Flujo" value={flow} onChange={e=>setFlow(e.target.value)}/><Button disabled={!start} onClick={()=>void rm.create.mutateAsync({user_id:user?.id,profile_id:profile.id,start_date:start,end_date:end||null,flow:flow||null,notes:notes||null}).then(()=>setStart(""))}>Registrar periodo</Button></div><RichTextEditor value={notes} onChange={setNotes} placeholder="Síntomas, notas…"/>{latest&&<div className="rounded-xl border p-3 text-sm"><b>Próxima fecha estimada:</b> {latest.next_period_on}<span className="ml-2 text-xs text-muted-foreground">Ciclo usado: {latest.cycle_length_days} días</span></div>}</article>}
+const CYCLE_SYMPTOMS = [
+ "Có calambres", "Dolor de cabeza", "Hinchazón", "Cansancio", "Sensibilidad en los senos",
+ "Acné", "Cambios de humor", "Antojos", "Náuseas", "Dolor lumbar", "Diarrea", "Estreñimiento",
+ "Mareos", "Dificultad para dormir"
+];
+const CYCLE_FLOW_OPTIONS = [
+ ["none","Sin sangrado"],["spotting","Manchado"],["light","Leve"],["medium","Moderado"],["heavy","Abundante"]
+] as const;
+function isoDay(date:Date){
+ return [date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),String(date.getDate()).padStart(2,"0")].join("-");
+}
+function displayCycleDate(value:string|null|undefined){
+ if(!value)return "Sin finalizar";
+ const date=new Date(value+"T12:00:00");
+ return Number.isNaN(date.getTime())?value:date.toLocaleDateString("es-CO",{day:"numeric",month:"short",year:"numeric"});
+}
+function Cycle(){
+ const q=useLGList("menstrual_profiles");
+ const records=useLGList("menstrual_records","start_date");
+ const dailyLogs=useLGList("menstrual_daily_logs","log_date");
+ const profileMutations=useLGMutations("menstrual_profiles");
+ const recordMutations=useLGMutations("menstrual_records");
+ const dailyMutations=useLGMutations("menstrual_daily_logs");
+ const{user}=useAuth();
+ const[isMine,setIsMine]=useState(true);
+ const[subject,setSubject]=useState("");
+ const[type,setType]=useState("partner");
+ const[cycle,setCycle]=useState("28");
+ const[creating,setCreating]=useState(false);
+ const profiles=q.data||[];
+ const createProfile=async()=>{
+  const name=isMine?"Mi ciclo":subject.trim();
+  if(!name)return;
+  setCreating(true);
+  try{
+   await profileMutations.create.mutateAsync({
+    subject_name:name,subject_type:isMine?"self":type,
+    average_cycle_days:Math.max(15,Math.min(60,Number(cycle)||28)),
+    average_period_days:5,active:true,notes:null
+   });
+   setSubject("");
+  }finally{setCreating(false);}
+ };
+ return <section className="space-y-4">
+  <div className="glass space-y-3 rounded-2xl p-4">
+   <div className="flex items-center gap-2"><CalendarHeart className="h-4 w-4"/><h2 className="font-semibold">Seguimiento menstrual</h2><HelpTip helpKey="health.cycle"/></div>
+   <p className="text-sm text-muted-foreground">Registra el inicio cuando llegue el período. La duración se completa después, cuando termine; no tienes que adivinarla por adelantado.</p>
+   <label className="flex items-center gap-2 rounded-xl border p-3 text-sm">
+    <input type="checkbox" checked={isMine} onChange={e=>setIsMine(e.target.checked)} className="h-4 w-4 accent-primary"/>
+    <span><b>Este seguimiento es mío</b><span className="block text-xs text-muted-foreground">No necesitas crear ni seleccionar una persona en Relaciones.</span></span>
+   </label>
+   {!isMine&&<div className="grid gap-2 sm:grid-cols-2">
+    <Input placeholder="Nombre de la persona" value={subject} onChange={e=>setSubject(e.target.value)}/>
+    <select className="h-10 rounded-md border bg-background px-3" value={type} onChange={e=>setType(e.target.value)}><option value="partner">Pareja</option><option value="family">Familiar</option><option value="other">Otra persona</option></select>
+   </div>}
+   <div className="grid gap-2 sm:grid-cols-[180px_1fr]">
+    <label className="space-y-1 text-xs text-muted-foreground">Duración aproximada del ciclo (opcional)
+     <Input type="number" min="15" max="60" value={cycle} onChange={e=>setCycle(e.target.value)}/>
+    </label>
+    <p className="self-end text-xs text-muted-foreground">Se usa únicamente como referencia orientativa. El calendario conserva las fechas reales registradas.</p>
+   </div>
+   <Button disabled={creating||(!isMine&&!subject.trim())} onClick={()=>void createProfile()}><Plus className="mr-1 h-4 w-4"/>{creating?"Guardando…":isMine?"Crear mi seguimiento":"Agregar seguimiento"}</Button>
+  </div>
+  {q.isError&&<p className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">No se pudieron cargar los perfiles. Intenta actualizar la pantalla.</p>}
+  {profiles.length===0&&!q.isLoading&&<p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Todavía no hay seguimientos. Marca «Este seguimiento es mío» para crear el tuyo.</p>}
+  {profiles.map((profile:any)=><CycleProfile key={profile.id} profile={profile}
+   records={(records.data||[]).filter((r:any)=>r.profile_id===profile.id)}
+   dailyLogs={(dailyLogs.data||[]).filter((r:any)=>r.profile_id===profile.id)}
+   recordMutations={recordMutations} dailyMutations={dailyMutations}
+   profileMutations={profileMutations}/>)}
+ </section>;
+}
+function CycleProfile({profile,records,dailyLogs,recordMutations,dailyMutations,profileMutations}:{
+ profile:any;records:any[];dailyLogs:any[];recordMutations:any;dailyMutations:any;profileMutations:any;
+}){
+ const today=todayISO();
+ const[month,setMonth]=useState(today.slice(0,7));
+ const[selectedDate,setSelectedDate]=useState(today);
+ const[startDate,setStartDate]=useState(today);
+ const[flow,setFlow]=useState("medium");
+ const[symptoms,setSymptoms]=useState<string[]>([]);
+ const[dailyFlow,setDailyFlow]=useState("none");
+ const[dailyNotes,setDailyNotes]=useState("");
+ const[savingDay,setSavingDay]=useState(false);
+ const[dateEdits,setDateEdits]=useState<Record<string,{start:string;end:string}>>({});
+ const[showHistory,setShowHistory]=useState(true);
+ const monthDate=new Date(Number(month.slice(0,4)),Number(month.slice(5,7))-1,1);
+ const monthLabel=monthDate.toLocaleDateString("es-CO",{month:"long",year:"numeric"});
+ const firstOffset=(monthDate.getDay()+6)%7;
+ const daysInMonth=new Date(monthDate.getFullYear(),monthDate.getMonth()+1,0).getDate();
+ const cells=Array.from({length:firstOffset+daysInMonth},(_,index)=>index<firstOffset?null:index-firstOffset+1);
+ const ownLogs=[...dailyLogs].sort((a:any,b:any)=>String(a.log_date).localeCompare(String(b.log_date)));
+ const ownRecords=[...records].sort((a:any,b:any)=>String(b.start_date).localeCompare(String(a.start_date)));
+ const selectedLog=dailyLogs.find((entry:any)=>entry.log_date===selectedDate);
+ const activeRecord=ownRecords.find((record:any)=>!record.end_date);
+ const recordForDay=(date:string)=>ownRecords.find((record:any)=>date>=record.start_date&&date<=(record.end_date||today));
+ useEffect(()=>{
+  setSymptoms(selectedLog?.symptoms||[]);
+  setDailyFlow(selectedLog?.flow||"none");
+  setDailyNotes(selectedLog?.notes||"");
+ },[profile.id,selectedDate,selectedLog?.id,selectedLog?.updated_at]);
+ const toggleSymptom=(symptom:string)=>{
+  setSymptoms(current=>current.includes(symptom)?current.filter(value=>value!==symptom):[...current,symptom]);
+ };
+ const changeMonth=(delta:number)=>{
+  const next=new Date(monthDate.getFullYear(),monthDate.getMonth()+delta,1);
+  setMonth(isoDay(next).slice(0,7));
+ };
+ const saveDailyLog=async()=>{
+  setSavingDay(true);
+  const payload={log_date:selectedDate,profile_id:profile.id,flow:dailyFlow,symptoms,notes:dailyNotes.trim()||null};
+  try{
+   if(selectedLog)await dailyMutations.update.mutateAsync({id:selectedLog.id,patch:payload});
+   else await dailyMutations.create.mutateAsync(payload);
+  }finally{setSavingDay(false);}
+ };
+ const savePeriodDates=async(record:any)=>{
+  const edit=dateEdits[record.id]||{start:record.start_date,end:record.end_date||""};
+  if(!edit.start||edit.end&&edit.end<edit.start){toast.error("Revisa las fechas del período.");return;}
+  await recordMutations.update.mutateAsync({id:record.id,patch:{start_date:edit.start,end_date:edit.end||null}});
+  setDateEdits(current=>{const next={...current};delete next[record.id];return next;});
+ };
+ const createPeriod=async()=>{
+  if(activeRecord){toast.error("Finaliza el período abierto antes de iniciar otro.");return;}
+  if(!startDate||startDate>today){toast.error("La fecha de inicio no puede ser futura.");return;}
+  await recordMutations.create.mutateAsync({profile_id:profile.id,start_date:startDate,end_date:null,flow,notes:null});
+  setSelectedDate(startDate);setMonth(startDate.slice(0,7));
+ };
+ const dateFormat=(value:string)=>displayCycleDate(value);
+ return <article className="glass space-y-4 rounded-2xl p-4">
+  <div className="flex flex-wrap items-start justify-between gap-2">
+   <div className="min-w-0"><h3 className="font-semibold">{profile.subject_name}</h3><p className="text-xs text-muted-foreground">{profile.subject_type==="self"?"Seguimiento personal":"Seguimiento compartido"} · ciclo de referencia: {profile.average_cycle_days||28} días</p></div>
+   <Button size="icon" variant="ghost" title="Eliminar seguimiento" onClick={()=>{if(window.confirm("¿Eliminar este seguimiento y sus registros?"))void profileMutations.remove.mutateAsync(profile.id)}}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+  </div>
+  <div className="space-y-3 rounded-xl border p-3">
+   <div className="flex flex-wrap items-center justify-between gap-2">
+    <div><h4 className="font-semibold">Calendario del período</h4><p className="text-xs text-muted-foreground">Los días registrados aparecen marcados en rojo. Selecciona cualquier día para anotar cómo te sentiste.</p></div>
+    <div className="flex items-center gap-1">
+     <Button size="icon" variant="outline" className="h-8 w-8" aria-label="Mes anterior" onClick={()=>changeMonth(-1)}><ChevronLeft className="h-4 w-4"/></Button>
+     <span className="min-w-32 text-center text-sm font-medium capitalize">{monthLabel}</span>
+     <Button size="icon" variant="outline" className="h-8 w-8" aria-label="Mes siguiente" onClick={()=>changeMonth(1)}><ChevronRight className="h-4 w-4"/></Button>
+    </div>
+   </div>
+   <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-muted-foreground">{["L","M","X","J","V","S","D"].map(day=><span key={day} className="py-1 font-medium">{day}</span>)}</div>
+   <div className="grid grid-cols-7 gap-1">
+    {cells.map((day,index)=>{
+     if(!day)return <span key={"blank-"+index} className="h-10"/>;
+     const date=month+"-"+String(day).padStart(2,"0");
+     const period=recordForDay(date);
+     const isSelected=date===selectedDate;
+     const hasLog=dailyLogs.some((entry:any)=>entry.log_date===date);
+     return <button type="button" key={date} onClick={()=>setSelectedDate(date)} aria-pressed={isSelected}
+      className={"relative grid h-10 place-items-center rounded-lg text-sm transition "+(period?"bg-rose-600 font-semibold text-white hover:bg-rose-700": "hover:bg-muted")+(isSelected?" ring-2 ring-primary ring-offset-1":"")+(date===today?" after:absolute after:bottom-1 after:h-1 after:w-1 after:rounded-full after:bg-current":"")}>
+      {day}{hasLog&&<span className={"absolute right-1 top-1 h-1.5 w-1.5 rounded-full "+(period?"bg-white":"bg-primary")}/>}
+     </button>;
+    })}
+   </div>
+   <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground"><span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-rose-600"/>Días del período</span><span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-primary"/>Día con síntomas/notas</span></div>
+  </div>
+  <div className="grid gap-3 rounded-xl border p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+   <div className="space-y-1"><h4 className="font-semibold">Registrar inicio de un período</h4><p className="text-xs text-muted-foreground">Solo pide cuándo comenzó. La fecha de finalización se registra cuando termine.</p><Input aria-label="Fecha de inicio del período" type="date" max={today} value={startDate} onChange={e=>setStartDate(e.target.value)}/></div>
+   <Button disabled={Boolean(activeRecord)||!startDate||startDate>today||recordMutations.create.isPending} onClick={()=>void createPeriod()}><CalendarHeart className="mr-1 h-4 w-4"/>Iniciar período</Button>
+   {activeRecord&&<p className="text-xs text-muted-foreground sm:col-span-2">Hay un período abierto desde el {dateFormat(activeRecord.start_date)}. Cuando termine, introduce la fecha final en el historial de abajo.</p>}
+  </div>
+  <div className="space-y-2">
+   <button type="button" className="flex w-full items-center justify-between text-left" onClick={()=>setShowHistory(value=>!value)} aria-expanded={showHistory}><span><b className="text-sm">Historial de períodos</b><span className="ml-2 text-xs text-muted-foreground">{ownRecords.length} registrados</span></span>{showHistory?<ChevronUp className="h-4 w-4"/>:<ChevronDown className="h-4 w-4"/>}</button>
+   {showHistory&&<div className="space-y-2">{ownRecords.length===0?<p className="text-xs text-muted-foreground">Todavía no hay períodos registrados.</p>:ownRecords.map((record:any)=>{
+    const edit=dateEdits[record.id]||{start:record.start_date,end:record.end_date||""};
+    const duration=record.end_date?Math.floor((new Date(record.end_date+"T12:00:00").getTime()-new Date(record.start_date+"T12:00:00").getTime())/86400000)+1:null;
+    return <div key={record.id} className="space-y-2 rounded-lg border p-3">
+     <div className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm">Período iniciado: {dateFormat(record.start_date)}</b><span className="text-xs text-muted-foreground">{duration?duration+" días": "En curso"}</span></div>
+     <div className="grid gap-2 sm:grid-cols-2">
+      <label className="space-y-1 text-xs text-muted-foreground">Inicio<Input type="date" value={edit.start} onChange={e=>setDateEdits(current=>({...current,[record.id]:{...edit,start:e.target.value}}))}/></label>
+      <label className="space-y-1 text-xs text-muted-foreground">Fin del período<Input type="date" max={today} value={edit.end} onChange={e=>setDateEdits(current=>({...current,[record.id]:{...edit,end:e.target.value}}))}/></label>
+     </div>
+     <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{record.end_date?"Finalizó el "+dateFormat(record.end_date):"Aún no se ha registrado el final"}</span><Button size="sm" variant="outline" disabled={recordMutations.update.isPending||!edit.start||Boolean(edit.end&&edit.end<edit.start)} onClick={()=>void savePeriodDates(record)}>Guardar fechas</Button></div>
+    </div>;
+   })}</div>}
+  </div>
+  <div className="space-y-3 rounded-xl border p-3">
+   <div><h4 className="font-semibold">Registro diario</h4><p className="text-xs text-muted-foreground">Cada fecha tiene sus propios síntomas, intensidad de sangrado y notas. No se repiten automáticamente en todos los días del período.</p></div>
+   <div className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm">{dateFormat(selectedDate)}</b>{recordForDay(selectedDate)&&<span className="rounded-full bg-rose-600/10 px-2 py-1 text-[11px] text-rose-700 dark:text-rose-300">Día del período</span>}</div>
+   <label className="space-y-1 text-xs text-muted-foreground">Sangrado de este día
+    <select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={dailyFlow} onChange={e=>setDailyFlow(e.target.value)}>{CYCLE_FLOW_OPTIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select>
+   </label>
+   <div className="space-y-2"><p className="text-xs font-medium text-muted-foreground">¿Qué síntomas tuviste hoy?</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{CYCLE_SYMPTOMS.map(symptom=><label key={symptom} className="flex items-center gap-2 rounded-lg border p-2 text-xs"><input type="checkbox" checked={symptoms.includes(symptom)} onChange={()=>toggleSymptom(symptom)} className="h-4 w-4 accent-primary"/>{symptom}</label>)}</div></div>
+   <textarea className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Notas de este día (dolor, energía, ánimo, cambios…)" value={dailyNotes} onChange={e=>setDailyNotes(e.target.value)}/>
+   <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{selectedLog?"Este día ya tiene un registro; puedes actualizarlo.":"Aún no hay un registro para esta fecha."}</span><Button disabled={savingDay||dailyMutations.create.isPending||dailyMutations.update.isPending} onClick={()=>void saveDailyLog()}>{savingDay?"Guardando…":selectedLog?"Actualizar este día":"Guardar este día"}</Button></div>
+  </div>
+  <p className="text-xs text-muted-foreground">La fecha estimada de la próxima menstruación no se muestra como si fuera un dato confirmado. POS conserva el historial real para que las referencias futuras se basen en tus registros.</p>
+ </article>;
+}
+
 function Appointments(){const q=useLGList("medical_appointments","appointment_at");const m=useLGMutations("medical_appointments");const{user}=useAuth();const[title,setTitle]=useState(""),[date,setDate]=useState(""),[provider,setProvider]=useState(""),[location,setLocation]=useState(""),[notes,setNotes]=useState("");return <section className="glass space-y-3 rounded-2xl p-4"><div className="flex items-center gap-2"><ClipboardList className="h-4 w-4"/><h2 className="font-semibold">Citas médicas</h2></div><div className="grid gap-2 sm:grid-cols-2"><Input placeholder="Cita / examen" value={title} onChange={e=>setTitle(e.target.value)}/><Input type="datetime-local" value={date} onChange={e=>setDate(e.target.value)}/><Input placeholder="Profesional / clínica" value={provider} onChange={e=>setProvider(e.target.value)}/><Input placeholder="Lugar" value={location} onChange={e=>setLocation(e.target.value)}/></div><RichTextEditor value={notes} onChange={setNotes} placeholder="Indicaciones, preparación o preguntas…"/><Button disabled={!title.trim()||!date} onClick={()=>void m.create.mutateAsync({user_id:user?.id,title:title.trim(),appointment_at:new Date(date).toISOString(),provider:provider||null,location:location||null,notes:notes||null,reminder_minutes:[10080,1440,60,0],alarm_enabled:true}).then(()=>setTitle(""))}><Plus className="mr-1 h-4 w-4"/>Guardar cita</Button>{(q.data||[]).map((x:any)=><div key={x.id} className="flex gap-2 rounded-xl border p-3"><span className="flex-1"><b>{x.title}</b><span className="ml-2 text-xs text-muted-foreground">{new Date(x.appointment_at).toLocaleString("es-CO")}</span></span><Button size="icon" variant="ghost" onClick={()=>void m.remove.mutateAsync(x.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>)}</section>}
 function Nutrition(){const q=useLGList("nutrition_logs","log_date");const m=useLGMutations("nutrition_logs");const{user}=useAuth();const{date}=useGlobalDate();const[meal,setMeal]=useState(""),[cal,setCal]=useState(""),[protein,setProtein]=useState(""),[notes,setNotes]=useState("");useEffect(()=>{setMeal("");setCal("");setProtein("");setNotes("")},[date]);const clearForm=()=>{setMeal("");setCal("");setProtein("");setNotes("")};const hasNutritionInput=[meal,cal,protein,notes].some(v=>v.trim().length>0);return <section className="glass space-y-3 rounded-2xl p-4"><div className="flex items-center gap-2"><HeartPulse className="h-4 w-4"/><h2 className="flex items-center gap-2 font-semibold">Nutrición <HelpTip helpKey="health.nutrition" /></h2></div><div className="grid gap-2 sm:grid-cols-4"><Input placeholder="Comida (desayuno…)" value={meal} onChange={e=>setMeal(e.target.value)}/><Input type="number" placeholder="kcal" value={cal} onChange={e=>setCal(e.target.value)}/><Input type="number" placeholder="Proteína g" value={protein} onChange={e=>setProtein(e.target.value)}/></div><RichTextEditor value={notes} onChange={setNotes} placeholder="Alimentos, porciones y notas…"/><Button disabled={!hasNutritionInput||m.create.isPending} onClick={()=>void m.create.mutateAsync({user_id:user?.id,log_date:date,meal_type:meal.trim()||null,calories:cal.trim()?Number(cal):null,protein_g:protein.trim()?Number(protein):null,notes:notes.trim()||null}).then(clearForm)}><Plus className="mr-1 h-4 w-4"/>{m.create.isPending?"Guardando…":"Registrar"}</Button>{(q.data||[]).filter((x:any)=>x.log_date===date).map((x:any)=><div key={x.id} className="rounded-xl border p-3"><b>{x.meal_type||"Comida"}</b><span className="ml-2 text-xs text-muted-foreground">{x.calories||0} kcal · {x.protein_g||0} g proteína</span></div>)}</section>}
