@@ -1,5 +1,5 @@
 import {
-  Wallet, Banknote, PiggyBank, CreditCard, Coins, Landmark, HandCoins, Receipt, TrendingUp, TrendingDown, Gift, BadgeDollarSign, Vault, Bitcoin, Necktie,
+  Wallet, Banknote, PiggyBank, CreditCard, Coins, Landmark, HandCoins, Receipt, TrendingUp, TrendingDown, Gift, BadgeDollarSign, Vault, Bitcoin,
   Car, Bus, Bike, Fuel, Plane, Train, TramFront, ParkingCircle, Ship, Truck,
   ShoppingCart, ShoppingBag, Store, Tag, Package, Shirt, Gem, Watch,
   Utensils, Coffee, Pizza, Beer, Wine, IceCream, Apple, Salad, Sandwich, CupSoda,
@@ -20,7 +20,7 @@ import { createElement, type CSSProperties } from "react";
 
 /**
  * PERSONAL OS icon library.
- * Minimal, coherent, and deliberately broad — no emojis used as a substitute.
+ * Broad Lucide library with colorful object pictograms where a familiar object is more recognizable.
  */
 type EmojiIconProps = { className?: string; style?: CSSProperties };
 const emojiIcon = (emoji: string, label: string): LucideIcon => {
@@ -85,7 +85,7 @@ export const ICON_GROUPS: IconGroup[] = [
   { label: "Finanzas", icons: ["Wallet", "Banknote", "PiggyBank", "CreditCard", "Coins", "Landmark", "HandCoins", "Receipt", "TrendingUp", "TrendingDown", "Gift", "BadgeDollarSign", "Vault", "Bitcoin"] },
   { label: "Viajes", icons: ["Luggage", "Passport", "Plane", "Train", "Ship", "Hotel"] },
   { label: "Transporte", icons: ["Car", "Bus", "Bike", "Fuel", "Plane", "Train", "TramFront", "ParkingCircle", "Ship", "Truck"] },
-  { label: "Ropa y accesorios", icons: ["Necktie", "Shirt", "Gem", "Watch"] },
+  { label: "Ropa y accesorios", icons: ["Necktie", "Dress", "Shoes", "Handbag", "Glasses", "Backpack", "Perfume", "Ring", "Shirt", "Gem", "Watch"] },
   { label: "Compras", icons: ["ShoppingCart", "ShoppingBag", "Store", "Tag", "Package"] },
   { label: "Comida y bebida", icons: ["Utensils", "Coffee", "Pizza", "Burger", "Cake", "Bread", "Sushi", "Milk", "Juice", "Beer", "Wine", "IceCream", "Apple", "Salad", "Sandwich", "CupSoda"] },
   { label: "Casa", icons: ["Home", "Sofa", "Bed", "Lightbulb", "Wrench", "Hammer", "Droplets", "Flame", "Trash2", "PaintRoller"] },
