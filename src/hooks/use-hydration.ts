@@ -70,5 +70,68 @@ export function useHydrationMutations(date: string) {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "No se pudo registrar la bebida."),
   });
-  return { create };
+
+  const update = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      beverage_type: BeverageType;
+      amount_ml: number;
+      note?: string | null;
+      consumed_time: string;
+    }) => {
+      if (!Number.isInteger(input.amount_ml) || input.amount_ml < 1 || input.amount_ml > 5000) {
+        throw new Error("La cantidad debe estar entre 1 y 5000 ml.");
+      }
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.consumed_time)) {
+        throw new Error("La hora del registro no es válida.");
+      }
+      const user_id = await currentUserId();
+      const consumed_at = new Date(date + "T" + input.consumed_time).toISOString();
+      const { data, error } = await supabase
+        .from("hydration_entries")
+        .update({
+          beverage_type: input.beverage_type,
+          amount_ml: input.amount_ml,
+          note: input.note?.trim() || null,
+          consumed_at,
+        })
+        .eq("id", input.id)
+        .eq("user_id", user_id)
+        .eq("consumed_on", date)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("No se encontró ese registro de hidratación de este día.");
+      return input.id;
+    },
+    onSuccess: () => {
+      refresh();
+      toast.success("Registro de hidratación actualizado.");
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "No se pudo actualizar el registro."),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const user_id = await currentUserId();
+      const { data, error } = await supabase
+        .from("hydration_entries")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user_id)
+        .eq("consumed_on", date)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("No se encontró ese registro de hidratación de este día.");
+      return id;
+    },
+    onSuccess: () => {
+      refresh();
+      toast.success("Registro de hidratación eliminado.");
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "No se pudo eliminar el registro."),
+  });
+
+  return { create, update, remove };
 }
