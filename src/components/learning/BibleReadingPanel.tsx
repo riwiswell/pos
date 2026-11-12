@@ -112,7 +112,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
   const [readingDate, setReadingDate] = useState(todayISO());
   const [note, setNote] = useState("");
   const todayCardRef = useRef<HTMLElement | null>(null);
-  const hasAutoScrolled = useRef(false);
+  const autoScrolledCycleId = useRef<string | null>(null);
 
   const cyclesQuery = useQuery({
     queryKey: ["bible-reading-cycles", learningItemId],
@@ -276,14 +276,27 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
   }, [activeCycle?.id, activeCycle?.mode, activeCycle?.status, completedDays]);
 
   useEffect(() => {
-    if (activeCycle?.mode !== "annual_plan" || progressQuery.isLoading || hasAutoScrolled.current) return;
-    if (currentDayNumber < 1 || currentDayNumber > 365 || selectedMonth !== currentPlanMonth) return;
+    if (activeCycle?.mode !== "annual_plan") return;
+    if (currentDayNumber < 1 || currentDayNumber > 365) return;
+    if (autoScrolledCycleId.current === activeCycle.id) return;
+
+    // Move to the month containing today's plan day before looking for its card.
+    // This keeps the scroll from being lost when the plan opens on a different month.
+    if (selectedMonth !== currentPlanMonth) {
+      setSelectedMonth(currentPlanMonth);
+      return;
+    }
+
     const frame = window.requestAnimationFrame(() => {
-      todayCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      hasAutoScrolled.current = true;
+      const todayCard = todayCardRef.current;
+      if (!todayCard) return;
+
+      todayCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Record success only after the actual target was found and scrolled into view.
+      autoScrolledCycleId.current = activeCycle.id;
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeCycle?.id, activeCycle?.mode, currentDayNumber, currentPlanMonth, selectedMonth, progressQuery.isLoading]);
+  }, [activeCycle?.id, activeCycle?.mode, currentDayNumber, currentPlanMonth, selectedMonth]);
 
   const todayPlanDay = activeCycle?.mode === "annual_plan" && currentDayNumber >= 1 && currentDayNumber <= 365
     ? BIBLE_READING_PLAN[currentDayNumber - 1]
