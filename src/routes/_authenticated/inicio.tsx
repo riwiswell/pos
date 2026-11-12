@@ -170,7 +170,8 @@ function HomePage() {
       <section className="inicio-hero relative isolate overflow-hidden rounded-[26px] border border-white/10 bg-gradient-to-br from-[#202342] via-[#171b2b] to-[#10262f] px-5 py-4 shadow-[0_22px_55px_-34px_rgba(75,105,255,.55)]">
         <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="pointer-events-none absolute bottom-[-100px] left-[38%] h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="relative grid gap-3">
+        <div className={`relative inicio-hero-layout ${homeLayout.visible.includes("weather") ? "" : "inicio-hero-layout--no-weather"}`}>
+          <div className="inicio-hero-main min-w-0">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[11px] font-medium tracking-wide text-slate-300">
               <Sparkles className="h-3.5 w-3.5 text-amber-300" />
@@ -217,202 +218,202 @@ function HomePage() {
               <p className="mt-1 truncate text-[10px] text-slate-300">{connectionsQuery.isLoading ? "…" : `${connectionsQuery.data?.length ?? 0} conexiones activas`}{activeChallenge ? ` · Reto: ${activeChallenge.title} (${activeChallenge.progress}/${activeChallenge.target})` : ""}</p>
             </Link>
           </div>
+          </div>
+          {homeLayout.visible.includes("weather") && (
+            <div className="inicio-hero-weather">
+              <WeatherCard compact />
+            </div>
+          )}
         </div>
       </section>
       
       </div>
 
       <div className="inicio-dashboard-grid">
-        {homeLayout.visible.includes("weather") && (
-          <div className="inicio-widget inicio-widget--weather" style={{ order: homeLayout.order.indexOf("weather") }}>
-            <WeatherCard compact />
-          </div>
-        )}
-              <Link to="/habitos" search={{ tab: "compartidos" } as never} className="inicio-widget inicio-widget--shared-challenges group flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]" style={{ order: homeLayout.order.indexOf("shared-challenges") }}>
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Target className="h-5 w-5"/></span>
-        <span className="min-w-0 flex-1"><b className="block text-sm">Retos compartidos</b><span className="text-xs text-muted-foreground">Invita a otra persona y avancen juntos en metas, hábitos y desafíos.</span></span>
-        <span className="shrink-0 text-xs font-semibold text-primary">Invitar y participar</span>
-        <ArrowUpRight className="h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"/>
-      </Link>
-        <div className="inicio-habits-column min-w-0">
+        <div className="inicio-dashboard-column inicio-dashboard-column--habits">
           {showHabitsCard && (
-            <div className="inicio-widget inicio-widget--habits" style={{ order: homeLayout.order.indexOf("habits") }}>
-              {habitsQuery.isLoading || logsQuery.isLoading || usageLogsQuery.isLoading ? <LoadingState /> :
-            habitsQuery.isError || logsQuery.isError || usageLogsQuery.isError ? (
-              <ErrorState message={
-                habitsQuery.error instanceof Error ? habitsQuery.error.message :
-                logsQuery.error instanceof Error ? logsQuery.error.message :
-                usageLogsQuery.error instanceof Error ? usageLogsQuery.error.message :
-                "No se pudieron cargar los hábitos y su historial de uso."
-              } />
-            ) : (
-              <section className="inicio-habits-card overflow-hidden rounded-[26px] border border-violet-400/20 bg-gradient-to-br from-violet-500/[.08] via-card to-card shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-4">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-primary">Tu progreso</p>
-                    <h2 className="mt-1 text-lg font-semibold">Hábitos del día <HelpTip helpKey="habits.summary" /></h2>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">Ordenados por uso en los últimos 30 días.</p>
-                  </div>
-                  <Link to="/habitos" search={(prev: Record<string, unknown>) => prev} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                    Ver hábitos <ArrowUpRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-                {habits.length === 0 ? (
-                  <div className="px-5 pb-5"><EmptyState title="Aún no tienes hábitos" description="Crea tu primer hábito para empezar a construir tu historial real." /></div>
-                ) : (
-                  <div className="grid gap-3 px-4 pb-3 sm:grid-cols-[108px_1fr] sm:items-center">
-                    <div className="relative mx-auto flex h-28 w-28 items-center justify-center rounded-full" style={{ background: `conic-gradient(#8b7cff ${percent}%, color-mix(in srgb, var(--border) 70%, transparent) 0)` }}>
-                      <div className="flex h-[88px] w-[88px] flex-col items-center justify-center rounded-full bg-card">
-                        <span className="text-2xl font-semibold tabular-nums">{percent}%</span>
-                        <span className="text-[11px] text-muted-foreground">completado</span>
-                      </div>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="mb-2 flex items-end justify-between gap-3">
-                        <div><p className="text-2xl font-semibold tabular-nums">{done}<span className="text-sm font-normal text-muted-foreground"> de {total}</span></p><p className="text-xs text-muted-foreground">hábitos completados</p></div>
-                        {activities.length > 0 && <div className="text-right"><p className="text-lg font-semibold tabular-nums">{activitiesDone}/{activities.length}</p><p className="text-[11px] text-muted-foreground">actividades</p></div>}
-                      </div>
-                      <Progress value={percent} className="h-2.5" />
-                      <div className="mt-3 grid grid-cols-1 gap-1.5">
-                        {rankedHabits.slice(0, 4).map((habit) => {
-                          const habitLog = logByHabit.get(habit.id);
-                          const complete = isDone(habit, habitLog);
-                          const value = habitLog?.value ?? 0;
-                          return (
-                            <div key={habit.id} className="flex min-w-0 items-center gap-2 rounded-xl bg-muted/55 px-2.5 py-1.5">
-                              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${complete ? "bg-emerald-500/15 text-emerald-500" : "bg-background text-muted-foreground"}`}>
-                                {complete ? <Check className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex min-w-0 items-center gap-2">
-                                  <span aria-hidden className="shrink-0 text-sm">{habit.icon || (habit.kind === "activity" ? "🎯" : "✨")}</span>
-                                  <p className="min-w-0 flex-1 truncate text-xs font-medium">{habit.name}</p>
-                                  {habit.kind === "activity" && <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">Actividad</span>}
-                                  <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground" title={`Registrado en ${usageCounts.get(habit.id) ?? 0} de los últimos 30 días`}>
-                                    {usageCounts.get(habit.id) ?? 0}/30 días
-                                  </span>
-                                </div>
-                                {habit.type === "counter" && (
-                                  <p className="text-[10px] text-muted-foreground">
-                                    {value}{habit.target ? ` / ${habit.target}` : ""} {habit.unit ?? ""}
-                                  </p>
-                                )}
-                              </div>
-                              {habit.type === "check" ? (
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  variant={complete ? "default" : "outline"}
-                                  className="h-7 w-7 shrink-0 rounded-full"
-                                  aria-label={complete ? `Desmarcar ${habit.name}` : `Completar ${habit.name}`}
-                                  title={complete ? "Desmarcar" : "Completar"}
-                                  disabled={habitMutations.saveLog.isPending}
-                                  onClick={() => habitMutations.saveLog.mutate({
-                                    habitId: habit.id,
-                                    patch: { completed: !complete, value },
-                                  })}
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </Button>
-                              ) : (
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  step="any"
-                                  inputMode="decimal"
-                                  aria-label={`Minutos o cantidad de ${habit.name}`}
-                                  title="Escribe el total directamente"
-                                  className="h-8 w-20 shrink-0 px-2 text-center text-sm tabular-nums"
-                                  value={quickCounterValues[habit.id] ?? String(value)}
-                                  disabled={habitMutations.saveLog.isPending}
-                                  onChange={(event) => setQuickCounterValues(current => ({ ...current, [habit.id]: event.target.value }))}
-                                  onBlur={() => {
-                                    const raw = quickCounterValues[habit.id] ?? String(value);
-                                    const parsed = Number(raw.replace(",", "."));
-                                    if (Number.isFinite(parsed) && parsed >= 0 && parsed !== value) {
-                                      habitMutations.saveLog.mutate({
-                                        habitId: habit.id,
-                                        patch: {
-                                          value: parsed,
-                                          completed: habit.target ? parsed >= habit.target : parsed > 0,
-                                        },
-                                      });
-                                    }
-                                    setQuickCounterValues(current => { const next = { ...current }; delete next[habit.id]; return next; });
-                                  }}
-                                  onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
-                                />
-                              )}
+                      <div className="inicio-widget inicio-widget--habits" style={{ order: homeLayout.order.indexOf("habits") }}>
+                        {habitsQuery.isLoading || logsQuery.isLoading || usageLogsQuery.isLoading ? <LoadingState /> :
+                      habitsQuery.isError || logsQuery.isError || usageLogsQuery.isError ? (
+                        <ErrorState message={
+                          habitsQuery.error instanceof Error ? habitsQuery.error.message :
+                          logsQuery.error instanceof Error ? logsQuery.error.message :
+                          usageLogsQuery.error instanceof Error ? usageLogsQuery.error.message :
+                          "No se pudieron cargar los hábitos y su historial de uso."
+                        } />
+                      ) : (
+                        <section className="inicio-habits-card overflow-hidden rounded-[26px] border border-violet-400/20 bg-gradient-to-br from-violet-500/[.08] via-card to-card shadow-sm">
+                          <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-4">
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-primary">Tu progreso</p>
+                              <h2 className="mt-1 text-lg font-semibold">Hábitos del día <HelpTip helpKey="habits.summary" /></h2>
+                              <p className="mt-0.5 text-[11px] text-muted-foreground">Ordenados por uso en los últimos 30 días.</p>
                             </div>
-                          );
-                        })}
+                            <Link to="/habitos" search={(prev: Record<string, unknown>) => prev} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                              Ver hábitos <ArrowUpRight className="h-3.5 w-3.5" />
+                            </Link>
+                          </div>
+                          {habits.length === 0 ? (
+                            <div className="px-5 pb-5"><EmptyState title="Aún no tienes hábitos" description="Crea tu primer hábito para empezar a construir tu historial real." /></div>
+                          ) : (
+                            <div className="grid gap-3 px-4 pb-3 sm:grid-cols-[108px_1fr] sm:items-center">
+                              <div className="relative mx-auto flex h-28 w-28 items-center justify-center rounded-full" style={{ background: `conic-gradient(#8b7cff ${percent}%, color-mix(in srgb, var(--border) 70%, transparent) 0)` }}>
+                                <div className="flex h-[88px] w-[88px] flex-col items-center justify-center rounded-full bg-card">
+                                  <span className="text-2xl font-semibold tabular-nums">{percent}%</span>
+                                  <span className="text-[11px] text-muted-foreground">completado</span>
+                                </div>
+                              </div>
+                              <div className="min-w-0">
+                                <div className="mb-2 flex items-end justify-between gap-3">
+                                  <div><p className="text-2xl font-semibold tabular-nums">{done}<span className="text-sm font-normal text-muted-foreground"> de {total}</span></p><p className="text-xs text-muted-foreground">hábitos completados</p></div>
+                                  {activities.length > 0 && <div className="text-right"><p className="text-lg font-semibold tabular-nums">{activitiesDone}/{activities.length}</p><p className="text-[11px] text-muted-foreground">actividades</p></div>}
+                                </div>
+                                <Progress value={percent} className="h-2.5" />
+                                <div className="mt-3 grid grid-cols-1 gap-1.5">
+                                  {rankedHabits.slice(0, 4).map((habit) => {
+                                    const habitLog = logByHabit.get(habit.id);
+                                    const complete = isDone(habit, habitLog);
+                                    const value = habitLog?.value ?? 0;
+                                    return (
+                                      <div key={habit.id} className="flex min-w-0 items-center gap-2 rounded-xl bg-muted/55 px-2.5 py-1.5">
+                                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${complete ? "bg-emerald-500/15 text-emerald-500" : "bg-background text-muted-foreground"}`}>
+                                          {complete ? <Check className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex min-w-0 items-center gap-2">
+                                            <span aria-hidden className="shrink-0 text-sm">{habit.icon || (habit.kind === "activity" ? "🎯" : "✨")}</span>
+                                            <p className="min-w-0 flex-1 truncate text-xs font-medium">{habit.name}</p>
+                                            {habit.kind === "activity" && <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">Actividad</span>}
+                                            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground" title={`Registrado en ${usageCounts.get(habit.id) ?? 0} de los últimos 30 días`}>
+                                              {usageCounts.get(habit.id) ?? 0}/30 días
+                                            </span>
+                                          </div>
+                                          {habit.type === "counter" && (
+                                            <p className="text-[10px] text-muted-foreground">
+                                              {value}{habit.target ? ` / ${habit.target}` : ""} {habit.unit ?? ""}
+                                            </p>
+                                          )}
+                                        </div>
+                                        {habit.type === "check" ? (
+                                          <Button
+                                            type="button"
+                                            size="icon"
+                                            variant={complete ? "default" : "outline"}
+                                            className="h-7 w-7 shrink-0 rounded-full"
+                                            aria-label={complete ? `Desmarcar ${habit.name}` : `Completar ${habit.name}`}
+                                            title={complete ? "Desmarcar" : "Completar"}
+                                            disabled={habitMutations.saveLog.isPending}
+                                            onClick={() => habitMutations.saveLog.mutate({
+                                              habitId: habit.id,
+                                              patch: { completed: !complete, value },
+                                            })}
+                                          >
+                                            <Check className="h-3.5 w-3.5" />
+                                          </Button>
+                                        ) : (
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            inputMode="decimal"
+                                            aria-label={`Minutos o cantidad de ${habit.name}`}
+                                            title="Escribe el total directamente"
+                                            className="h-8 w-20 shrink-0 px-2 text-center text-sm tabular-nums"
+                                            value={quickCounterValues[habit.id] ?? String(value)}
+                                            disabled={habitMutations.saveLog.isPending}
+                                            onChange={(event) => setQuickCounterValues(current => ({ ...current, [habit.id]: event.target.value }))}
+                                            onBlur={() => {
+                                              const raw = quickCounterValues[habit.id] ?? String(value);
+                                              const parsed = Number(raw.replace(",", "."));
+                                              if (Number.isFinite(parsed) && parsed >= 0 && parsed !== value) {
+                                                habitMutations.saveLog.mutate({
+                                                  habitId: habit.id,
+                                                  patch: {
+                                                    value: parsed,
+                                                    completed: habit.target ? parsed >= habit.target : parsed > 0,
+                                                  },
+                                                });
+                                              }
+                                              setQuickCounterValues(current => { const next = { ...current }; delete next[habit.id]; return next; });
+                                            }}
+                                            onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </section>
+                        )}
                       </div>
-                    </div>
-                  </div>
-                )}
-              </section>
-              )}
-            </div>
-          )}
-
-        </div>
-
-        <div className="inicio-planner-column min-w-0">
-          <div className="flex h-full min-w-0 flex-col gap-3">
-          {showPlannerCard && (
-            <div className="inicio-widget inicio-widget--agenda" style={{ order: homeLayout.order.indexOf("agenda") }}>
-            <section className="rounded-[26px] border border-amber-400/20 bg-gradient-to-br from-amber-500/[.07] via-card to-card p-4 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-violet-400">Organiza tu tiempo</p>
-                  <h2 className="mt-1 text-lg font-semibold">Agenda <HelpTip helpKey="planner" /></h2>
-                </div>
-                <Button asChild size="sm" variant="outline" className="rounded-xl">
-                  <Link to="/planeador" search={(prev: Record<string, unknown>) => prev}>Abrir agenda <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link>
-                </Button>
-              </div>
-              {plannerQuery.isLoading ? <p className="mt-4 text-sm text-muted-foreground">Cargando agenda…</p> :
-                plannerQuery.isError ? <ErrorState message={plannerQuery.error instanceof Error ? plannerQuery.error.message : "No se pudo cargar la agenda."} /> :
-                sortedPlanner.length === 0 ? <p className="mt-4 rounded-2xl bg-muted/45 px-4 py-5 text-sm text-muted-foreground">No tienes actividades registradas para esta fecha.</p> :
-                <div className="mt-3 space-y-2">
-                  {sortedPlanner.slice(0, 3).map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-muted/45 px-3 py-2.5">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400"><Clock3 className="h-4.5 w-4.5" /></span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{item.title}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{item.start_time ? shortTime(item.start_time) : "Sin hora"} · {item.type === "event" ? "Evento" : "Actividad"}</p>
-                      </div>
-                      {item.status === "done" && <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-500">Hecho</span>}
-                    </div>
-                  ))}
-                  {pendingItems.length > 0 && <p className="pt-1 text-xs text-muted-foreground"><TrendingUp className="mr-1 inline h-3.5 w-3.5" /> {pendingItems.length} pendiente{pendingItems.length === 1 ? "" : "s"}{nextItem?.start_time ? ` · siguiente a las ${shortTime(nextItem.start_time)}` : ""}</p>}
-                </div>
-              }
-            </section>
-            </div>
+                    )}
+          {homeLayout.visible.includes("shared-challenges") && (
+            <Link to="/habitos" search={{ tab: "compartidos" } as never} className="inicio-widget inicio-widget--shared-challenges group flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]" style={{ order: homeLayout.order.indexOf("shared-challenges") }}>
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Target className="h-5 w-5"/></span>
+                    <span className="min-w-0 flex-1"><b className="block text-sm">Retos compartidos</b><span className="text-xs text-muted-foreground">Invita a otra persona y avancen juntos en metas, hábitos y desafíos.</span></span>
+                    <span className="shrink-0 text-xs font-semibold text-primary">Invitar y participar</span>
+                    <ArrowUpRight className="h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"/>
+                  </Link>
           )}
           {homeLayout.visible.includes("reading") && <div className="inicio-widget inicio-widget--reading" style={{ order: homeLayout.order.indexOf("reading") }}><CurrentBookCard /></div>}
           {homeLayout.visible.includes("games") && <div className="inicio-widget inicio-widget--games" style={{ order: homeLayout.order.indexOf("games") }}><CurrentGameCard /></div>}
-          </div>
         </div>
 
-        <aside className="inicio-wellbeing-column min-w-0">
+        <div className="inicio-dashboard-column inicio-dashboard-column--wellbeing">
           {homeLayout.visible.includes("hydration") && <div className="inicio-widget inicio-widget--hydration" style={{ order: homeLayout.order.indexOf("hydration") }}><HydrationOverview date={date} compact /></div>}
+          {showPlannerCard && (
+                      <div className="inicio-widget inicio-widget--agenda" style={{ order: homeLayout.order.indexOf("agenda") }}>
+                      <section className="rounded-[26px] border border-amber-400/20 bg-gradient-to-br from-amber-500/[.07] via-card to-card p-4 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-violet-400">Organiza tu tiempo</p>
+                            <h2 className="mt-1 text-lg font-semibold">Agenda <HelpTip helpKey="planner" /></h2>
+                          </div>
+                          <Button asChild size="sm" variant="outline" className="rounded-xl">
+                            <Link to="/planeador" search={(prev: Record<string, unknown>) => prev}>Abrir agenda <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link>
+                          </Button>
+                        </div>
+                        {plannerQuery.isLoading ? <p className="mt-4 text-sm text-muted-foreground">Cargando agenda…</p> :
+                          plannerQuery.isError ? <ErrorState message={plannerQuery.error instanceof Error ? plannerQuery.error.message : "No se pudo cargar la agenda."} /> :
+                          sortedPlanner.length === 0 ? <p className="mt-4 rounded-2xl bg-muted/45 px-4 py-5 text-sm text-muted-foreground">No tienes actividades registradas para esta fecha.</p> :
+                          <div className="mt-3 space-y-2">
+                            {sortedPlanner.slice(0, 3).map((item) => (
+                              <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-muted/45 px-3 py-2.5">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400"><Clock3 className="h-4.5 w-4.5" /></span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-medium">{item.title}</p>
+                                  <p className="mt-0.5 text-xs text-muted-foreground">{item.start_time ? shortTime(item.start_time) : "Sin hora"} · {item.type === "event" ? "Evento" : "Actividad"}</p>
+                                </div>
+                                {item.status === "done" && <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-500">Hecho</span>}
+                              </div>
+                            ))}
+                            {pendingItems.length > 0 && <p className="pt-1 text-xs text-muted-foreground"><TrendingUp className="mr-1 inline h-3.5 w-3.5" /> {pendingItems.length} pendiente{pendingItems.length === 1 ? "" : "s"}{nextItem?.start_time ? ` · siguiente a las ${shortTime(nextItem.start_time)}` : ""}</p>}
+                          </div>
+                        }
+                      </section>
+                      </div>
+                    )}
           {homeLayout.visible.includes("diary") && <div className="inicio-widget inicio-widget--diary" style={{ order: homeLayout.order.indexOf("diary") }}><DiaryOverview
-            entries={journalQuery.data ?? []}
-            loading={journalQuery.isLoading}
-            error={journalQuery.isError}
-            onCreate={() => {
-              setEditingJournalEntry(null);
-              setJournalDialogOpen(true);
-            }}
-            onOpen={(entry) => {
-              setEditingJournalEntry(entry);
-              setJournalDialogOpen(true);
-            }}
-          /></div>}
-        </aside>
-        {homeLayout.visible.includes("activity") && <div className="inicio-widget inicio-widget--activity" style={{ order: homeLayout.order.indexOf("activity") }}><LifeActivityFeed connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} /></div>}
+                      entries={journalQuery.data ?? []}
+                      loading={journalQuery.isLoading}
+                      error={journalQuery.isError}
+                      onCreate={() => {
+                        setEditingJournalEntry(null);
+                        setJournalDialogOpen(true);
+                      }}
+                      onOpen={(entry) => {
+                        setEditingJournalEntry(entry);
+                        setJournalDialogOpen(true);
+                      }}
+                    /></div>}
+        </div>
+
+        <div className="inicio-dashboard-activity">
+          {homeLayout.visible.includes("activity") && <div className="inicio-widget inicio-widget--activity" style={{ order: homeLayout.order.indexOf("activity") }}><LifeActivityFeed connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} /></div>}
+        </div>
       </div>
 
       {homeLayout.visible.length === 0 && (
