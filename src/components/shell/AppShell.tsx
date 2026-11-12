@@ -33,10 +33,6 @@ function useCollapsed() {
 
   return {
     collapsed,
-    expand: () => {
-      setCollapsed(false);
-      localStorage.setItem(STORAGE_KEY, "0");
-    },
     toggle: () =>
       setCollapsed((value) => {
         const next = !value;
@@ -103,7 +99,7 @@ function useSignOut() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { collapsed, toggle, expand } = useCollapsed();
+  const { collapsed, toggle } = useCollapsed();
   const [moreOpen, setMoreOpen] = useState(false);
   const [menuEditing, setMenuEditing] = useState(false);
   const [menuSaving, setMenuSaving] = useState(false);
@@ -145,10 +141,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     void persistMenu(allItems.map((item) => item.key), hidden);
   };
 
-  const beginMenuEdit = () => {
-    if (collapsed) expand();
-    setMenuEditing((current) => !current);
-  };
   const mobilePrimaryItems = items.filter((item) => MOBILE_PRIMARY_KEYS.has(item.key));
   const mobileMoreItems = items.filter((item) => !MOBILE_PRIMARY_KEYS.has(item.key));
   const mobileMoreGroups = NAV_GROUPS
