@@ -97,7 +97,12 @@ export function effectiveDueAt(dose: MedicationDose): Date {
 }
 
 export function isOpen(dose: MedicationDose) {
-  return dose.status === "pending" || dose.status === "snoozed";
+  if (dose.status === "pending" || dose.status === "snoozed") return true;
+  // Stock-reconstructed doses are estimates, not user confirmations. Keep a
+  // future estimated dose eligible for the local reminder until the user
+  // confirms "Sí la tomé" or "No la tomé".
+  return dose.status === "taken" && dose.entry_origin === "stock_estimate" &&
+    Number.isFinite(Date.parse(dose.scheduled_at)) && Date.parse(dose.scheduled_at) > Date.now();
 }
 
 export function formatTime12(date: Date): string {
