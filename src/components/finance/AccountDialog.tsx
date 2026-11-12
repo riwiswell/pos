@@ -95,13 +95,15 @@ export function AccountDialog({ open, onOpenChange, account, onSubmit, pending }
           </div>
 
           <div className="space-y-2">
-            <Label>Saldo inicial</Label>
+            <Label>{account?.balance_cutoff_on ? "Saldo de corte" : "Saldo inicial"}</Label>
             <AmountInput
               value={form.initial_balance}
               onChange={(initial_balance) => setForm((prev) => ({ ...prev, initial_balance }))}
             />
             <p className="text-xs text-muted-foreground">
-              El dinero que ya tenías en esta cuenta antes de empezar a registrar movimientos.
+              {account?.balance_cutoff_on
+                ? `Saldo de referencia al ${account.balance_cutoff_on}${account.balance_cutoff_time ? ` a las ${account.balance_cutoff_time.slice(0, 5)}` : ""}. Solo se suman movimientos posteriores.`
+                : "El dinero que ya tenías en esta cuenta antes de empezar a registrar movimientos."}
             </p>
           </div>
 
