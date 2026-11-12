@@ -13,6 +13,11 @@ async function currentUserId() {
   return data.user.id;
 }
 
+function isMissingHydrationIcon(error: { code?: string; message?: string }) {
+  return ["42703", "PGRST204"].includes(String(error.code ?? "")) &&
+    /icon/i.test(error.message ?? "");
+}
+
 export function useHydrationEntries(date: string) {
   return useQuery({
     queryKey: hydrationKeys.day(date),
@@ -62,20 +67,30 @@ export function useHydrationMutations(date: string) {
         throw new Error("La cantidad debe estar entre 1 y 5000 ml.");
       }
       const user_id = await currentUserId();
-      const { data, error } = await supabase
+      const payload = {
+        user_id,
+        consumed_on: date,
+        beverage_type: input.beverage_type,
+        icon: input.icon ?? null,
+        amount_ml: input.amount_ml,
+        note: input.note?.trim() || null,
+      };
+      const withIcon = await supabase
         .from("hydration_entries")
-        .insert({
-          user_id,
-          consumed_on: date,
-          beverage_type: input.beverage_type,
-          icon: input.icon ?? null,
-          amount_ml: input.amount_ml,
-          note: input.note?.trim() || null,
-        })
+        .insert(payload)
         .select("*")
         .single();
-      if (error) throw error;
-      return data as HydrationEntry;
+      if (!withIcon.error) return withIcon.data as HydrationEntry;
+
+      if (!isMissingHydrationIcon(withIcon.error)) throw withIcon.error;
+      const { icon: _icon, ...legacyPayload } = payload;
+      const legacy = await supabase
+        .from("hydration_entries")
+        .insert(legacyPayload)
+        .select("*")
+        .single();
+      if (legacy.error) throw legacy.error;
+      return { ...legacy.data, icon: null } as HydrationEntry;
     },
     onSuccess: (entry) => {
       refresh();
@@ -108,15 +123,30 @@ export function useHydrationMutations(date: string) {
       }
       const user_id = await currentUserId();
       const consumed_at = new Date(date + "T" + input.consumed_time).toISOString();
+      const payload = {
+        beverage_type: input.beverage_type,
+        icon: input.icon ?? null,
+        amount_ml: input.amount_ml,
+        note: input.note?.trim() || null,
+        consumed_at,
+      };
+      const withIcon = await supabase
+        .from("hydration_entries")
+        .update(payload)
+        .eq("id", input.id)
+        .eq("user_id", user_id)
+        .eq("consumed_on", date)
+        .select("id")
+        .maybeSingle();
+      if (!withIcon.error && withIcon.data) return input.id;
+      if (withIcon.error && !isMissingHydrationIcon(withIcon.error)) throw withIcon.error;
+
+      // A legacy installation has no icon column. Retry the same update without
+      // that optional property, with the exact same owner/day/row filters.
+      const { icon: _icon, ...legacyPayload } = payload;
       const { data, error } = await supabase
         .from("hydration_entries")
-        .update({
-          beverage_type: input.beverage_type,
-          icon: input.icon ?? null,
-          amount_ml: input.amount_ml,
-          note: input.note?.trim() || null,
-          consumed_at,
-        })
+        .update(legacyPayload)
         .eq("id", input.id)
         .eq("user_id", user_id)
         .eq("consumed_on", date)
