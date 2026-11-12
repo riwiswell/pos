@@ -85,7 +85,7 @@ export function PersonalAssistant() {
           </div>
         </section>
       )}
-      <Button type="button" size="icon" aria-label={open ? "Cerrar asistente" : "Abrir asistente personal"} title="Asistente Personal OS" onClick={() => setOpen((value) => !value)} className="fixed bottom-20 right-3 z-50 h-12 w-12 rounded-full shadow-lg md:bottom-6 md:right-6">
+      <Button type="button" size="icon" aria-label={open ? "Cerrar asistente" : "Abrir asistente personal"} title="Asistente Personal OS" onClick={() => setOpen((value) => !value)} className="fixed bottom-20 right-3 z-50 h-12 w-12 rounded-full shadow-lg md:bottom-20 md:right-6">
         {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
       </Button>
     </>
