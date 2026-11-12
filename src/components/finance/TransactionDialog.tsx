@@ -18,7 +18,7 @@ import { AmountInput } from "@/components/finance/AmountInput";
 import { CategoryDialog } from "@/components/finance/CategoryDialog";
 import { AccountDialog } from "@/components/finance/AccountDialog";
 import { formatClock, toISODate } from "@/lib/date";
-import { getIcon } from "@/lib/finance-icons";
+import { getCategoryIconName, getIcon } from "@/lib/finance-icons";
 import { cn } from "@/lib/utils";
 import { privateMediaService } from "@/services/private-media.service";
 import { useFinanceMutations } from "@/hooks/use-finance";
@@ -349,7 +349,7 @@ export function TransactionDialog({
               </Label>
               <div className="flex flex-wrap gap-2">
                 {orderedCategories.map((category) => {
-                  const Icon = getIcon(category.icon);
+                  const Icon = getIcon(getCategoryIconName(category.name, category.icon));
                   const selected = form.category_id === category.id;
                   return (
                     <button
@@ -362,13 +362,15 @@ export function TransactionDialog({
                         }))
                       }
                       className={cn(
-                        "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors",
+                        "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all",
                         selected
-                          ? "border-primary bg-primary/10 text-foreground"
-                          : "border-border text-muted-foreground hover:bg-accent",
+                          ? "border-primary bg-primary/10 text-foreground shadow-sm"
+                          : "border-border/70 text-muted-foreground hover:border-border hover:bg-accent",
                       )}
                     >
-                      <Icon className="h-3.5 w-3.5" style={{ color: category.color }} />
+                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: category.color + "20" }}>
+                        <Icon className="h-4 w-4" strokeWidth={2.1} style={{ color: category.color }} />
+                      </span>
                       {category.name}
                     </button>
                   );
