@@ -103,7 +103,7 @@ export function HabitDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] flex-col overflow-hidden p-4 sm:max-h-[90vh] sm:max-w-md sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {habit
@@ -111,7 +111,7 @@ export function HabitDialog({
               : mode === "activity" ? "Nueva actividad" : "Nuevo hábito"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
           <div className="space-y-1.5">
             <Label htmlFor="habit-name">Nombre</Label>
             <Input
@@ -232,7 +232,7 @@ export function HabitDialog({
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="sticky bottom-0 z-10 border-t border-border/60 bg-background pt-3 pb-[env(safe-area-inset-bottom)]">
             <Button type="submit">{habit ? "Guardar" : "Crear"}</Button>
           </DialogFooter>
         </form>
