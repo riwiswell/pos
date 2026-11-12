@@ -153,10 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const mobilePrimaryItems = items.filter((item) => MOBILE_PRIMARY_KEYS.has(item.key));
   const mobileMoreItems = items.filter((item) => !MOBILE_PRIMARY_KEYS.has(item.key));
   const mobileMoreGroups = NAV_GROUPS
-    .map((group) => ({
-      group,
-      items: mobileMoreItems.filter((item) => item.group === group),
-    }))
+    .map((group) => ({ group, items: mobileMoreItems.filter((item) => item.group === group) }))
     .filter((entry) => entry.items.length > 0);
   const mobileUngroupedItems = mobileMoreItems.filter((item) => !item.group);
   const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
@@ -209,9 +206,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3">
-          <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Editar menú">
+          <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Organizar módulos" aria-label="Organizar módulos">
             <SlidersHorizontal className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>{menuEditing ? "Terminar de editar" : "Editar menú"}</span>}
+            {!collapsed && <span>{menuEditing ? "Terminar" : "Organizar módulos"}</span>}
           </Button>
           {(!menuEditing && !collapsed) ? (
             <>
@@ -421,32 +418,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           </SheetHeader>
           <div className="space-y-3">
             {mobileMoreGroups.map(({ group, items: groupItems }) => (
-              <details
-                key={group}
-                className="overflow-hidden rounded-xl border border-border bg-card/40"
-                open={group === activeGroup}
-              >
+              <details key={group} className="overflow-hidden rounded-xl border border-border bg-card/40" open={group === activeGroup}>
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold marker:hidden">
                   <span>{group}</span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">
-                    {groupItems.length}
-                  </span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">{groupItems.length}</span>
                 </summary>
                 <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
                   {groupItems.map((item) => (
-                    <Link
-                      key={item.key}
-                      to={item.to}
-                      search={(p: Record<string, unknown>) => p}
+                    <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
                       onClick={() => setMoreOpen(false)}
                       aria-current={pathname.startsWith(item.to) ? "page" : undefined}
-                      className={cn(
-                        "flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent",
-                        pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary",
-                      )}
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="min-w-0 truncate">{item.label}</span>
+                      className={cn("flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
+                      <item.icon className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
                     </Link>
                   ))}
                 </div>
@@ -457,19 +440,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cuenta</h3>
                 <div className="grid grid-cols-2 gap-2">
                   {mobileUngroupedItems.map((item) => (
-                    <Link
-                      key={item.key}
-                      to={item.to}
-                      search={(p: Record<string, unknown>) => p}
+                    <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
                       onClick={() => setMoreOpen(false)}
                       aria-current={pathname.startsWith(item.to) ? "page" : undefined}
-                      className={cn(
-                        "flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent",
-                        pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary",
-                      )}
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="min-w-0 truncate">{item.label}</span>
+                      className={cn("flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
+                      <item.icon className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
                     </Link>
                   ))}
                 </div>
