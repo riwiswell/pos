@@ -62,11 +62,8 @@ function PlannerPage() {
   const m = usePlannerMutations(date);
 
   useEffect(() => {
-    const nextMonth = new Date(date + "T12:00:00");
-    if (nextMonth.getFullYear() !== calendarMonth.getFullYear() || nextMonth.getMonth() !== calendarMonth.getMonth()) {
-      setCalendarMonth(nextMonth);
-    }
-  }, [date, calendarMonth]);
+    setCalendarMonth(new Date(date + "T12:00:00"));
+  }, [date]);
 
   const [itemDialog, setItemDialog] = useState<{
     open: boolean;
