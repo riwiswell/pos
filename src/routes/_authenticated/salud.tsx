@@ -288,7 +288,6 @@ function Cycle(){
  const[isMine,setIsMine]=useState(true);
  const[subject,setSubject]=useState("");
  const[type,setType]=useState("partner");
- const[cycle,setCycle]=useState("28");
  const[creating,setCreating]=useState(false);
  const profiles=q.data||[];
  const hasOwnProfile=profiles.some((profile:any)=>profile.subject_type==="self");
@@ -299,8 +298,7 @@ function Cycle(){
   try{
    await profileMutations.create.mutateAsync({
     subject_name:name,subject_type:isMine?"self":type,
-    average_cycle_days:Math.max(15,Math.min(60,Number(cycle)||28)),
-    average_period_days:5,active:true,notes:null
+    active:true,notes:null
    });
    setSubject("");
   }finally{setCreating(false);}
@@ -317,13 +315,7 @@ function Cycle(){
     <Input placeholder="Nombre de la persona" value={subject} onChange={e=>setSubject(e.target.value)}/>
     <select className="h-10 rounded-md border bg-background px-3" value={type} onChange={e=>setType(e.target.value)}><option value="partner">Pareja</option><option value="family">Familiar</option><option value="other">Otra persona</option></select>
    </div>}
-   <div className="grid gap-2 sm:grid-cols-[180px_1fr]">
-    <label className="space-y-1 text-xs text-muted-foreground">Duración aproximada del ciclo (opcional)
-     <Input type="number" min="15" max="60" value={cycle} onChange={e=>setCycle(e.target.value)}/>
-    </label>
-    <p className="self-end text-xs text-muted-foreground">Se usa únicamente como referencia orientativa. El calendario conserva las fechas reales registradas.</p>
-   </div>
-   <Button disabled={creating||(!isMine&&!subject.trim())||(isMine&&hasOwnProfile)} onClick={()=>void createProfile()}><Plus className="mr-1 h-4 w-4"/>{creating?"Guardando…":isMine&&hasOwnProfile?"Ya existe tu seguimiento":isMine?"Crear mi seguimiento":"Agregar seguimiento"}</Button>
+      <Button disabled={creating||(!isMine&&!subject.trim())||(isMine&&hasOwnProfile)} onClick={()=>void createProfile()}><Plus className="mr-1 h-4 w-4"/>{creating?"Guardando…":isMine&&hasOwnProfile?"Ya existe tu seguimiento":isMine?"Crear mi seguimiento":"Agregar seguimiento"}</Button>
   </div>
   {q.isError&&<p className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">No se pudieron cargar los perfiles. Intenta actualizar la pantalla.</p>}
   {profiles.length===0&&!q.isLoading&&<p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Todavía no hay seguimientos. Marca «Este seguimiento es mío» para crear el tuyo.</p>}
@@ -392,7 +384,7 @@ function CycleProfile({profile,records,dailyLogs,recordMutations,dailyMutations,
  const dateFormat=(value:string)=>displayCycleDate(value);
  return <article className="glass space-y-4 rounded-2xl p-4">
   <div className="flex flex-wrap items-start justify-between gap-2">
-   <div className="min-w-0"><h3 className="font-semibold">{profile.subject_name}</h3><p className="text-xs text-muted-foreground">{profile.subject_type==="self"?"Seguimiento personal":"Seguimiento compartido"} · ciclo de referencia: {profile.average_cycle_days||28} días</p></div>
+   <div className="min-w-0"><h3 className="font-semibold">{profile.subject_name}</h3><p className="text-xs text-muted-foreground">{profile.subject_type==="self"?"Seguimiento personal":"Seguimiento compartido"}</p></div>
    <Button size="icon" variant="ghost" title="Eliminar seguimiento" onClick={()=>{if(window.confirm("¿Eliminar este seguimiento y sus registros?"))void profileMutations.remove.mutateAsync(profile.id)}}><Trash2 className="h-4 w-4 text-destructive"/></Button>
   </div>
   <div className="space-y-3 rounded-xl border p-3">
