@@ -141,13 +141,14 @@ function PlannerPage() {
       </div>
 
       <section className="glass flex flex-col gap-3 rounded-2xl p-3">
-        <div className="mx-auto w-full md:w-1/2">
+        <div className="mx-auto block w-full md:w-1/2">
           <div className="mb-1 flex items-center justify-between gap-2 px-2">
             <div><h2 className="text-sm font-semibold">Calendario</h2><p className="text-xs text-muted-foreground">Selecciona un día para ver o programar tus tareas y eventos.</p></div>
             <Button type="button" size="sm" variant="outline" onClick={goToday}>Hoy</Button>
           </div>
           <Calendar
             mode="single"
+            classNames={{ root: "w-full", months: "w-full", month: "w-full", table: "w-full", week: "w-full" }}
             month={calendarMonth}
             onMonthChange={setCalendarMonth}
             selected={new Date(date + "T12:00:00")}
@@ -160,7 +161,7 @@ function PlannerPage() {
               const dayNumber = String(day.getDate()).padStart(2, "0");
               setDate(year + "-" + month + "-" + dayNumber);
             }}
-            className="mx-auto w-full [--cell-size:clamp(2.75rem,10vw,3.25rem)] sm:mx-0"
+            className="mx-auto block w-full max-w-full [--cell-size:clamp(2.75rem,calc((100vw-3rem)/7),3.5rem)]"
           />
         </div>
         <div className="w-full rounded-xl bg-muted/30 p-3">
