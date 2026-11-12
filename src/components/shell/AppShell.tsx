@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { HelpTip } from "@/components/common/HelpTip";
 import { PersonalAssistant } from "@/components/assistant/PersonalAssistant";
-import { NAV_ITEMS } from "@/components/shell/nav-items";
+import { NAV_GROUPS, NAV_ITEMS } from "@/components/shell/nav-items";
 import { useAuth } from "@/hooks/use-auth";
 import { profileKeys, useProfile, useProfileMediaUrl } from "@/hooks/use-profile";
 import { profileService } from "@/services/profile.service";
@@ -158,6 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
+  const activeGroup = currentNavItem?.group ?? null;
 
   const background = profile?.background_url ?? null;
   const isColor = Boolean(background?.startsWith("#"));
@@ -310,7 +311,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <GripVertical className="h-4 w-4" />
                   </button>
                 )}
-                <Link to={item.to} search={(p: Record<string, unknown>) => p} title={item.label} className={cn(
+                <Link to={item.to} title={item.label} className={cn(
                   "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-sidebar-accent",
                   collapsed && "flex-none justify-center px-0",
                   pathname.startsWith(item.to) && "bg-sidebar-accent",
