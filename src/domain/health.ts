@@ -50,6 +50,7 @@ export interface MedicationDose {
   taken_at: string | null;
   snoozed_until: string | null;
   water_glasses: number | null;
+  entry_origin?: "manual" | "restored_snapshot" | "stock_estimate" | string;
   created_at: string;
   updated_at: string;
 }
