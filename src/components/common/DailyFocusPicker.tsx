@@ -105,7 +105,7 @@ export function DailyFocusPicker({ date, compact = false }: Props) {
           <p className="mt-3 text-base font-medium">{currentLabel}</p>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
-            {compact ? "Todavía no has elegido una prioridad." : "Elige una sola prioridad para esta fecha. Puede ser cualquier elemento de tu registro unificado (hábito o actividad), algo del Planeador o una frase libre."}
+            {compact ? "Todavía no has elegido una prioridad." : "Elige una sola prioridad para esta fecha. Puedes pedirle a la IA que te ayude a decidir: abre el botón flotante y cuéntale qué tienes pendiente, cuánto tiempo tienes y cómo te sientes."}
           </p>
         )}
       </section>

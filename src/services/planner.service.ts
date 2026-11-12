@@ -83,6 +83,20 @@ export const plannerService = {
     return (data ?? []) as PlannerItem[];
   },
 
+  /** Items for the visible calendar month, used to mark days with commitments. */
+  async listByRange(startDate: string, endDate: string): Promise<PlannerItem[]> {
+    const { data, error } = await supabase
+      .from("planner_items")
+      .select("*")
+      .gte("scheduled_on", startDate)
+      .lte("scheduled_on", endDate)
+      .order("scheduled_on", { ascending: true })
+      .order("start_time", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as PlannerItem[];
+  },
+
   async createItem(input: PlannerItemInput): Promise<PlannerItem> {
     const user_id = await currentUserId();
     const { data, error } = await supabase

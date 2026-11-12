@@ -20,7 +20,7 @@ export function useHydrationEntries(date: string) {
       const user_id = await currentUserId();
       const { data, error } = await supabase
         .from("hydration_entries")
-        .select("id,user_id,consumed_on,consumed_at,beverage_type,amount_ml,note,created_at")
+        .select("id,user_id,consumed_on,consumed_at,beverage_type,icon,amount_ml,note,created_at")
         .eq("user_id", user_id)
         .eq("consumed_on", date)
         .order("consumed_at", { ascending: true });
@@ -40,7 +40,7 @@ export function useHydrationMutations(date: string) {
     void qc.invalidateQueries({ queryKey: hydrationKeys.day(date) });
   };
   const create = useMutation({
-    mutationFn: async (input: { beverage_type: BeverageType; amount_ml: number; note?: string | null }) => {
+    mutationFn: async (input: { beverage_type: BeverageType; amount_ml: number; note?: string | null; icon?: string | null }) => {
       if (!Number.isInteger(input.amount_ml) || input.amount_ml < 1 || input.amount_ml > 5000) {
         throw new Error("La cantidad debe estar entre 1 y 5000 ml.");
       }
@@ -51,6 +51,7 @@ export function useHydrationMutations(date: string) {
           user_id,
           consumed_on: date,
           beverage_type: input.beverage_type,
+          icon: input.icon ?? null,
           amount_ml: input.amount_ml,
           note: input.note?.trim() || null,
         })
@@ -77,6 +78,7 @@ export function useHydrationMutations(date: string) {
     mutationFn: async (input: {
       id: string;
       beverage_type: BeverageType;
+      icon?: string | null;
       amount_ml: number;
       note?: string | null;
       consumed_time: string;
@@ -93,6 +95,7 @@ export function useHydrationMutations(date: string) {
         .from("hydration_entries")
         .update({
           beverage_type: input.beverage_type,
+          icon: input.icon ?? null,
           amount_ml: input.amount_ml,
           note: input.note?.trim() || null,
           consumed_at,

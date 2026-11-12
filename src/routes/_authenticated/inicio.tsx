@@ -19,6 +19,7 @@ import {
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
 import { JournalEntryDialog } from "@/components/journal/JournalEntryDialog";
 import { WeatherCard } from "@/components/dashboard/WeatherCard";
+import { ProactiveBriefing } from "@/components/dashboard/ProactiveBriefing";
 import { HelpTip } from "@/components/common/HelpTip";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState, LoadingState } from "@/components/common/States";
@@ -187,11 +188,12 @@ function HomePage() {
     <div className="inicio-dashboard flex flex-col gap-4">
       <GlobalDateHeader compact />
 
+      <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
       <section className="inicio-hero relative isolate overflow-hidden rounded-[26px] border border-white/10 bg-gradient-to-br from-[#202342] via-[#171b2b] to-[#10262f] px-5 py-4 shadow-[0_22px_55px_-34px_rgba(75,105,255,.55)]">
         <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="pointer-events-none absolute bottom-[-100px] left-[38%] h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="relative grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
-          <div>
+        <div className="relative grid gap-3">
+          <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[11px] font-medium tracking-wide text-slate-300">
               <Sparkles className="h-3.5 w-3.5 text-amber-300" />
               TU ESPACIO PERSONAL
@@ -200,13 +202,16 @@ function HomePage() {
               {greeting()}{name ? `, ${name}` : ""}
               <HelpTip helpKey="dashboard" />
             </h1>
-            <p className="mt-1 max-w-xl text-sm capitalize leading-5 text-slate-300/80">
-              {dateLabel}. Un día a la vez; registra lo que importa y sigue a tu ritmo.
+            <p className="mt-1 max-w-xl text-sm leading-5 text-slate-300/80">
+              {dateLabel}. un día a la vez; registra lo que importa y sigue a tu ritmo.
             </p>
             {showFocus && <div className="mt-3 max-w-xl"><DailyFocusPicker date={date} compact /></div>}
+            <ProactiveBriefing date={date}/>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 md:min-w-[390px] md:grid-cols-3">
+
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {showHabits && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur">
                 <div className="flex items-center gap-2 text-xs text-slate-300"><Target className="h-4 w-4 text-cyan-300" /> Hábitos</div>
@@ -221,6 +226,11 @@ function HomePage() {
                 <p className="mt-0.5 text-[11px] text-slate-400">{eventCount} eventos</p>
               </div>
             )}
+            <Link to="/diario" search={(prev: Record<string, unknown>) => prev} className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur transition-colors hover:border-white/25">
+              <div className="flex items-center gap-2 text-xs text-slate-300"><BookOpen className="h-4 w-4 text-sky-300" /> Diario</div>
+              <p className="mt-2 text-xl font-semibold tabular-nums text-white">{journalQuery.data?.length ?? 0}<span className="text-sm font-normal text-slate-400"> entradas</span></p>
+              <p className="mt-0.5 text-[11px] text-slate-400">Lo que quieres recordar</p>
+            </Link>
             <Link to="/gamificacion" search={(prev: Record<string, unknown>) => prev} className="rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-400/[.13] to-white/[.05] p-3 backdrop-blur transition-colors hover:border-amber-300/40">
               <div className="flex items-center gap-2 text-xs text-slate-300"><Trophy className="h-4 w-4 text-amber-300" /> Nivel personal</div>
               <p className="mt-2 text-xl font-semibold tabular-nums text-white">{gamificationQuery.isLoading ? "…" : `Nv. ${gamificationLevel}`}</p>
@@ -231,8 +241,14 @@ function HomePage() {
           </div>
         </div>
       </section>
-
-      <div className="mb-1"><WeatherCard /></div>
+      <div className="min-w-0"><WeatherCard compact /></div>
+      </div>
+      <Link to="/habitos" search={(prev: Record<string, unknown>) => ({ ...prev, tab: "compartidos" })} className="group flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Target className="h-5 w-5"/></span>
+        <span className="min-w-0 flex-1"><b className="block text-sm">Retos compartidos</b><span className="text-xs text-muted-foreground">Invita a otra persona y avancen juntos en metas, hábitos y desafíos.</span></span>
+        <span className="shrink-0 text-xs font-semibold text-primary">Invitar y participar</span>
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"/>
+      </Link>
       <div className="inicio-dashboard-grid grid gap-3">
         <div className="inicio-habits-column min-w-0">
           {showHabits && (

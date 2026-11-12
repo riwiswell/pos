@@ -50,7 +50,9 @@ function HabitsPage() {
   const { date } = useGlobalDate();
   const [activeTab, setActiveTab] = useState("registro");
   useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("sharedInvite")) {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("sharedInvite") || params.get("tab") === "compartidos") {
       setActiveTab("compartidos");
     }
   }, []);
@@ -211,7 +213,7 @@ function HabitsPage() {
                   />
                 )}
                 <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
-                  {group.category?.name ?? "Sin categoría"}
+                  {group.category?.icon ? group.category.icon + " " : ""}{group.category?.name ?? "Sin categoría"}
                 </h2>
                 <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
                   {done}/{total}

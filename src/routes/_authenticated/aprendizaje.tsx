@@ -29,13 +29,39 @@ function flagForLanguageProfile(profile:any){
   const fallback=LANGS.find((lang:any)=>lang.code===profile.language_code)?.variants?.[0]?.[0]||"";
   return flagForLocale(profile.locale_code||fallback);
 }
-type LearningSort = "used_desc" | "used_asc" | "title_asc" | "title_desc" | "recent";
+type LearningSort = "used_desc" | "used_asc" | "title_asc" | "title_desc" | "recent" | "oldest";
+const INITIAL_READING_ORDER = [
+  "los 5 lenguajes del amor",
+  "el hombre en busca de sentido",
+  "roba como un artista",
+  "la historia del arte",
+  "conceptos fundamentales de la historia del arte",
+];
 function sortLearningItems(items:any[],sessions:any[],sort:LearningSort){
- const usage=new Map<string,number>(),latest=new Map<string,string>();
- for(const session of sessions){const id=String(session.learning_item_id||"");if(!id)continue;usage.set(id,(usage.get(id)||0)+1);const date=String(session.session_date||session.created_at||"");if(date>String(latest.get(id)||""))latest.set(id,date);}
- return [...items].sort((a,b)=>{const aId=String(a.id),bId=String(b.id),aCount=usage.get(aId)||0,bCount=usage.get(bId)||0;const names=String(a.title||"").localeCompare(String(b.title||""),"es",{sensitivity:"base",numeric:true});if(sort==="title_asc")return names;if(sort==="title_desc")return -names;if(sort==="used_asc")return aCount-bCount||names;if(sort==="recent")return String(latest.get(bId)||b.updated_at||b.created_at||"").localeCompare(String(latest.get(aId)||a.updated_at||a.created_at||""))||names;return bCount-aCount||names;});
+ const usage=new Map<string,number>(),sessionCounts=new Map<string,number>(),latest=new Map<string,string>();
+ for(const session of sessions){const id=String(session.learning_item_id||"");if(!id)continue;usage.set(id,(usage.get(id)||0)+Math.max(0,Number(session.minutes)||0));sessionCounts.set(id,(sessionCounts.get(id)||0)+1);const date=String(session.session_date||session.created_at||"");if(date>String(latest.get(id)||""))latest.set(id,date);}
+ return [...items].sort((a,b)=>{
+  const aId=String(a.id),bId=String(b.id),aCount=sessionCounts.get(aId)||0,bCount=sessionCounts.get(bId)||0,aMinutes=usage.get(aId)||0,bMinutes=usage.get(bId)||0;
+  const names=String(a.title||"").localeCompare(String(b.title||""),"es",{sensitivity:"base",numeric:true});
+  const createdA=String(a.created_at||""),createdB=String(b.created_at||"");
+  if(sort==="title_asc")return names;
+  if(sort==="title_desc")return -names;
+  if(sort==="used_asc")return aMinutes-bMinutes||aCount-bCount||names;
+  if(sort==="recent")return createdB.localeCompare(createdA)||names;
+  if(sort==="oldest"){
+   const aPinned=INITIAL_READING_ORDER.indexOf(String(a.title||"").trim().toLocaleLowerCase("es"));
+   const bPinned=INITIAL_READING_ORDER.indexOf(String(b.title||"").trim().toLocaleLowerCase("es"));
+   if(aPinned!==-1||bPinned!==-1){
+    if(aPinned===-1)return 1;
+    if(bPinned===-1)return -1;
+    if(aPinned!==bPinned)return aPinned-bPinned;
+   }
+   return createdA.localeCompare(createdB)||names;
+  }
+  return bMinutes-aMinutes||bCount-aCount||names;
+ });
 }
-function LearningSortControl({value,onChange}:{value:LearningSort;onChange:(value:LearningSort)=>void}){return <select aria-label="Ordenar elementos" title="Ordenar elementos" className="h-9 max-w-[148px] rounded-lg border border-input bg-background px-2 text-xs text-foreground" value={value} onChange={event=>onChange(event.target.value as LearningSort)}><option value="used_desc">Más usado</option><option value="used_asc">Menos usado</option><option value="title_asc">A–Z</option><option value="title_desc">Z–A</option><option value="recent">Más reciente</option></select>;}
+function LearningSortControl({value,onChange}:{value:LearningSort;onChange:(value:LearningSort)=>void}){return <select aria-label="Ordenar elementos" title="Ordenar elementos" className="h-9 max-w-[148px] rounded-lg border border-input bg-background px-2 text-xs text-foreground" value={value} onChange={event=>onChange(event.target.value as LearningSort)}><option value="used_desc">Más usado</option><option value="used_asc">Menos usado</option><option value="title_asc">A–Z</option><option value="title_desc">Z–A</option><option value="recent">Más reciente</option><option value="oldest">Más antiguo</option></select>;}
 function LearningPage(){
   const[tab,setTab]=useState("books");
   const{data:profile}=useProfile();
@@ -67,12 +93,14 @@ function Books(){
   const q=useLGList("learning_items");
   const notes=useLGList("learning_notes");
   const sessions=useLGList("learning_sessions","session_date");
-  const[sort,setSort]=useState<LearningSort>("used_desc");
+  const[sort,setSort]=useState<LearningSort>("oldest");
   const m=useLGMutations("learning_items");
   const nm=useLGMutations("learning_notes");
   const{user}=useAuth();
   const[adding,setAdding]=useState(false);
   const[title,setTitle]=useState("");
+  const[author,setAuthor]=useState("");
+  const[publicationYear,setPublicationYear]=useState("");
   const[pages,setPages]=useState("");
   const[targetPages,setTargetPages]=useState("");
   const books=sortLearningItems((q.data||[]).filter((x:any)=>x.kind==="book"),sessions.data||[],sort);
@@ -82,9 +110,13 @@ function Books(){
   };
   const addBook=async()=>{
     if(!title.trim())return;
+    const parsedYear=Number(publicationYear);
+    if(publicationYear.trim()&&(!Number.isInteger(parsedYear)||parsedYear<0||parsedYear>3000)){toast.error("El año debe ser un número entero válido.");return;}
     await m.create.mutateAsync({
       user_id:user?.id,
       title:title.trim(),
+      author:author.trim()||null,
+      publication_year:publicationYear.trim()?parsedYear:null,
       kind:"book",
       total_pages:Number(pages)>0?Number(pages):null,
       target_pages:Number(targetPages)>0?Number(targetPages):null,
@@ -92,6 +124,8 @@ function Books(){
       progress:0,
     });
     setTitle("");
+    setAuthor("");
+    setPublicationYear("");
     setPages("");
     setTargetPages("");
     setAdding(false);
@@ -107,8 +141,10 @@ function Books(){
       <div className="flex items-center gap-2"><LearningSortControl value={sort} onChange={setSort}/><Button size="sm" variant={adding?"outline":"default"} onClick={()=>setAdding(v=>!v)}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button></div>
     </div>
     {adding&&<div className="glass max-w-2xl rounded-2xl p-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.35fr_1fr_110px_130px_130px_auto]">
         <Input placeholder="Título del libro" value={title} onChange={e=>setTitle(e.target.value)}/>
+        <Input placeholder="Autor" value={author} onChange={e=>setAuthor(e.target.value)}/>
+        <Input type="number" min="0" max="3000" placeholder="Año" value={publicationYear} onChange={e=>setPublicationYear(e.target.value)}/>
         <Input type="number" min="1" placeholder="Páginas reales" value={pages} onChange={e=>setPages(e.target.value)}/>
         <Input type="number" min="1" placeholder="Meta páginas" value={targetPages} onChange={e=>setTargetPages(e.target.value)}/>
         <Button disabled={!title.trim()||m.create.isPending||(isBibleBook(title)&&books.some((book:any)=>isBibleBook(book.title)))} onClick={()=>void addBook()}>
@@ -146,6 +182,8 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
   const[noteTitle,setNoteTitle]=useState("");
   const[range,setRange]=useState("");
   const[newTitle,setNewTitle]=useState(String(book.title||""));
+  const[newAuthor,setNewAuthor]=useState(String(book.author||""));
+  const[newPublicationYear,setNewPublicationYear]=useState(String(book.publication_year||""));
   const[newTotal,setNewTotal]=useState(String(book.total_pages||""));
   const[newTargetPages,setNewTargetPages]=useState(String(book.target_pages||""));
   const[panel,setPanel]=useState<"progress"|"summary"|"notes"|"details"|null>(null);
@@ -162,6 +200,8 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
   useEffect(()=>setPage(String(book.current_page||0)),[book.current_page]);
   useEffect(()=>setSummary(book.summary||""),[book.summary]);
   useEffect(()=>setNewTitle(String(book.title||"")),[book.title]);
+  useEffect(()=>setNewAuthor(String(book.author||"")),[book.author]);
+  useEffect(()=>setNewPublicationYear(String(book.publication_year||"")),[book.publication_year]);
   useEffect(()=>setNewTotal(String(book.total_pages||"")),[book.total_pages]);
   useEffect(()=>setNewTargetPages(String(book.target_pages||"")),[book.target_pages]);
 
@@ -204,7 +244,9 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
     if(newTotal.trim()&&(!Number.isInteger(parsedTotal)||parsedTotal<1)){toast.error("El total de páginas debe ser un número entero mayor que cero.");return;}
     const parsedTarget=Number(newTargetPages);
     if(newTargetPages.trim()&&(!Number.isInteger(parsedTarget)||parsedTarget<1)){toast.error("La meta de páginas debe ser un entero mayor que cero.");return;}
-    await onSave({title:newTitle.trim(),total_pages:newTotal.trim()?parsedTotal:null,target_pages:newTargetPages.trim()?parsedTarget:null});
+    const parsedYear=Number(newPublicationYear);
+    if(newPublicationYear.trim()&&(!Number.isInteger(parsedYear)||parsedYear<0||parsedYear>3000)){toast.error("El año debe ser un número entero válido.");return;}
+    await onSave({title:newTitle.trim(),author:newAuthor.trim()||null,publication_year:newPublicationYear.trim()?parsedYear:null,total_pages:newTotal.trim()?parsedTotal:null,target_pages:newTargetPages.trim()?parsedTarget:null});
     setPanel(null);
     toast.success("Libro actualizado.");
   };
@@ -233,15 +275,14 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
                 <span className="text-[8px] uppercase tracking-[.18em] opacity-65">Mi biblioteca</span>
               </div>}
         </div>
-        <button type="button" onClick={()=>coverInput.current?.click()} disabled={uploadingCover} aria-label="Cambiar portada" title="Cargar foto de portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow transition hover:bg-accent disabled:opacity-50">
-          <ImagePlus className="h-3.5 w-3.5"/>
-        </button>
+        {!coverPath&&<button type="button" onClick={()=>coverInput.current?.click()} disabled={uploadingCover} aria-label="Agregar portada" title="Agregar portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow transition hover:bg-accent disabled:opacity-50"><ImagePlus className="h-3.5 w-3.5"/></button>}
         <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={uploadCover}/>
       </div>
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-2 font-semibold leading-snug">{book.title}</h3>
+            {!isBible&&(book.author||book.publication_year)&&<p className="mt-0.5 text-xs text-muted-foreground">{[book.author,book.publication_year].filter(Boolean).join(" · ")}</p>}
             {isBible?<p className="mt-1 text-xs text-muted-foreground">{total.toLocaleString("es-CO")} capítulos · {Math.round(progress)}% · {remain.toLocaleString("es-CO")} restantes</p>:<><p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>{Number(book.target_pages)>0&&<p className="mt-1 text-xs text-primary">Meta intermedia: {book.target_pages} páginas · {Math.max(0,Number(book.target_pages)-pageValue)} restantes</p>}</>}
           </div>
           <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={()=>void onDelete()} aria-label={"Eliminar "+book.title}>
@@ -261,16 +302,18 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
     </div>
 
     {panel==="details"&&!isBible&&<div className="space-y-2 border-t p-3">
-      <p className="text-sm font-medium">Editar libro</p>
-      <div className="grid gap-2 sm:grid-cols-[1fr_130px_130px_auto]">
+      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-medium">Editar libro</p><Button size="sm" type="button" variant="outline" onClick={()=>coverInput.current?.click()} disabled={uploadingCover}><ImagePlus className="mr-1 h-3.5 w-3.5"/>{uploadingCover?"Subiendo…":coverPath?"Cambiar portada":"Agregar portada"}</Button></div>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.3fr_1fr_110px_130px_130px_auto]">
         <Input aria-label="Título" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/>
+        <Input aria-label="Autor" placeholder="Autor" value={newAuthor} onChange={e=>setNewAuthor(e.target.value)}/>
+        <Input aria-label="Año de publicación" type="number" min="0" max="3000" placeholder="Año" value={newPublicationYear} onChange={e=>setNewPublicationYear(e.target.value)}/>
         <Input aria-label="Páginas reales" type="number" min="1" placeholder="Páginas reales" value={newTotal} onChange={e=>setNewTotal(e.target.value)}/>
         <Input aria-label="Meta intermedia de páginas" type="number" min="1" placeholder="Meta páginas" value={newTargetPages} onChange={e=>setNewTargetPages(e.target.value)}/>
         <Button size="sm" onClick={()=>void saveDetails()}><Save className="mr-1 h-3.5 w-3.5"/>Guardar</Button>
       </div>
     </div>}
 
-    {panel==="progress"&&<div className="space-y-2 border-t p-3"><p className="text-sm font-medium">{isBible?"Actualizar capítulos leídos":"Actualizar progreso"}</p><div className="flex flex-wrap items-end gap-2"><label className="w-40 text-xs text-muted-foreground">{isBible?"Capítulos leídos":"Página actual"}<Input className="mt-1" type="number" min="0" max={total||undefined} value={page} onChange={e=>setPage(e.target.value)}/></label><Button size="sm" onClick={()=>void saveProgress()}><Save className="mr-1 h-3.5 w-3.5"/>{isBible?"Guardar capítulos":"Guardar página"}</Button>{total>0&&<span className="pb-2 text-xs text-muted-foreground">{remain.toLocaleString("es-CO")} {isBible?"capítulos":"páginas"} restantes</span>}</div></div>}
+    {panel==="progress"&&<div className="space-y-2 border-t p-3"><p className="text-sm font-medium">{isBible?"Actualizar capítulos leídos":"Actualizar progreso"}</p>{isBible&&<p className="text-xs text-muted-foreground">Escribe el total acumulado de capítulos que has leído en toda la Biblia (de 0 a 1.189). Este dato calcula el porcentaje y los capítulos que te faltan; no modifica los días del plan anual.</p>}<div className="flex flex-wrap items-end gap-2"><label className="w-40 text-xs text-muted-foreground">{isBible?"Total de capítulos leídos":"Página actual"}<Input className="mt-1" type="number" min="0" max={total||undefined} value={page} onChange={e=>setPage(e.target.value)}/></label><Button size="sm" onClick={()=>void saveProgress()}><Save className="mr-1 h-3.5 w-3.5"/>{isBible?"Guardar capítulos":"Guardar página"}</Button>{total>0&&<span className="pb-2 text-xs text-muted-foreground">{remain.toLocaleString("es-CO")} {isBible?"capítulos":"páginas"} restantes</span>}</div></div>}
 
     {panel==="summary"&&!isBible&&<div className="space-y-2 border-t p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -331,9 +374,10 @@ function kindIcon(kind:string){
   return "📚";
 }
 
-function OtherLearningCard({item,onEdit,onDelete,onSaveCover}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>}){
+function OtherLearningCard({item,onEdit,onDelete,onSaveCover,minutesPlayed=0,sessionCount=0}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;minutesPlayed?:number;sessionCount?:number}){
   const[uploading,setUploading]=useState(false);
   const input=useRef<HTMLInputElement>(null);
+  const totalPlayedMinutes=Math.round(minutesPlayed);
   const path=item.cover_path?String(item.cover_path):null;
   const photoQuery=usePrivatePhotos(path?[path]:[],Boolean(path));
   const photoUrl=photoQuery.data?.find(photo=>photo.path===path)?.url;
@@ -360,11 +404,29 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover}:{item:any;onEdit:(
             <span className="text-2xl">{kindIcon(item.kind)}</span><span className="line-clamp-4 break-words text-[10px] font-semibold leading-tight">{item.title}</span>
           </div>}
       </div>
-      <button type="button" onClick={()=>input.current?.click()} disabled={uploading} aria-label="Cambiar portada" title="Cargar portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow hover:bg-accent disabled:opacity-50"><ImagePlus className="h-3.5 w-3.5"/></button>
+      {!path&&<button type="button" onClick={()=>input.current?.click()} disabled={uploading} aria-label="Agregar portada" title="Agregar portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow hover:bg-accent disabled:opacity-50"><ImagePlus className="h-3.5 w-3.5"/></button>}
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
     </div>
     <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
-      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{(item.kind==="video_game"||item.kind==="game")&&(item.platform||item.genre)&&<p className="mt-1 text-[11px] font-medium text-primary">{[item.platform,item.genre].filter(Boolean).join(" · ")}</p>}{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game")&&<div className="mt-2 space-y-1.5"><div className="flex items-center justify-between text-[11px]"><span className="font-medium text-muted-foreground">Progreso de la historia</span><span className="font-semibold tabular-nums">{Math.min(100,Math.max(0,Number(item.progress)||0)).toLocaleString("es-CO",{maximumFractionDigits:1})}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div><p className="text-[10px] text-muted-foreground">{Number(item.progress)>=100?"Completado":Number(item.progress)>0?"En curso":"Pendiente de iniciar"}</p></div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
+      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{(item.kind==="video_game"||item.kind==="game")&&(item.platform||item.genre)&&<p className="mt-1 text-[11px] font-medium text-primary">{[item.platform,item.genre].filter(Boolean).join(" · ")}</p>}{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game")&&<div className="mt-2 space-y-2">
+        {Number(item.progress)>0&&<>
+          <div className="flex items-center justify-between text-[11px]"><span className="font-medium text-muted-foreground">Progreso de la historia</span><span className="font-semibold tabular-nums">{Math.min(100,Math.max(0,Number(item.progress)||0)).toLocaleString("es-CO",{maximumFractionDigits:1})}%</span></div>
+          <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div><p className="text-[10px] text-muted-foreground">{Number(item.progress)>=100?"Completado":Number(item.progress)>0?"En curso":"Pendiente de iniciar"}</p>
+        </>}
+        <div className="rounded-xl border border-border/60 bg-muted/25 px-2.5 py-2">
+          <div className="flex items-center justify-between gap-2 text-[11px]">
+            <span className="font-medium text-muted-foreground">Tiempo jugado</span>
+            <span className="font-semibold tabular-nums">{totalPlayedMinutes>0?(totalPlayedMinutes>=60?Math.floor(totalPlayedMinutes/60)+" h"+(totalPlayedMinutes%60?" "+(totalPlayedMinutes%60)+" min":""):totalPlayedMinutes+" min"):"Sin sesiones"}</span>
+          </div>
+          {minutesPlayed>0&&Number(item.progress)<=0&&<>
+            <div className="mt-2 flex gap-1" aria-label={sessionCount+" sesiones de juego registradas"}>
+              {Array.from({length:Math.min(8,sessionCount)},(_,index)=><span key={index} className="h-1.5 flex-1 rounded-full bg-primary/70"/>)}
+            </div>
+            <p className="mt-1 text-[10px] text-muted-foreground">Actividad registrada · {sessionCount} {sessionCount===1?"sesión":"sesiones"}; la historia aún no tiene porcentaje.</p>
+          </>}
+          {Number(item.progress)>0&&minutesPlayed===0&&<p className="mt-1 text-[10px] text-muted-foreground">Porcentaje de historia registrado; todavía no hay tiempo de juego anotado.</p>}
+        </div>
+      </div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
       <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
     </div>
   </article>;
@@ -428,7 +490,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">{isGames?"Todavía no has agregado videojuegos. Pulsa Agregar para registrar el que estás jugando.":"Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno."}</div>}
     <div className={isGames?"grid grid-cols-1 gap-3 md:grid-cols-3":"grid grid-cols-1 gap-3 sm:grid-cols-2"}>
-      {visibleItems.map((item:any)=><OtherLearningCard key={item.id} item={item} onEdit={()=>startEdit(item)} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>) }
+      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id);const minutesPlayed=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={itemSessions.length} onEdit={()=>startEdit(item)} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
     </div>
   </section>;
 }
@@ -473,10 +535,10 @@ function Languages(){
   const skills:Record<string,string>={speaking:"Conversación",listening:"Escucha",reading:"Lectura",writing:"Escritura",vocabulary:"Vocabulario",grammar:"Gramática"};
   const localeSessions=(s.data||[]).filter((entry:any)=>entry.resource_url===locale);
   const[sort,setSort]=useState<LearningSort>("used_desc");
-  const sortedLanguages=[...(q.data||[])].sort((a:any,b:any)=>{const aCount=(s.data||[]).filter((entry:any)=>entry.resource_url===a.locale_code).length,bCount=(s.data||[]).filter((entry:any)=>entry.resource_url===b.locale_code).length;const names=String(a.language_name||"").localeCompare(String(b.language_name||""),"es",{sensitivity:"base"});if(sort==="title_asc")return names;if(sort==="title_desc")return -names;if(sort==="used_asc")return aCount-bCount||names;if(sort==="recent")return String(b.updated_at||b.created_at||"").localeCompare(String(a.updated_at||a.created_at||""))||names;return bCount-aCount||names;});
+  const sortedLanguages=[...(q.data||[])].sort((a:any,b:any)=>{const aCount=(s.data||[]).filter((entry:any)=>entry.resource_url===a.locale_code).length,bCount=(s.data||[]).filter((entry:any)=>entry.resource_url===b.locale_code).length;const names=String(a.language_name||"").localeCompare(String(b.language_name||""),"es",{sensitivity:"base"});if(sort==="title_asc")return names;if(sort==="title_desc")return -names;if(sort==="used_asc")return aCount-bCount||names;if(sort==="recent")return String(b.updated_at||b.created_at||"").localeCompare(String(a.updated_at||a.created_at||""))||names;if(sort==="oldest")return String(a.created_at||"").localeCompare(String(b.created_at||""))||names;return bCount-aCount||names;});
   return <section className="space-y-4">
     {(q.isError||s.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:s.error instanceof Error?s.error.message:"No se pudieron cargar idiomas o sesiones."}/>}
-    <div className="grid grid-cols-1 gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-start">
       <div className="glass space-y-3 rounded-2xl p-4">
         <div><h2 className="font-semibold">Registrar práctica</h2><p className="text-xs text-muted-foreground">Guarda cada sesión para medir tu constancia y tiempo de estudio.</p></div>
         <div className="grid gap-2 sm:grid-cols-2">
