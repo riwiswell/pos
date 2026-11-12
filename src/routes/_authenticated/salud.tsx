@@ -353,7 +353,6 @@ function CycleProfile({profile,records,dailyLogs,recordMutations,dailyMutations,
  const firstOffset=(monthDate.getDay()+6)%7;
  const daysInMonth=new Date(monthDate.getFullYear(),monthDate.getMonth()+1,0).getDate();
  const cells=Array.from({length:firstOffset+daysInMonth},(_,index)=>index<firstOffset?null:index-firstOffset+1);
- const ownLogs=[...dailyLogs].sort((a:any,b:any)=>String(a.log_date).localeCompare(String(b.log_date)));
  const ownRecords=[...records].sort((a:any,b:any)=>String(b.start_date).localeCompare(String(a.start_date)));
  const selectedLog=dailyLogs.find((entry:any)=>entry.log_date===selectedDate);
  const activeRecord=ownRecords.find((record:any)=>!record.end_date);
@@ -432,7 +431,7 @@ function CycleProfile({profile,records,dailyLogs,recordMutations,dailyMutations,
     const edit=dateEdits[record.id]||{start:record.start_date,end:record.end_date||""};
     const duration=record.end_date?Math.floor((new Date(record.end_date+"T12:00:00").getTime()-new Date(record.start_date+"T12:00:00").getTime())/86400000)+1:null;
     return <div key={record.id} className="space-y-2 rounded-lg border p-3">
-     <div className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm">Período iniciado: {dateFormat(record.start_date)}</b><span className="text-xs text-muted-foreground">{duration?duration+" días": "En curso"}</span></div>
+     <div className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm">Período iniciado: {dateFormat(record.start_date)}</b><span className="text-xs text-muted-foreground">{duration?duration+" días": "En curso"}</span></div>{(record.flow||record.notes||(record.symptoms||[]).length>0)&&<div className="rounded-lg bg-muted/40 p-2 text-xs text-muted-foreground"><b className="block text-foreground">Información del registro anterior</b>{record.flow&&<span>Flujo: {record.flow}. </span>}{(record.symptoms||[]).length>0&&<span>Síntomas sin fecha diaria: {record.symptoms.join(", ")}. </span>}{record.notes&&<span>{record.notes}</span>}</div>}
      <div className="grid gap-2 sm:grid-cols-2">
       <label className="space-y-1 text-xs text-muted-foreground">Inicio<Input type="date" value={edit.start} onChange={e=>setDateEdits(current=>({...current,[record.id]:{...edit,start:e.target.value}}))}/></label>
       <label className="space-y-1 text-xs text-muted-foreground">Fin del período<Input type="date" max={today} value={edit.end} onChange={e=>setDateEdits(current=>({...current,[record.id]:{...edit,end:e.target.value}}))}/></label>
