@@ -156,7 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
   const activeGroup = currentNavItem?.group ?? null;
-  useEffect(() => { if (activeGroup) setExpandedGroup(activeGroup); }, [activeGroup]);
+  useEffect(() => { setExpandedGroup(activeGroup); }, [activeGroup]);
 
   const background = profile?.background_url ?? null;
   const isColor = Boolean(background?.startsWith("#"));
@@ -235,7 +235,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               })}
             </>
           ) : (
-          {menuItems.map((item) => {
+            <>
+              {menuItems.map((item) => {
             const visible = !hiddenModules.includes(item.key);
             if (menuEditing) return (
               <div key={item.key} className={cn("flex items-center gap-1 rounded-xl border border-sidebar-border px-1.5 py-1", !visible && "opacity-55")}>
@@ -328,7 +329,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {!collapsed && <HelpTip helpKey={item.helpKey} />}
               </div>
             );
-          })}
+              })}
+            </>
           )}
         </nav>
 
