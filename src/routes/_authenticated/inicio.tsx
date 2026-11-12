@@ -236,7 +236,9 @@ function HomePage() {
           </div>
         </div>
       </section>
-       <Link to="/gamificacion" hash="desafios" search={(prev: Record<string, unknown>) => prev} className="group flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]">
+      <div className="min-w-0"><WeatherCard compact /></div>
+      </div>
+      <Link to="/gamificacion" hash="desafios" search={(prev: Record<string, unknown>) => prev} className="group flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Target className="h-5 w-5"/></span>
         <span className="min-w-0 flex-1"><b className="block text-sm">Crea un reto</b><span className="text-xs text-muted-foreground">Define una meta, gana XP y sigue tu avance desde Desafíos.</span></span>
         <span className="shrink-0 text-xs font-semibold text-primary">Crear desafío</span>
