@@ -92,7 +92,13 @@ export function normalizeHomeDashboardLayout(value: unknown): HomeDashboardLayou
     const visible = Array.from(new Set(requestedVisible.filter((key): key is HomeDashboardWidgetKey =>
       HOME_DASHBOARD_WIDGETS.some((widget) => widget.key === key),
     )));
-    return { order: completeOrder, visible };
+    // The previous release preselected every card. Treat that generated
+    // nine-card setup as the old default (not a deliberate user selection)
+    // and compact it once; manually selected subsets remain untouched.
+    const compactVisible = visible.length === HOME_DASHBOARD_WIDGETS.length
+      ? [...DEFAULT_HOME_DASHBOARD_VISIBLE]
+      : visible;
+    return { order: completeOrder, visible: compactVisible };
   }
 
   const legacy = normalizeDashboardWidgets(value);
