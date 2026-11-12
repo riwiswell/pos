@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen,ChevronDown,ChevronUp,FileText,Globe2,ImagePlus,NotebookPen,Pencil,Plus,Save,Trash2,X } from "lucide-react";
+import { BookOpen,ChevronDown,ChevronUp,FileText,ImagePlus,NotebookPen,Pencil,Plus,Save,Trash2,X } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor";
 import { SafeRichText } from "@/components/common/SafeRichText";
@@ -33,20 +33,24 @@ function LearningPage(){
   const[tab,setTab]=useState("books");
   const{data:profile}=useProfile();
   const booksHidden=profile?.hidden_features?.["learning.books"]===true;
-  const current=booksHidden&&tab==="books"?"other":tab;
+  const current=booksHidden&&tab==="books"?"games":tab;
+  const tabsClass=booksHidden?"grid-cols-3":"grid-cols-4";
   return <div className="space-y-5 pb-24">
     <GlobalDateHeader/>
     <div>
       <h1 className="flex items-center gap-2 text-xl font-semibold">Aprendizaje <HelpTip helpKey="learning"/></h1>
-      <p className="text-sm text-muted-foreground">Libros, formación, videojuegos e idiomas.</p>
+      <p className="text-sm text-muted-foreground">Lecturas, videojuegos, idiomas y otros aprendizajes.</p>
     </div>
-    <div className="grid grid-cols-2 gap-1 rounded-xl border bg-muted/30 p-1">
-      {!booksHidden&&<button type="button" onClick={()=>setTab("books")} className={"rounded-lg px-3 py-2 text-sm font-medium transition "+(tab==="books"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Libros</button>}
-      <button type="button" onClick={()=>setTab("other")} className={"rounded-lg px-3 py-2 text-sm font-medium transition "+(current==="other"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Otros</button>
+    <div className={"grid "+tabsClass+" gap-1 rounded-xl border bg-muted/30 p-1"}>
+      {!booksHidden&&<button type="button" onClick={()=>setTab("books")} aria-pressed={current==="books"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="books"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Libros</button>}
+      <button type="button" onClick={()=>setTab("games")} aria-pressed={current==="games"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="games"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Videojuegos</button>
+      <button type="button" onClick={()=>setTab("languages")} aria-pressed={current==="languages"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="languages"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Idiomas</button>
+      <button type="button" onClick={()=>setTab("other")} aria-pressed={current==="other"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="other"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Otros</button>
     </div>
-    {current==="books"?<Books/>:<OtherLearning/>}
+    {current==="books"?<Books/>:current==="games"?<OtherLearning mode="games"/>:current==="languages"?<Languages/>:<OtherLearning mode="resources"/>}
   </div>;
 }
+
 function isBibleBook(title:string){
   const normalized=title.trim().toLowerCase();
   return normalized==="la biblia"||normalized==="biblia";
@@ -369,75 +373,67 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover}:{item:any;onEdit:(
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
     </div>
     <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
-      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game")&&<div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
+      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game")&&<div className="mt-2 space-y-1.5"><div className="flex items-center justify-between text-[11px]"><span className="font-medium text-muted-foreground">Progreso de la historia</span><span className="font-semibold tabular-nums">{Math.min(100,Math.max(0,Number(item.progress)||0)).toLocaleString("es-CO",{maximumFractionDigits:1})}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div><p className="text-[10px] text-muted-foreground">{Number(item.progress)>=100?"Completado":Number(item.progress)>0?"En curso":"Pendiente de iniciar"}</p></div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
       <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
     </div>
   </article>;
 }
-function OtherLearning(){
+function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const q=useLGList("learning_items");
   const m=useLGMutations("learning_items");
   const{user}=useAuth();
-  const[section,setSection]=useState<"resources"|"languages">("resources");
+  const isGames=mode==="games";
   const[adding,setAdding]=useState(false);
   const[editingId,setEditingId]=useState<string|null>(null);
   const[title,setTitle]=useState("");
-  const[kind,setKind]=useState("course");
+  const[kind,setKind]=useState(isGames?"video_game":"course");
   const[notes,setNotes]=useState("");
   const[goalDescription,setGoalDescription]=useState("");
   const[goalDate,setGoalDate]=useState("");
   const[gameProgress,setGameProgress]=useState("0");
   const[filter,setFilter]=useState("all");
-  const items=(q.data||[]).filter((item:any)=>item.kind!=="book"&&item.kind!=="language");
-  const visibleItems=items.filter((item:any)=>filter==="all"||item.kind===filter||(filter==="video_game"&&item.kind==="game"));
-  const resetForm=()=>{setTitle("");setKind("course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setEditingId(null);setAdding(false);};
+  const isGameItem=(item:any)=>item.kind==="video_game"||item.kind==="game";
+  const allItems=(q.data||[]).filter((item:any)=>item.kind!=="book"&&item.kind!=="language");
+  const items=allItems.filter((item:any)=>isGames?isGameItem(item):!isGameItem(item));
+  const visibleItems=isGames?items:items.filter((item:any)=>filter==="all"||item.kind===filter);
+  const resetForm=()=>{setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setEditingId(null);setAdding(false);};
   const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setEditingId(item.id);setAdding(true);};
   const saveItem=async()=>{
     const isGame=kind==="video_game"||kind==="game";
     if(!title.trim()){toast.error("Escribe el nombre del elemento.");return;}
+    const progress=Math.min(100,Math.max(0,Number(gameProgress)||0));
     if(editingId){
-      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?Math.min(100,Math.max(0,Number(gameProgress)||0)):undefined}});
+      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined}});
       toast.success("Elemento actualizado.");
     }else{
-      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?Math.min(100,Math.max(0,Number(gameProgress)||0)):0});
+      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:0});
       toast.success("Elemento agregado.");
     }
     resetForm();
   };
-  if(section==="languages")return <section className="space-y-3">
-    <div className="flex items-center justify-between gap-2">
-      <div><h2 className="font-semibold">Idiomas</h2><p className="text-xs text-muted-foreground">Variantes, niveles y sesiones de práctica.</p></div>
-      <Button size="sm" variant="outline" onClick={()=>setSection("resources")}>Volver a Otros</Button>
-    </div>
-    <Languages/>
-  </section>;
   return <section className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h2 className="font-semibold">Otros aprendizajes</h2><p className="text-xs text-muted-foreground">Cursos, podcasts, videos, videojuegos, ajedrez y certificaciones.</p></div>
-      <div className="flex gap-1.5">
-        <Button size="sm" variant="outline" onClick={()=>setSection("languages")}><Globe2 className="mr-1 h-3.5 w-3.5"/>Idiomas</Button>
-        <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind("course");setNotes("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
-      </div>
+      <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, objetivos y avance de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div>
+      <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
     </div>
     {adding&&<div className="glass max-w-2xl space-y-2 rounded-2xl p-3">
       <div className="grid gap-2 sm:grid-cols-[1fr_190px_auto]">
-        <Input placeholder="Nombre del curso, juego o recurso" value={title} onChange={e=>setTitle(e.target.value)}/>
-        <select className="h-10 rounded-md border bg-background px-3 text-sm" value={kind} onChange={e=>setKind(e.target.value)}>
-          <option value="course">Curso</option><option value="podcast">Podcast</option><option value="video">Video</option>
-          <option value="video_game">Videojuego</option><option value="chess">Ajedrez</option><option value="certification">Certificación</option><option value="other">Otro</option>
-        </select>
+        <Input placeholder={isGames?"Nombre del videojuego":"Nombre del curso o recurso"} value={title} onChange={e=>setTitle(e.target.value)}/>
+        {!isGames&&<select className="h-10 rounded-md border bg-background px-3 text-sm" value={kind} onChange={e=>setKind(e.target.value)}>
+          <option value="course">Curso</option><option value="podcast">Podcast</option><option value="video">Video</option><option value="chess">Ajedrez</option><option value="certification">Certificación</option><option value="other">Otro</option>
+        </select>}
         <Button size="sm" disabled={!title.trim()||m.create.isPending||m.update.isPending} onClick={()=>void saveItem()}><Save className="mr-1 h-3.5 w-3.5"/>{editingId?"Guardar":"Agregar"}</Button>
       </div>
-      {editingId&&<textarea className="min-h-16 w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm" rows={2} placeholder="Notas o descripción (opcional)" value={notes} onChange={e=>setNotes(e.target.value)}/>}
-      {kind==="video_game"&&<div className="grid gap-2 sm:grid-cols-3"><Input placeholder="Meta (ej. Terminar la historia)" value={goalDescription} onChange={e=>setGoalDescription(e.target.value)}/><label className="text-xs text-muted-foreground">Fecha objetivo<Input className="mt-1" type="date" value={goalDate} onChange={e=>setGoalDate(e.target.value)}/></label><label className="text-xs text-muted-foreground">Avance (%)<Input className="mt-1" type="number" min="0" max="100" value={gameProgress} onChange={e=>setGameProgress(e.target.value)}/></label></div>}
+      {(isGames||editingId)&&<textarea className="min-h-16 w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm" rows={2} placeholder={isGames?"Notas, edición, plataforma o detalles del juego (opcional)":"Notas o descripción (opcional)"} value={notes} onChange={e=>setNotes(e.target.value)}/>}
+      {isGames&&<div className="grid gap-2 sm:grid-cols-3"><label className="text-xs text-muted-foreground">Objetivo<Input className="mt-1" placeholder="Ej. Terminar la historia" value={goalDescription} onChange={e=>setGoalDescription(e.target.value)}/></label><label className="text-xs text-muted-foreground">Fecha objetivo<Input className="mt-1" type="date" value={goalDate} onChange={e=>setGoalDate(e.target.value)}/></label><label className="text-xs text-muted-foreground">Avance (%)<Input className="mt-1" type="number" min="0" max="100" value={gameProgress} onChange={e=>setGameProgress(e.target.value)}/></label></div>}
       {editingId&&<p className="text-xs text-muted-foreground">Puedes actualizar el nombre, la categoría y la descripción.</p>}
     </div>}
-    <div className="flex flex-wrap gap-1.5">
-      {[["all","Todos"],["course","Cursos"],["podcast","Podcasts"],["video","Videos"],["video_game","Videojuegos"],["chess","Ajedrez"],["certification","Certificaciones"]].map(([value,label])=><button key={value} type="button" onClick={()=>setFilter(value)} className={"rounded-full border px-3 py-1.5 text-xs "+(filter===value?"border-primary bg-primary/10 font-semibold text-primary":"text-muted-foreground hover:bg-accent")}>{label}</button>)}
-    </div>
+    {!isGames&&<div className="flex flex-wrap gap-1.5">
+      {[["all","Todos"],["course","Cursos"],["podcast","Podcasts"],["video","Videos"],["chess","Ajedrez"],["certification","Certificaciones"]].map(([value,label])=><button key={value} type="button" onClick={()=>setFilter(value)} className={"rounded-full border px-3 py-1.5 text-xs "+(filter===value?"border-primary bg-primary/10 font-semibold text-primary":"text-muted-foreground hover:bg-accent")}>{label}</button>)}
+    </div>}
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
-    {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno.</div>}
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">{isGames?"Todavía no has agregado videojuegos. Pulsa Agregar para registrar el que estás jugando.":"Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno."}</div>}
+    <div className={isGames?"grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3":"grid grid-cols-1 gap-3 sm:grid-cols-2"}>
       {visibleItems.map((item:any)=><OtherLearningCard key={item.id} item={item} onEdit={()=>startEdit(item)} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>) }
     </div>
   </section>;
@@ -484,8 +480,8 @@ function Languages(){
   const localeSessions=(s.data||[]).filter((entry:any)=>entry.resource_url===locale);
   return <section className="space-y-4">
     {(q.isError||s.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:s.error instanceof Error?s.error.message:"No se pudieron cargar idiomas o sesiones."}/>}
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-      <div className="glass space-y-3 rounded-2xl p-4">
+    <div className="grid grid-cols-1 gap-3">
+      <div className="glass order-2 space-y-3 rounded-2xl p-4">
         <div><h2 className="font-semibold">Agregar o configurar un idioma</h2><p className="text-xs text-muted-foreground">Elige el idioma y su variante regional, define tu nivel actual y tu meta.</p></div>
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1 text-xs text-muted-foreground">Idioma<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]);}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select></label>
@@ -496,7 +492,7 @@ function Languages(){
         <Input placeholder="Enfoques: hablar, escuchar, vocabulario…" value={focus} onChange={e=>setFocus(e.target.value)}/>
         <Button className="w-full sm:w-auto" onClick={()=>void saveLanguage()} disabled={m.create.isPending||m.update.isPending}><Plus className="mr-1 h-4 w-4"/>{selectedProfile?"Guardar cambios":"Agregar idioma"}</Button>
       </div>
-      <div className="glass space-y-3 rounded-2xl p-4">
+      <div className="glass order-1 space-y-3 rounded-2xl p-4">
         <div><h2 className="font-semibold">Registrar práctica</h2><p className="text-xs text-muted-foreground">Guarda cada sesión para medir tu constancia y tiempo de estudio.</p></div>
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1 text-xs text-muted-foreground">Idioma<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]);}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select></label>
