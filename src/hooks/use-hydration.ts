@@ -82,7 +82,7 @@ export function useHydrationMutations(date: string) {
       if (!Number.isInteger(input.amount_ml) || input.amount_ml < 1 || input.amount_ml > 5000) {
         throw new Error("La cantidad debe estar entre 1 y 5000 ml.");
       }
-      if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(input.consumed_time)) {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.consumed_time)) {
         throw new Error("La hora del registro no es válida.");
       }
       const user_id = await currentUserId();
