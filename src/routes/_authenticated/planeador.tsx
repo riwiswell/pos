@@ -160,7 +160,7 @@ function PlannerPage() {
               const dayNumber = String(day.getDate()).padStart(2, "0");
               setDate(year + "-" + month + "-" + dayNumber);
             }}
-            className="mx-auto sm:mx-0"
+            className="mx-auto w-full [--cell-size:clamp(2.75rem,10vw,3.25rem)] sm:mx-0"
           />
         </div>
         <div className="min-w-0 flex-1 self-center rounded-xl bg-muted/30 p-3">
