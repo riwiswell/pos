@@ -39,7 +39,7 @@ import {
 } from "@/lib/finance-math";
 import { buildPeriod, formatPeriod, PERIOD_LABEL, type PeriodKind } from "@/lib/period";
 import { formatMoney } from "@/lib/money";
-import { getIcon } from "@/lib/finance-icons";
+import { getCategoryIconName, getIcon } from "@/lib/finance-icons";
 import { cn } from "@/lib/utils";
 import { categoryAppliesTo, TITHE_BASIS_LABEL } from "@/domain/finance";
 import type { FinanceAccount, FinanceCategory, FinanceTransaction, TransactionType } from "@/domain/finance";
@@ -97,7 +97,7 @@ function CategoryExplorer({
         id: category.id,
         name: category.name,
         color: category.color,
-        icon: category.icon,
+        icon: getCategoryIconName(category.name, category.icon),
         count: items.length,
         total: sumBy(items, type),
       };
