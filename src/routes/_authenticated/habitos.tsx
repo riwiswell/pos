@@ -50,7 +50,9 @@ function HabitsPage() {
   const { date } = useGlobalDate();
   const [activeTab, setActiveTab] = useState("registro");
   useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("sharedInvite")) {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("sharedInvite") || params.get("tab") === "compartidos") {
       setActiveTab("compartidos");
     }
   }, []);
