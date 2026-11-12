@@ -433,7 +433,7 @@ function CycleProfile({
       return;
     }
     try {
-      const record = await periodMutations.create.mutateAsync({
+      await periodMutations.create.mutateAsync({
         user_id: user?.id,
         profile_id: profile.id,
         start_date: newStart,
