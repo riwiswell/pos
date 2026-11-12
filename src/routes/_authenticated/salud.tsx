@@ -36,10 +36,10 @@ function hydrationMinutes(value: string): number {
 
 function HydrationCard(){
  const{date}=useGlobalDate();
+ const yesterdayDate=useMemo(()=>{const d=new Date(date+"T12:00:00");d.setDate(d.getDate()-1);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")},[date]);
  const metrics=usePersonalDateList<any>("health_metrics","metric_date",date);
  const yesterdayMetrics=usePersonalDateList<any>("health_metrics","metric_date",yesterdayDate);
  const doses=useDoses(date);
- const yesterdayDate=useMemo(()=>{const d=new Date(date+"T12:00:00");d.setDate(d.getDate()-1);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")},[date]);
  const entries=useHydrationEntries(date);
  const yesterdayEntries=useHydrationEntries(yesterdayDate);
  const hydration=useHydrationMutations(date);
