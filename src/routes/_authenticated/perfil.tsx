@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { lifeGraphService } from "@/services/life-graph.service";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
-import { DASHBOARD_WIDGETS, DEFAULT_DASHBOARD_WIDGETS, normalizeDashboardWidgets } from "@/domain/dashboard";
+import { DASHBOARD_WIDGETS, DEFAULT_DASHBOARD_WIDGETS, mergeDashboardSettings, normalizeDashboardWidgets } from "@/domain/dashboard";
 
 export const Route = createFileRoute("/_authenticated/perfil")({ component: ProfilePage });
 
@@ -107,7 +107,7 @@ function ProfilePage() {
       avatar_url: avatar,
       background_url: background,
       hidden_features: features,
-      dashboard_widgets: widgets,
+      dashboard_widgets: mergeDashboardSettings(p?.dashboard_widgets, normalizeDashboardWidgets(widgets)),
       notification_preferences: {
         ...(p?.notification_preferences || {}),
         relationships: relationshipNotifications,
