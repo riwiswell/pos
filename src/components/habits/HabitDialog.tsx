@@ -30,7 +30,18 @@ interface Props {
 }
 
 const NO_CATEGORY = "__none__";
-const HABIT_ICONS = ["✨","🌅","💧","🙏","📖","🎨","🚶","🏃","🚴","🧘","💪","🎮","🎵","🍽️","❤️","😘","🌙","🧠","✍️","🌱","🏆","📚","🛠️","🎯"];
+const HABIT_ICON_GROUPS: { label: string; icons: string[] }[] = [
+  { label: "Bienestar y salud", icons: ["💧","🚰","🥤","🫗","🛁","🧼","🪥","🧴","💊","🩺","🩹","❤️","💗","🫀","🧠","🧘","🧘‍♀️","🧘‍♂️","🏃","🚶","🚴","🏊","🧗","🏋️","🤸","🦵","🫁","🌿"] },
+  { label: "Rutinas y tiempo", icons: ["🌅","🌄","🌞","☀️","🌤️","🌇","🌆","🌙","🌛","🌜","🌚","⭐","🌟","✨","💫","⏰","⏱️","⌛","📅","🗓️","🛌","😴","🧹","🧺","🧽","🧺","🪴"] },
+  { label: "Lectura y aprendizaje", icons: ["📖","📚","📕","📗","📘","📙","📓","📔","📒","📝","✏️","🖊️","🖋️","📎","🔖","🎓","🧑‍🎓","🔬","🧪","🧮","🌎","🗣️","💬","🇬🇧","🇮🇹","🇧🇷"] },
+  { label: "Arte y creatividad", icons: ["🎨","🖌️","🖍️","✒️","🖼️","🧵","🪡","🧶","🪢","📷","📸","🎥","🎬","🎭","🎼","🎹","🎸","🎻","🥁","🎤","🎧","🎷","🪇","🪈","🧩","🪄"] },
+  { label: "Movimiento y exterior", icons: ["🏃‍♂️","🏃‍♀️","🚶‍♂️","🚶‍♀️","🚴‍♂️","🚴‍♀️","🏃🏻","🚵","🛹","🛼","🛴","🚣","🏄","⛹️","🤾","🏸","🏓","🎾","⚽","🏀","🏐","🥊","🥋","🥾","🏕️","⛰️","🌳","🌻"] },
+  { label: "Comida y hogar", icons: ["🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🥑","🥦","🥕","🥗","🍲","🍳","🥚","🍞","🥛","☕","🫖","🍵","🍽️","🥣","🧑‍🍳","🏠","🛋️","🪟","🧺"] },
+  { label: "Relaciones y emociones", icons: ["😘","💋","❤️‍🔥","💕","💞","💓","💝","💌","🤗","🫂","👨‍👩‍👧","👫","💑","💍","🌹","🌷","🌸","🦋","😊","😌","🥰","🙏","🤝","🫶","🎉","🎁"] },
+  { label: "Trabajo y objetivos", icons: ["💼","💻","🖥️","⌨️","🖱️","📱","📈","📊","💰","💵","💳","🧾","📦","🛠️","🔧","⚙️","🧰","🏆","🥇","🥈","🎯","🚀","🧭","🗂️","📌","🔑","💡","🪙"] },
+  { label: "Diversión", icons: ["🎮","🕹️","🎲","🃏","♟️","🧸","🪁","🎈","🎯","🎳","🎰","🎟️","🎡","🎢","🏖️","🏝️","🚗","🏍️","🚂","✈️","🚀","🐶","🐱","🐾","🐢","🦉","🐝","🌈"] },
+];
+const HABIT_ICONS = [...new Set(HABIT_ICON_GROUPS.flatMap((group) => group.icons))];
 
 export function HabitDialog({
   open,
@@ -48,6 +59,7 @@ export function HabitDialog({
   const [target, setTarget] = useState("");
   const [unit, setUnit] = useState("");
   const [icon, setIcon] = useState("✨");
+  const [iconSearch, setIconSearch] = useState("");
   const [more, setMore] = useState(false);
 
   // Reset only when the dialog opens, never while the user types.
@@ -60,6 +72,7 @@ export function HabitDialog({
     setTarget(habit?.target != null ? String(habit.target) : "");
     setUnit(habit?.unit ?? "");
     setIcon(habit?.icon ?? (mode === "activity" ? "🎯" : "✨"));
+    setIconSearch("");
     setMore(Boolean(habit?.target || habit?.unit || habit?.category_id));
   }, [open, habit, defaultCategoryId, mode]);
 
@@ -102,27 +115,18 @@ export function HabitDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Icono</Label>
-            <div className="grid grid-cols-8 gap-2">
-              {HABIT_ICONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-label={`Elegir icono ${option}`}
-                  aria-pressed={icon === option}
-                  onClick={() => setIcon(option)}
-                  className={
-                    "grid h-9 w-9 place-items-center rounded-xl border text-lg transition-colors " +
-                    (icon === option
-                      ? "border-primary bg-primary/10 ring-2 ring-primary/20"
-                      : "border-border/60 bg-muted/40 hover:bg-accent")
-                  }
-                >
-                  {option}
-                </button>
-              ))}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2"><Label>Icono</Label><span className="text-2xl" aria-label="Icono seleccionado">{icon}</span></div>
+            <Input value={iconSearch} onChange={(event) => setIconSearch(event.target.value)} placeholder="Buscar: salud, lectura, deporte, amor…" aria-label="Buscar iconos por categoría" />
+            <div className="max-h-64 space-y-3 overflow-y-auto rounded-xl border border-border/60 p-3">
+              {HABIT_ICON_GROUPS.filter(group => !iconSearch.trim() || group.label.toLocaleLowerCase().includes(iconSearch.trim().toLocaleLowerCase()) || group.icons.some(option => option.includes(iconSearch.trim()))).map(group => {
+                const options = iconSearch.trim() && !group.label.toLocaleLowerCase().includes(iconSearch.trim().toLocaleLowerCase()) ? group.icons.filter(option => option.includes(iconSearch.trim())) : group.icons;
+                return <section key={group.label} className="space-y-2"><p className="text-xs font-semibold text-muted-foreground">{group.label}</p><div className="grid grid-cols-7 gap-1.5 sm:grid-cols-9">{options.map(option => <button key={option} type="button" aria-label={`Elegir icono ${option}`} aria-pressed={icon === option} onClick={() => setIcon(option)} className={"grid h-10 w-10 place-items-center rounded-xl border text-xl transition-all hover:scale-105 " + (icon === option ? "border-primary bg-primary/10 ring-2 ring-primary/20" : "border-border/60 bg-muted/40 hover:bg-accent")}>{option}</button>)}</div></section>;
+              })}
+              {HABIT_ICON_GROUPS.every(group => !group.label.toLocaleLowerCase().includes(iconSearch.trim().toLocaleLowerCase()) && !group.icons.some(option => option.includes(iconSearch.trim()))) && <p className="py-4 text-center text-xs text-muted-foreground">No hay coincidencias. Puedes pegar tu propio emoji abajo.</p>}
             </div>
+            <div className="space-y-1"><Label htmlFor="habit-custom-icon">O pega tu propio emoji</Label><Input id="habit-custom-icon" value={icon} onChange={event => setIcon(event.target.value)} placeholder="Ej. 🥾" maxLength={12}/></div>
+            <p className="text-[11px] text-muted-foreground">{HABIT_ICONS.length} iconos disponibles, organizados por tema. También puedes pegar uno propio.</p>
           </div>
 
           {mode === "habit" && (

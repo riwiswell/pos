@@ -17,15 +17,18 @@ export function useHydrationEntries(date: string) {
   return useQuery({
     queryKey: hydrationKeys.day(date),
     queryFn: async (): Promise<HydrationEntry[]> => {
+      const user_id = await currentUserId();
       const { data, error } = await supabase
         .from("hydration_entries")
-        .select("*")
+        .select("id,user_id,consumed_on,consumed_at,beverage_type,amount_ml,note,created_at")
+        .eq("user_id", user_id)
         .eq("consumed_on", date)
         .order("consumed_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as HydrationEntry[];
     },
     staleTime: 15_000,
+    retry: 2,
   });
 }
 
