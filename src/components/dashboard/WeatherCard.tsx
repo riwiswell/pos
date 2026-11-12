@@ -190,17 +190,19 @@ export function WeatherCard({ compact = false }: { compact?: boolean } = {}) {
           <Button type="button" size="sm" variant="ghost" className="mt-1 px-0" onClick={() => setLocation((value) => ({ ...value }))}>Intentar de nuevo</Button>
         </div>
       ) : current ? (compact ? (
-          <div className="mt-3 flex items-center gap-3">
-            <WeatherIcon code={current.weather_code} isDay={current.is_day === 1} />
-            <div className="min-w-0 flex-1">
-              <p className="text-3xl font-semibold tracking-tight tabular-nums">{Math.round(current.temperature_2m)}°</p>
-              <p className="truncate text-xs text-muted-foreground">{weatherDescription(current.weather_code)} · sensación {Math.round(current.apparent_temperature)}°</p>
+          <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="col-span-2 flex min-w-0 items-center gap-3 rounded-xl bg-background/35 p-2 sm:col-span-2">
+              <WeatherIcon code={current.weather_code} isDay={current.is_day === 1} />
+              <div className="min-w-0">
+                <p className="text-3xl font-semibold tracking-tight tabular-nums">{Math.round(current.temperature_2m)}°</p>
+                <p className="break-words text-xs text-muted-foreground">{weatherDescription(current.weather_code)} · sensación {Math.round(current.apparent_temperature)}°</p>
+              </div>
             </div>
-            <div className="shrink-0 rounded-xl bg-background/55 px-3 py-2">
+            <div className="min-w-0 rounded-xl bg-background/55 px-3 py-2">
               <p className="text-[10px] text-muted-foreground">Lluvia</p>
               <p className="text-lg font-semibold tabular-nums">{rainChance ?? "—"}{rainChance == null ? "" : "%"}</p>
             </div>
-            <div className="shrink-0 rounded-xl bg-background/55 px-3 py-2">
+            <div className="min-w-0 rounded-xl bg-background/55 px-3 py-2">
               <p className="text-[10px] text-muted-foreground">Humedad</p>
               <p className="text-lg font-semibold tabular-nums">{Math.round(current.relative_humidity_2m)}%</p>
             </div>
