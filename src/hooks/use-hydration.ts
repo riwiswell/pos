@@ -27,7 +27,9 @@ export function useHydrationEntries(date: string) {
       if (error) throw error;
       return (data ?? []) as HydrationEntry[];
     },
-    staleTime: 15_000,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     retry: 2,
   });
 }
