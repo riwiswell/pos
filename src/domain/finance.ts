@@ -27,6 +27,9 @@ export interface FinanceAccount {
   note: string | null;
   /** Money already in the account before Personal OS started tracking it. */
   initial_balance: number;
+  /** Optional balance snapshot cutoff. Transactions before this local date/time remain in history but do not affect the live balance. */
+  balance_cutoff_on: string | null;
+  balance_cutoff_time: string | null;
   include_in_total: boolean;
   position: number;
   archived: boolean;
