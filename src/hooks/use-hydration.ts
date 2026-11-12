@@ -93,6 +93,7 @@ export function useHydrationMutations(date: string) {
         .from("hydration_entries")
         .update({
           beverage_type: input.beverage_type,
+          icon: input.icon ?? null,
           amount_ml: input.amount_ml,
           note: input.note?.trim() || null,
           consumed_at,
