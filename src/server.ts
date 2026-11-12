@@ -233,8 +233,16 @@ type HydrationSchedule = {
 const DEFAULT_HYDRATION_SCHEDULE: HydrationSchedule = {
  enabled: true, start_time: "08:00", end_time: "21:30", interval_minutes: 90, amount_ml: 325
 };
-function validClockTime(value:unknown): value is string {
- return typeof value === "string" && /^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(value);
+function normalizeClockTime(value:unknown,fallback:string,label:string):string {
+ const raw=String(value??fallback).trim();
+ const match=/^([0-9]{1,2}):([0-9]{2})(?::([0-9]{2})(?:[.]([0-9]+))?)?$/.exec(raw);
+ if(!match)throw new Error("Introduce una hora válida para "+label+", por ejemplo 09:30.");
+ const hour=Number(match[1]);
+ const minute=Number(match[2]);
+ const second=match[3]===undefined?0:Number(match[3]);
+ if(!Number.isInteger(hour)||hour<0||hour>23||!Number.isInteger(minute)||minute<0||minute>59||!Number.isInteger(second)||second<0||second>59)
+  throw new Error("Introduce una hora válida para "+label+", por ejemplo 09:30.");
+ return String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0");
 }
 function clockMinutes(value:string) {
  const [hours,minutes]=value.split(":").map(Number);
@@ -254,8 +262,8 @@ function normalizeHydrationSchedule(input:unknown, fallback:HydrationSchedule):H
  const value=input&&typeof input==="object"?input as Record<string,unknown>:{};
  const next:HydrationSchedule={
   enabled:typeof value.enabled==="boolean"?value.enabled:fallback.enabled,
-  start_time:validClockTime(value.start_time)?value.start_time:fallback.start_time,
-  end_time:validClockTime(value.end_time)?value.end_time:fallback.end_time,
+  start_time:normalizeClockTime(value.start_time,fallback.start_time,"inicio"),
+  end_time:normalizeClockTime(value.end_time,fallback.end_time,"final"),
   interval_minutes:typeof value.interval_minutes==="number"&&Number.isInteger(value.interval_minutes)?value.interval_minutes:fallback.interval_minutes,
   amount_ml:typeof value.amount_ml==="number"&&Number.isInteger(value.amount_ml)?value.amount_ml:fallback.amount_ml
  };
