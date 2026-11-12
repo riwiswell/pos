@@ -1,6 +1,6 @@
 import { useEffect,useMemo,useRef,useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { CalendarHeart,ClipboardList,Coffee,HeartPulse,Pencil,Pill,Plus,Trash2 } from "lucide-react";
+import { CalendarHeart,ChevronDown,ClipboardList,Coffee,HeartPulse,Pencil,Pill,Plus,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label"; import { Switch } from "@/components/ui/switch";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { SleepPanel } from "@/components/health/SleepPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
 import { useGlobalDate } from "@/hooks/use-global-date";
@@ -178,11 +178,11 @@ function HydrationCard(){
    </div>
    {otherType==="other"&&<Input aria-label="Nombre de la bebida" className="h-9" placeholder="Nombre (aguapanela, Frutiño, jugo…)" value={otherName} onChange={e=>setOtherName(e.target.value)} maxLength={80}/>}
   </div>
-  <div className="space-y-2 rounded-xl border p-3">
-   <div className="flex flex-wrap items-center justify-between gap-2">
-    <p className="text-sm font-semibold">{date===todayISO()?"Lo que has tomado hoy":"Bebidas registradas ese día"}</p>
-    <span className="text-xs text-muted-foreground">{dayEntries.length} {dayEntries.length===1?"registro":"registros"}</span>
-   </div>
+  <details className="group rounded-xl border p-3">
+   <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+    <span className="text-sm font-semibold">{date===todayISO()?"Lo que has tomado hoy":"Bebidas registradas ese día"} <span className="ml-1 text-xs font-normal text-muted-foreground">({dayEntries.length})</span></span>
+    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"/>
+   </summary>
    {entries.isLoading?<p className="text-xs text-muted-foreground">Cargando registros…</p>:dayEntries.length===0?<p className="text-xs text-muted-foreground">Todavía no hay bebidas individuales registradas para esta fecha.</p>:<div className="space-y-2">
     {dayEntries.map(entry=>{
      const label=entry.beverage_type==="other"?(entry.note?.trim()||"Otra bebida"):beverageLabels[entry.beverage_type];
@@ -210,8 +210,8 @@ function HydrationCard(){
      </div>;
     })}
    </div>}
-   <p className="text-[11px] text-muted-foreground">Puedes corregir el tipo, nombre, cantidad y hora de cada bebida, o eliminar un registro incorrecto.</p>
-  </div>
+   <p className="pt-2 text-[11px] text-muted-foreground">Puedes corregir el tipo, nombre, cantidad y hora de cada bebida, o eliminar un registro incorrecto.</p>
+  </details>
   <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-muted-foreground">Ayer ({yesterdayDate}): {yesterdayEntries.isLoading?"cargando…":yesterdayEntries.isError?"sin conexión al historial":fmt(yesterdayWaterMl)+" ml de agua"}</span>{(entries.isError||yesterdayEntries.isError)&&<Button type="button" size="sm" variant="outline" className="h-7" onClick={()=>{void entries.refetch();void yesterdayEntries.refetch()}}>Reintentar carga</Button>}</div>
   {entries.isError&&<p className="text-xs text-destructive">No se pudo cargar el registro de bebidas. Puedes intentar registrar de todas formas; el error no bloquea el formulario. Detalle: {entries.error instanceof Error?entries.error.message:"error desconocido"}</p>}
   <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/[.04] p-3 space-y-3">
