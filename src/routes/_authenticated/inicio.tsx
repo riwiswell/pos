@@ -25,6 +25,7 @@ import { ErrorState, LoadingState } from "@/components/common/States";
 import { Progress } from "@/components/ui/progress";
 import { DailyFocusPicker } from "@/components/common/DailyFocusPicker";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
@@ -82,6 +83,7 @@ function HomePage() {
   const usageStart = useMemo(() => addDaysISO(date, -29), [date]);
   const usageLogsQuery = useLogsRange(usageStart, date, showHabits);
   const habitMutations = useHabitMutations(date);
+  const [quickCounterValues, setQuickCounterValues] = useState<Record<string, string>>({});
   const journalQuery = useJournalEntriesByDate(date);
   const [journalDialogOpen, setJournalDialogOpen] = useState(false);
   const [editingJournalEntry, setEditingJournalEntry] = useState<JournalEntry | null>(null);
@@ -311,24 +313,33 @@ function HomePage() {
                                   <Check className="h-3.5 w-3.5" />
                                 </Button>
                               ) : (
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  variant="outline"
-                                  className="h-7 w-7 shrink-0 rounded-full"
-                                  aria-label={`Sumar a ${habit.name}`}
-                                  title="Sumar uno"
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="any"
+                                  inputMode="decimal"
+                                  aria-label={`Minutos o cantidad de ${habit.name}`}
+                                  title="Escribe el total directamente"
+                                  className="h-8 w-20 shrink-0 px-2 text-center text-sm tabular-nums"
+                                  value={quickCounterValues[habit.id] ?? String(value)}
                                   disabled={habitMutations.saveLog.isPending}
-                                  onClick={() => habitMutations.saveLog.mutate({
-                                    habitId: habit.id,
-                                    patch: {
-                                      value: nextValue,
-                                      completed: habit.target ? nextValue >= habit.target : nextValue > 0,
-                                    },
-                                  })}
-                                >
-                                  <Plus className="h-3.5 w-3.5" />
-                                </Button>
+                                  onChange={(event) => setQuickCounterValues(current => ({ ...current, [habit.id]: event.target.value }))}
+                                  onBlur={() => {
+                                    const raw = quickCounterValues[habit.id] ?? String(value);
+                                    const parsed = Number(raw.replace(",", "."));
+                                    if (Number.isFinite(parsed) && parsed >= 0 && parsed !== value) {
+                                      habitMutations.saveLog.mutate({
+                                        habitId: habit.id,
+                                        patch: {
+                                          value: parsed,
+                                          completed: habit.target ? parsed >= habit.target : parsed > 0,
+                                        },
+                                      });
+                                    }
+                                    setQuickCounterValues(current => { const next = { ...current }; delete next[habit.id]; return next; });
+                                  }}
+                                  onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
+                                />
                               )}
                             </div>
                           );
