@@ -199,8 +199,12 @@ async function handleAssistantBriefing(request:Request,env:Env):Promise<Response
  if(!user)return json({error:"La sesión no es válida o ha caducado. Inicia sesión de nuevo."},401);
  if(!env.AI)return json({error:"El motor de IA de Cloudflare no está habilitado para este Worker."},503);
  let body:any={};try{body=await request.json()}catch{return json({error:"La fecha solicitada no tiene un formato válido."},400)}
- const todayISO=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
- const targetDate=typeof body?.date==="string"&&/^\\d{4}-\\d{2}-\\d{2}$/.test(body.date)?body.date:todayISO;
+ const dateParts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+ const todayFields=Object.fromEntries(dateParts.map((part)=>[part.type,part.value]));
+ const todayISO=[todayFields.year,todayFields.month,todayFields.day].join("-");
+ const requestedDate=typeof body?.date==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(body.date)?body.date:"";
+ const parsedRequestedDate=requestedDate?new Date(requestedDate+"T12:00:00Z"):null;
+ const targetDate=parsedRequestedDate&&!Number.isNaN(parsedRequestedDate.getTime())&&parsedRequestedDate.toISOString().slice(0,10)===requestedDate?requestedDate:todayISO;
  const prompt="Evalúa de forma proactiva mis pendientes para la fecha "+targetDate+". Revisa Agenda y Planeador (tareas, citas, eventos y vencimientos), recordatorios, Diario y notas, Trabajo y sesiones, metas y objetivos, Hábitos y relaciones. Detecta fechas vencidas o próximas, urgencias reales, compromisos de la fecha seleccionada y tareas que llevan tiempo sin avanzar. Sugiere como máximo una prioridad concreta y un siguiente paso pequeño. Si no hay nada que requiera atención especial, dilo con naturalidad. No inventes fechas, urgencias, relaciones causales ni tareas. No confundas una nota antigua con una tarea activa.";
  try{
   const context=await assistantContext(env,request,user.id,prompt,[]);
