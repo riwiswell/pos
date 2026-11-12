@@ -77,21 +77,26 @@ function HomePage() {
   const profileQuery = useProfile();
   const dashboardWidgets = normalizeDashboardWidgets(profileQuery.data?.dashboard_widgets);
   const homeLayout = normalizeHomeDashboardLayout(profileQuery.data?.dashboard_widgets);
-  const showPlanner = dashboardWidgets.includes("planner") && homeLayout.visible.includes("agenda");
+  // Keep the legacy summary switches separate from the cards in the personal dashboard.
+  const showPlanner = dashboardWidgets.includes("planner");
   const showFocus = dashboardWidgets.includes("focus");
-  const showHabits = dashboardWidgets.includes("habits") && homeLayout.visible.includes("habits");
-  const habitsQuery = useHabits(false, showHabits);
-  const logsQuery = useLogs(date, showHabits);
+  const showHabits = dashboardWidgets.includes("habits");
+  const showPlannerCard = homeLayout.visible.includes("agenda");
+  const showHabitsCard = homeLayout.visible.includes("habits");
+  const loadPlanner = showPlanner || showPlannerCard;
+  const loadHabits = showHabits || showHabitsCard;
+  const habitsQuery = useHabits(false, loadHabits);
+  const logsQuery = useLogs(date, loadHabits);
   const weekStart = useMemo(() => addDaysISO(date, -6), [date]);
-  const weekLogsQuery = useLogsRange(weekStart, date, showHabits);
+  const weekLogsQuery = useLogsRange(weekStart, date, loadHabits);
   const usageStart = useMemo(() => addDaysISO(date, -29), [date]);
-  const usageLogsQuery = useLogsRange(usageStart, date, showHabits);
+  const usageLogsQuery = useLogsRange(usageStart, date, loadHabits);
   const habitMutations = useHabitMutations(date);
   const [quickCounterValues, setQuickCounterValues] = useState<Record<string, string>>({});
   const journalQuery = useJournalEntriesByDate(date);
   const [journalDialogOpen, setJournalDialogOpen] = useState(false);
   const [editingJournalEntry, setEditingJournalEntry] = useState<JournalEntry | null>(null);
-  const plannerQuery = usePlannerItems(date, showPlanner);
+  const plannerQuery = usePlannerItems(date, loadPlanner);
   const plannerItems = plannerQuery.data ?? [];
   const sortedPlanner = useMemo(
     () => [...plannerItems].sort(compareChronologically),
@@ -262,7 +267,7 @@ function HomePage() {
         <ArrowUpRight className="h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"/>
       </Link>
         <div className="inicio-habits-column min-w-0">
-          {showHabits && (
+          {showHabitsCard && (
             <div className="inicio-widget inicio-widget--habits" style={{ order: homeLayout.order.indexOf("habits") }}>
               {habitsQuery.isLoading || logsQuery.isLoading || usageLogsQuery.isLoading ? <LoadingState /> :
             habitsQuery.isError || logsQuery.isError || usageLogsQuery.isError ? (
@@ -391,7 +396,7 @@ function HomePage() {
 
         <div className="inicio-planner-column min-w-0">
           <div className="flex h-full min-w-0 flex-col gap-3">
-          {showPlanner && (
+          {showPlannerCard && (
             <div className="inicio-widget inicio-widget--agenda" style={{ order: homeLayout.order.indexOf("agenda") }}>
             <section className="rounded-[26px] border border-amber-400/20 bg-gradient-to-br from-amber-500/[.07] via-card to-card p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
