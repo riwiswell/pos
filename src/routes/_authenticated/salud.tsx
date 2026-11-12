@@ -51,10 +51,12 @@ function HydrationCard(){
  const [otherType,setOtherType]=useState<BeverageType>("tea");
  const [otherMl,setOtherMl]=useState("150");
  const [otherName,setOtherName]=useState("");
+ const [otherIcon,setOtherIcon]=useState("🥤");
  const [editingEntryId,setEditingEntryId]=useState<string|null>(null);
  const [editType,setEditType]=useState<BeverageType>("water");
  const [editMl,setEditMl]=useState("325");
  const [editName,setEditName]=useState("");
+ const [editIcon,setEditIcon]=useState("🥤");
  const [editTime,setEditTime]=useState("08:00");
  const [confirmDeleteId,setConfirmDeleteId]=useState<string|null>(null);
  const [showTodayDrinks,setShowTodayDrinks]=useState(false);
@@ -85,8 +87,8 @@ function HydrationCard(){
  const addDrink=async(beverage_type:BeverageType,amount_ml:number,note?:string|null)=>{
   if(!Number.isInteger(amount_ml)||amount_ml<1||amount_ml>3000)return;
   if(beverage_type==="other"&&!note?.trim()){toast.error("Escribe el nombre de la bebida (por ejemplo, aguapanela o Frutiño).");return;}
-  await hydration.create.mutateAsync({beverage_type,amount_ml,note});
-  if(beverage_type==="other")setOtherName("");
+  await hydration.create.mutateAsync({beverage_type,amount_ml,note,icon:beverage_type==="other"?otherIcon:null});
+  if(beverage_type==="other"){setOtherName("");setOtherIcon("🥤");}
  };
  const startEditing=(entry:HydrationEntry)=>{
   const consumedAt=new Date(entry.consumed_at);
@@ -94,6 +96,7 @@ function HydrationCard(){
   setEditType(entry.beverage_type);
   setEditMl(String(entry.amount_ml));
   setEditName(entry.note??"");
+  setEditIcon(entry.icon??"🥤");
   setEditTime(Number.isNaN(consumedAt.getTime())?"08:00":String(consumedAt.getHours()).padStart(2,"0")+":"+String(consumedAt.getMinutes()).padStart(2,"0"));
   setConfirmDeleteId(null);
  };
@@ -104,7 +107,7 @@ function HydrationCard(){
   if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(editTime)){toast.error("Introduce una hora válida.");return;}
   if(editType==="other"&&!editName.trim()){toast.error("Escribe el nombre de la bebida.");return;}
   try{
-   await hydration.update.mutateAsync({id:editingEntryId,beverage_type:editType,amount_ml:amount,note:editType==="other"?editName.trim():null,consumed_time:editTime});
+   await hydration.update.mutateAsync({id:editingEntryId,beverage_type:editType,amount_ml:amount,note:editType==="other"?editName.trim():null,icon:editType==="other"?editIcon:null,consumed_time:editTime});
    setEditingEntryId(null);
   }catch{}
  };
@@ -177,6 +180,7 @@ function HydrationCard(){
     <Input aria-label="Cantidad en mililitros" className="h-9" type="number" min="1" max="3000" step="25" value={otherMl} onChange={e=>setOtherMl(e.target.value)}/>
     <Button size="sm" variant="outline" disabled={disabled||!Number.isInteger(Number(otherMl))||Number(otherMl)<1||Number(otherMl)>3000||(otherType==="other"&&!otherName.trim())} onClick={()=>void addDrink(otherType,Number(otherMl),otherType==="other"?otherName.trim():null)}>Registrar</Button>
    </div>
+   {otherType==="other"&&<div className="space-y-1.5"><p className="text-xs font-medium text-muted-foreground">Icono de la bebida</p><div className="flex flex-wrap gap-1.5">{["🥤","🧃","🍹","🧋","🧉","🍶","🥛","☕","🫖","🍵","💧","🧊","🍋","🍊","🍓","🍉","🍍","🥥","🍇","🥭","🍑","🍒","🫐","🍌","🍏","🍯","🥣","🍼"].map(icon=><button key={icon} type="button" aria-label={"Elegir icono "+icon} aria-pressed={otherIcon===icon} onClick={()=>setOtherIcon(icon)} className={"grid h-9 w-9 place-items-center rounded-lg border text-xl "+(otherIcon===icon?"border-primary bg-primary/10":"border-border/60 hover:bg-accent")}>{icon}</button>)}</div></div>}
    {otherType==="other"&&<Input aria-label="Nombre de la bebida" className="h-9" placeholder="Nombre (aguapanela, Frutiño, jugo…)" value={otherName} onChange={e=>setOtherName(e.target.value)} maxLength={80}/>}
   </div>
   <div className="space-y-2 rounded-xl border p-3">
@@ -205,7 +209,7 @@ function HydrationCard(){
         <Button type="button" size="sm" disabled={hydration.update.isPending} onClick={()=>void saveEntry()}>{hydration.update.isPending?"Guardando…":"Guardar cambios"}</Button>
        </div>
       </div>:<div className="flex flex-wrap items-center gap-2">
-       <span className="flex min-w-0 flex-1 items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-300"><Icon className="h-4 w-4"/></span><span className="min-w-0"><b className="text-sm">{label}</b><span className="ml-2 text-xs text-muted-foreground">{timeLabel}</span></span></span>
+       <span className="flex min-w-0 flex-1 items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-300">{entry.beverage_type==="other"&&entry.icon?<span className="text-lg">{entry.icon}</span>:<Icon className="h-4 w-4"/>}</span><span className="min-w-0"><b className="text-sm">{label}</b><span className="ml-2 text-xs text-muted-foreground">{timeLabel}</span></span></span>
        <span className="text-sm font-medium tabular-nums">{fmt(entry.amount_ml)} ml</span>
        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={"Editar "+label} title="Editar registro" onClick={()=>startEditing(entry)}><Pencil className="h-4 w-4"/></Button>
        {confirmDeleteId===entry.id?<div className="flex items-center gap-1"><Button type="button" size="sm" variant="destructive" disabled={hydration.remove.isPending} onClick={()=>void deleteEntry(entry.id)}>Eliminar</Button><Button type="button" size="sm" variant="ghost" onClick={()=>setConfirmDeleteId(null)}>Cancelar</Button></div>:<Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-destructive" aria-label={"Eliminar "+label} title="Eliminar registro" onClick={()=>{setConfirmDeleteId(entry.id);setEditingEntryId(null);}}><Trash2 className="h-4 w-4"/></Button>}
