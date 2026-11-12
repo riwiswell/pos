@@ -83,13 +83,13 @@ export function DashboardPersonalizer() {
   const saveLayout = async () => {
     const currentValue = profileQuery.data?.dashboard_widgets;
     try {
-      await save.mutateAsync(
-        mergeDashboardSettings(
+      await save.mutateAsync({
+        dashboard_widgets: mergeDashboardSettings(
           currentValue,
           normalizeDashboardWidgets(currentValue),
           draft,
         ),
-      );
+      });
       setOpen(false);
     } catch {
       // The shared profile mutation already displays the save error.
