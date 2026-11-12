@@ -202,8 +202,8 @@ function HomePage() {
               {greeting()}{name ? `, ${name}` : ""}
               <HelpTip helpKey="dashboard" />
             </h1>
-            <p className="mt-1 max-w-xl text-sm capitalize leading-5 text-slate-300/80">
-              {dateLabel}. Un día a la vez; registra lo que importa y sigue a tu ritmo.
+            <p className="mt-1 max-w-xl text-sm leading-5 text-slate-300/80">
+              {dateLabel}. un día a la vez; registra lo que importa y sigue a tu ritmo.
             </p>
             {showFocus && <div className="mt-3 max-w-xl"><DailyFocusPicker date={date} compact /></div>}
             <ProactiveBriefing date={date}/>
@@ -211,7 +211,7 @@ function HomePage() {
 
 
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {showHabits && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur">
                 <div className="flex items-center gap-2 text-xs text-slate-300"><Target className="h-4 w-4 text-cyan-300" /> Hábitos</div>
@@ -226,6 +226,11 @@ function HomePage() {
                 <p className="mt-0.5 text-[11px] text-slate-400">{eventCount} eventos</p>
               </div>
             )}
+            <Link to="/diario" search={(prev: Record<string, unknown>) => prev} className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur transition-colors hover:border-white/25">
+              <div className="flex items-center gap-2 text-xs text-slate-300"><BookOpen className="h-4 w-4 text-sky-300" /> Diario</div>
+              <p className="mt-2 text-xl font-semibold tabular-nums text-white">{journalQuery.data?.length ?? 0}<span className="text-sm font-normal text-slate-400"> entradas</span></p>
+              <p className="mt-0.5 text-[11px] text-slate-400">Lo que quieres recordar</p>
+            </Link>
             <Link to="/gamificacion" search={(prev: Record<string, unknown>) => prev} className="rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-400/[.13] to-white/[.05] p-3 backdrop-blur transition-colors hover:border-amber-300/40">
               <div className="flex items-center gap-2 text-xs text-slate-300"><Trophy className="h-4 w-4 text-amber-300" /> Nivel personal</div>
               <p className="mt-2 text-xl font-semibold tabular-nums text-white">{gamificationQuery.isLoading ? "…" : `Nv. ${gamificationLevel}`}</p>
