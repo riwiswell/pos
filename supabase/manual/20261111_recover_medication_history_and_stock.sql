@@ -247,7 +247,7 @@ begin
       raise exception 'El saldo calculado de % es %, incompatible con una caja de 30. Revisa el inventario antes de reconstruir.',v_name,v_remaining;
     end if;
 
-    v_target_taken := greatest(0,round(v_package-v_remaining)::integer);
+    v_target_taken := greatest(0,round(v_package+v_restocked-v_remaining)::integer);
     if v_taken > v_target_taken then
       raise exception '% ya tiene % tomas registradas, pero el saldo de caja implica % consumidas. No se modifica ese medicamento para evitar duplicar consumo.',v_name,v_taken,v_target_taken;
     end if;
