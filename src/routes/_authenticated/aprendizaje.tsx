@@ -30,10 +30,36 @@ function flagForLanguageProfile(profile:any){
   return flagForLocale(profile.locale_code||fallback);
 }
 type LearningSort = "used_desc" | "used_asc" | "title_asc" | "title_desc" | "recent" | "oldest";
+const INITIAL_READING_ORDER = [
+  "los 5 lenguajes del amor",
+  "el hombre en busca de sentido",
+  "roba como un artista",
+  "la historia del arte",
+  "conceptos fundamentales de la historia del arte",
+];
 function sortLearningItems(items:any[],sessions:any[],sort:LearningSort){
  const usage=new Map<string,number>(),latest=new Map<string,string>();
  for(const session of sessions){const id=String(session.learning_item_id||"");if(!id)continue;usage.set(id,(usage.get(id)||0)+1);const date=String(session.session_date||session.created_at||"");if(date>String(latest.get(id)||""))latest.set(id,date);}
- return [...items].sort((a,b)=>{const aId=String(a.id),bId=String(b.id),aCount=usage.get(aId)||0,bCount=usage.get(bId)||0;const names=String(a.title||"").localeCompare(String(b.title||""),"es",{sensitivity:"base",numeric:true});if(sort==="title_asc")return names;if(sort==="title_desc")return -names;if(sort==="used_asc")return aCount-bCount||names;if(sort==="recent")return String(latest.get(bId)||b.updated_at||b.created_at||"").localeCompare(String(latest.get(aId)||a.updated_at||a.created_at||""))||names;if(sort==="oldest")return String(latest.get(aId)||a.created_at||"").localeCompare(String(latest.get(bId)||b.created_at||""))||names;return bCount-aCount||names;});
+ return [...items].sort((a,b)=>{
+  const aId=String(a.id),bId=String(b.id),aCount=usage.get(aId)||0,bCount=usage.get(bId)||0;
+  const names=String(a.title||"").localeCompare(String(b.title||""),"es",{sensitivity:"base",numeric:true});
+  const createdA=String(a.created_at||""),createdB=String(b.created_at||"");
+  if(sort==="title_asc")return names;
+  if(sort==="title_desc")return -names;
+  if(sort==="used_asc")return aCount-bCount||names;
+  if(sort==="recent")return createdB.localeCompare(createdA)||names;
+  if(sort==="oldest"){
+   const aPinned=INITIAL_READING_ORDER.indexOf(String(a.title||"").trim().toLocaleLowerCase("es"));
+   const bPinned=INITIAL_READING_ORDER.indexOf(String(b.title||"").trim().toLocaleLowerCase("es"));
+   if(aPinned!==-1||bPinned!==-1){
+    if(aPinned===-1)return 1;
+    if(bPinned===-1)return -1;
+    if(aPinned!==bPinned)return aPinned-bPinned;
+   }
+   return createdA.localeCompare(createdB)||names;
+  }
+  return bCount-aCount||names;
+ });
 }
 function LearningSortControl({value,onChange}:{value:LearningSort;onChange:(value:LearningSort)=>void}){return <select aria-label="Ordenar elementos" title="Ordenar elementos" className="h-9 max-w-[148px] rounded-lg border border-input bg-background px-2 text-xs text-foreground" value={value} onChange={event=>onChange(event.target.value as LearningSort)}><option value="used_desc">Más usado</option><option value="used_asc">Menos usado</option><option value="title_asc">A–Z</option><option value="title_desc">Z–A</option><option value="recent">Más reciente</option><option value="oldest">Más antiguo</option></select>;}
 function LearningPage(){
@@ -67,12 +93,14 @@ function Books(){
   const q=useLGList("learning_items");
   const notes=useLGList("learning_notes");
   const sessions=useLGList("learning_sessions","session_date");
-  const[sort,setSort]=useState<LearningSort>("used_desc");
+  const[sort,setSort]=useState<LearningSort>("oldest");
   const m=useLGMutations("learning_items");
   const nm=useLGMutations("learning_notes");
   const{user}=useAuth();
   const[adding,setAdding]=useState(false);
   const[title,setTitle]=useState("");
+  const[author,setAuthor]=useState("");
+  const[publicationYear,setPublicationYear]=useState("");
   const[pages,setPages]=useState("");
   const[targetPages,setTargetPages]=useState("");
   const books=sortLearningItems((q.data||[]).filter((x:any)=>x.kind==="book"),sessions.data||[],sort);
@@ -85,6 +113,8 @@ function Books(){
     await m.create.mutateAsync({
       user_id:user?.id,
       title:title.trim(),
+      author:author.trim()||null,
+      publication_year:publicationYear.trim()?Number(publicationYear):null,
       kind:"book",
       total_pages:Number(pages)>0?Number(pages):null,
       target_pages:Number(targetPages)>0?Number(targetPages):null,
@@ -92,6 +122,8 @@ function Books(){
       progress:0,
     });
     setTitle("");
+    setAuthor("");
+    setPublicationYear("");
     setPages("");
     setTargetPages("");
     setAdding(false);
@@ -107,10 +139,12 @@ function Books(){
       <div className="flex items-center gap-2"><LearningSortControl value={sort} onChange={setSort}/><Button size="sm" variant={adding?"outline":"default"} onClick={()=>setAdding(v=>!v)}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button></div>
     </div>
     {adding&&<div className="glass max-w-2xl rounded-2xl p-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.35fr_1fr_110px_130px_130px_auto]">
         <Input placeholder="Título del libro" value={title} onChange={e=>setTitle(e.target.value)}/>
+        <Input placeholder="Autor" value={author} onChange={e=>setAuthor(e.target.value)}/>
+        <Input type="number" min="0" max="3000" placeholder="Año" value={publicationYear} onChange={e=>setPublicationYear(e.target.value)}/>
         <Input type="number" min="1" placeholder="Páginas reales" value={pages} onChange={e=>setPages(e.target.value)}/>
-        <Input type="number" min="1" placeholder="Meta páginas" value={targetPages} onChange={e=>setTargetPages(e.target.value)}/>
+        <Input type="number" min="1" placeholder="Meta páginas" value={targetPages} onChange={e=>setTargetPages(e.target.value)}/
         <Button disabled={!title.trim()||m.create.isPending||(isBibleBook(title)&&books.some((book:any)=>isBibleBook(book.title)))} onClick={()=>void addBook()}>
           <Plus className="mr-1 h-4 w-4"/>Agregar
         </Button>
@@ -146,6 +180,8 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
   const[noteTitle,setNoteTitle]=useState("");
   const[range,setRange]=useState("");
   const[newTitle,setNewTitle]=useState(String(book.title||""));
+  const[newAuthor,setNewAuthor]=useState(String(book.author||""));
+  const[newPublicationYear,setNewPublicationYear]=useState(String(book.publication_year||""));
   const[newTotal,setNewTotal]=useState(String(book.total_pages||""));
   const[newTargetPages,setNewTargetPages]=useState(String(book.target_pages||""));
   const[panel,setPanel]=useState<"progress"|"summary"|"notes"|"details"|null>(null);
@@ -162,6 +198,8 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
   useEffect(()=>setPage(String(book.current_page||0)),[book.current_page]);
   useEffect(()=>setSummary(book.summary||""),[book.summary]);
   useEffect(()=>setNewTitle(String(book.title||"")),[book.title]);
+  useEffect(()=>setNewAuthor(String(book.author||"")),[book.author]);
+  useEffect(()=>setNewPublicationYear(String(book.publication_year||"")),[book.publication_year]);
   useEffect(()=>setNewTotal(String(book.total_pages||"")),[book.total_pages]);
   useEffect(()=>setNewTargetPages(String(book.target_pages||"")),[book.target_pages]);
 
@@ -204,7 +242,9 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
     if(newTotal.trim()&&(!Number.isInteger(parsedTotal)||parsedTotal<1)){toast.error("El total de páginas debe ser un número entero mayor que cero.");return;}
     const parsedTarget=Number(newTargetPages);
     if(newTargetPages.trim()&&(!Number.isInteger(parsedTarget)||parsedTarget<1)){toast.error("La meta de páginas debe ser un entero mayor que cero.");return;}
-    await onSave({title:newTitle.trim(),total_pages:newTotal.trim()?parsedTotal:null,target_pages:newTargetPages.trim()?parsedTarget:null});
+    const parsedYear=Number(newPublicationYear);
+    if(newPublicationYear.trim()&&(!Number.isInteger(parsedYear)||parsedYear<0||parsedYear>3000)){toast.error("El año debe ser un número entero válido.");return;}
+    await onSave({title:newTitle.trim(),author:newAuthor.trim()||null,publication_year:newPublicationYear.trim()?parsedYear:null,total_pages:newTotal.trim()?parsedTotal:null,target_pages:newTargetPages.trim()?parsedTarget:null});
     setPanel(null);
     toast.success("Libro actualizado.");
   };
@@ -240,6 +280,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-2 font-semibold leading-snug">{book.title}</h3>
+            {!isBible&&(book.author||book.publication_year)&&<p className="mt-0.5 text-xs text-muted-foreground">{[book.author,book.publication_year].filter(Boolean).join(" · ")}</p>}
             {isBible?<p className="mt-1 text-xs text-muted-foreground">{total.toLocaleString("es-CO")} capítulos · {Math.round(progress)}% · {remain.toLocaleString("es-CO")} restantes</p>:<><p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>{Number(book.target_pages)>0&&<p className="mt-1 text-xs text-primary">Meta intermedia: {book.target_pages} páginas · {Math.max(0,Number(book.target_pages)-pageValue)} restantes</p>}</>}
           </div>
           <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={()=>void onDelete()} aria-label={"Eliminar "+book.title}>
@@ -472,7 +513,7 @@ function Languages(){
   const sortedLanguages=[...(q.data||[])].sort((a:any,b:any)=>{const aCount=(s.data||[]).filter((entry:any)=>entry.resource_url===a.locale_code).length,bCount=(s.data||[]).filter((entry:any)=>entry.resource_url===b.locale_code).length;const names=String(a.language_name||"").localeCompare(String(b.language_name||""),"es",{sensitivity:"base"});if(sort==="title_asc")return names;if(sort==="title_desc")return -names;if(sort==="used_asc")return aCount-bCount||names;if(sort==="recent")return String(b.updated_at||b.created_at||"").localeCompare(String(a.updated_at||a.created_at||""))||names;if(sort==="oldest")return String(a.created_at||"").localeCompare(String(b.created_at||""))||names;return bCount-aCount||names;});
   return <section className="space-y-4">
     {(q.isError||s.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:s.error instanceof Error?s.error.message:"No se pudieron cargar idiomas o sesiones."}/>}
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-start">
+    <div className="grid grid-cols-1 gap-3">
       <div className="glass order-2 space-y-3 rounded-2xl p-4">
         <div><h2 className="font-semibold">Agregar o configurar un idioma</h2><p className="text-xs text-muted-foreground">Elige el idioma y su variante regional, define tu nivel actual y tu meta.</p></div>
         <div className="grid gap-2 sm:grid-cols-2">
