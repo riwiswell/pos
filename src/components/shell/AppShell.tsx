@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { HelpTip } from "@/components/common/HelpTip";
 import { PersonalAssistant } from "@/components/assistant/PersonalAssistant";
-import { NAV_GROUPS, NAV_ITEMS } from "@/components/shell/nav-items";
+import { NAV_ITEMS } from "@/components/shell/nav-items";
 import { useAuth } from "@/hooks/use-auth";
 import { profileKeys, useProfile, useProfileMediaUrl } from "@/hooks/use-profile";
 import { profileService } from "@/services/profile.service";
@@ -204,31 +204,25 @@ export function AppShell({ children }: { children: ReactNode }) {
             {!collapsed && <span>{menuEditing ? "Terminar" : "Organizar módulos"}</span>}
           </Button>
           {(!menuEditing && !collapsed) ? (
-            <>
-              {menuItems.filter((item) => item.key === "inicio").map((item) => (
-                <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p} title={item.label} className={cn("flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", pathname.startsWith(item.to) && "bg-sidebar-accent")}>
-                  <item.icon className="h-5 w-5 shrink-0" /><span>{item.label}</span>
-                </Link>
+            <div className="space-y-0.5">
+              {menuItems.map((item) => (
+                <div key={item.key} className="flex min-w-0 items-center gap-1">
+                  <Link
+                    to={item.to}
+                    search={(p: Record<string, unknown>) => p}
+                    title={item.label}
+                    className={cn(
+                      "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
+                      pathname.startsWith(item.to) && "bg-sidebar-accent",
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                  <HelpTip helpKey={item.helpKey}/>
+                </div>
               ))}
-              {NAV_GROUPS.map((group) => {
-                const groupItems = menuItems.filter((item) => item.group === group);
-                if (groupItems.length === 0) return null;
-                return (
-                  <section key={group} className="space-y-0.5 pt-1">
-                    <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[.12em] text-sidebar-foreground/55">{group}</p>
-                    {groupItems.map((item) => (
-                      <div key={item.key} className="flex min-w-0 items-center gap-1">
-                        <Link to={item.to} search={(p: Record<string, unknown>) => p} title={item.label} className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent", pathname.startsWith(item.to) && "bg-sidebar-accent")}>
-                          <item.icon className="h-4 w-4 shrink-0"/><span className="truncate">{item.label}</span>
-                        </Link>
-                        <HelpTip helpKey={item.helpKey}/>
-                      </div>
-                    ))}
-                  </section>
-                );
-              })}
-            </>
-          ) : (
+            </div>          ) : (
             <>
               {menuItems.map((item) => {
             const visible = !hiddenModules.includes(item.key);
