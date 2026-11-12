@@ -7,7 +7,7 @@ import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import 
 import { SafeRichText } from "@/components/common/SafeRichText";
 import { ErrorState } from "@/components/common/States";
 import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lifeGraphService } from "@/services/life-graph.service"; import { useAuth } from "@/hooks/use-auth"; import { useProfile } from "@/hooks/use-profile"; import { useGlobalDate } from "@/hooks/use-global-date";
-import { BibleReadingPanel } from "@/components/learning/BibleReadingPanel";
+import { BibleChapterProgressSummary, BibleReadingPanel } from "@/components/learning/BibleReadingPanel";
 import { usePrivatePhotos } from "@/hooks/use-private-photos";
 import { privateMediaService } from "@/services/private-media.service";
 export const Route=createFileRoute("/_authenticated/aprendizaje")({component:LearningPage});
@@ -283,7 +283,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-2 font-semibold leading-snug">{book.title}</h3>
             {!isBible&&(book.author||book.publication_year)&&<p className="mt-0.5 text-xs text-muted-foreground">{[book.author,book.publication_year].filter(Boolean).join(" · ")}</p>}
-            {isBible?<p className="mt-1 text-xs text-muted-foreground">{total.toLocaleString("es-CO")} capítulos · {Math.round(progress)}% · {remain.toLocaleString("es-CO")} restantes</p>:<><p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>{Number(book.target_pages)>0&&<p className="mt-1 text-xs text-primary">Meta intermedia: {book.target_pages} páginas · {Math.max(0,Number(book.target_pages)-pageValue)} restantes</p>}</>}
+            {isBible?<BibleChapterProgressSummary learningItemId={book.id}/>:<><p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>{Number(book.target_pages)>0&&<p className="mt-1 text-xs text-primary">Meta intermedia: {book.target_pages} páginas · {Math.max(0,Number(book.target_pages)-pageValue)} restantes</p>}</>}
           </div>
           <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={()=>void onDelete()} aria-label={"Eliminar "+book.title}>
             <Trash2 className="h-4 w-4 text-destructive"/>
@@ -291,7 +291,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:progress+"%"}}/></div>{total>0&&progress>=100&&<p className="text-[11px] font-medium text-emerald-600">{isBible?"Capítulos registrados completos":"Lectura completada"}</p>}
         <div className="flex flex-wrap gap-1.5">
-          {isBible?<><Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Capítulos</Button><a href="/biblia" target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"><BookOpen className="mr-1 h-3.5 w-3.5"/>Abrir Plan Bíblico <span className="ml-1">↗</span></a></>:<>
+          {isBible?<><a href="/biblia" target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"><BookOpen className="mr-1 h-3.5 w-3.5"/>Abrir Plan Bíblico <span className="ml-1">↗</span></a></>:<>
               <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>
               <Button size="sm" variant={panel==="summary"?"default":"outline"} onClick={()=>setPanel(panel==="summary"?null:"summary")}><FileText className="mr-1 h-3.5 w-3.5"/>Resumen</Button>
               <Button size="sm" variant={panel==="notes"?"default":"outline"} onClick={()=>setPanel(panel==="notes"?null:"notes")}><NotebookPen className="mr-1 h-3.5 w-3.5"/>Notas ({mine.length})</Button>
