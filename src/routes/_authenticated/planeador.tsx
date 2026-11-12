@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
+import { Calendar } from "@/components/ui/calendar";
 import { WeatherCard } from "@/components/dashboard/WeatherCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState, LoadingState } from "@/components/common/States";
@@ -49,7 +50,7 @@ export const Route = createFileRoute("/_authenticated/planeador")({
 });
 
 function PlannerPage() {
-  const { date } = useGlobalDate();
+  const { date, setDate, goToday } = useGlobalDate();
   const categoriesQuery = usePlannerCategories();
   const itemsQuery = usePlannerItems(date);
   const m = usePlannerMutations(date);
@@ -121,6 +122,27 @@ function PlannerPage() {
           </Button>
         </div>
       </div>
+
+      <section className="glass flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-start">
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-center justify-between gap-2 px-2">
+            <div><h2 className="text-sm font-semibold">Calendario</h2><p className="text-xs text-muted-foreground">Selecciona un día para ver o programar tus tareas y eventos.</p></div>
+            <Button type="button" size="sm" variant="outline" onClick={goToday}>Hoy</Button>
+          </div>
+          <Calendar mode="single" selected={new Date(date + "T12:00:00")} onSelect={(day) => {
+            if (!day) return;
+            const year = day.getFullYear();
+            const month = String(day.getMonth() + 1).padStart(2, "0");
+            const dayNumber = String(day.getDate()).padStart(2, "0");
+            setDate(year + "-" + month + "-" + dayNumber);
+          }} className="mx-auto sm:mx-0"/>
+        </div>
+        <div className="min-w-0 flex-1 self-center rounded-xl bg-muted/30 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Día seleccionado</p>
+          <p className="mt-1 text-base font-semibold capitalize">{formatDayLabel(date)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">La agenda de este día aparece debajo. Puedes cambiar de fecha desde el calendario.</p>
+        </div>
+      </section>
 
       {error && <ErrorState message={(error as Error).message} />}
       {loading && <LoadingState />}
