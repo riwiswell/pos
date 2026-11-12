@@ -23,7 +23,7 @@ type HydrationConfig = { enabled: boolean; start_time: string; end_time: string;
 const DEFAULT_HYDRATION: HydrationConfig = { enabled: true, start_time: "08:00", end_time: "21:30", interval_minutes: 90, amount_ml: WATER_GLASS_ML };
 
 function normalizeHydrationTime(value: unknown): string | null {
- const match=String(value??"").trim().match(/^(\\d{1,2}):([0-5]\\d)(?::[0-5]\\d(?:\\.\\d+)?)?$/);
+ const match=String(value??"").trim().match(/^(\d{1,2}):([0-5]\d)(?::[0-5]\d(?:\\.\d+)?)?$/);
  if(!match)return null;
  const hour=Number(match[1]);
  if(!Number.isInteger(hour)||hour<0||hour>23)return null;
@@ -97,7 +97,7 @@ function HydrationCard(){
   if(!editingEntryId)return;
   const amount=Number(editMl);
   if(!Number.isInteger(amount)||amount<1||amount>3000){toast.error("Introduce una cantidad entre 1 y 3000 ml.");return;}
-  if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(editTime)){toast.error("Introduce una hora válida.");return;}
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(editTime)){toast.error("Introduce una hora válida.");return;}
   if(editType==="other"&&!editName.trim()){toast.error("Escribe el nombre de la bebida.");return;}
   try{
    await hydration.update.mutateAsync({id:editingEntryId,beverage_type:editType,amount_ml:amount,note:editType==="other"?editName.trim():null,consumed_time:editTime});
