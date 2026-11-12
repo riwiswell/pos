@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { addDaysISO, todayISO } from "@/lib/date";
-import { BIBLE_PLAN_MONTHS, BIBLE_READING_PLAN, biblePlanProgress } from "@/domain/bible-reading-plan";
+import { BIBLE_PLAN_MONTHS, BIBLE_READING_PLAN, bibleChapterProgress, biblePlanProgress } from "@/domain/bible-reading-plan";
 import { usePrivatePhotos } from "@/hooks/use-private-photos";
 import { privateMediaService } from "@/services/private-media.service";
 
@@ -387,5 +387,63 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
       <p className="flex items-start gap-2 text-[11px] text-muted-foreground"><Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0"/>No se pierde el avance si te atrasas: puedes marcar cualquier día y continuar a tu ritmo. El porcentaje cuenta días con las tres lecturas completas, no casillas sueltas.</p>
       {latestCycle?.status === "completed" && <Button onClick={() => createCycle.mutate("annual_plan")} disabled={createCycle.isPending}><Sparkles className="mr-1 h-4 w-4"/>Comenzar otro año</Button>}
     </section>
+  );
+}
+
+
+/** Compact chapter-level summary reused by the Bible card in the library. */
+export function BibleChapterProgressSummary({ learningItemId }: { learningItemId: string }) {
+  const { user } = useAuth();
+  const cyclesQuery = useQuery({
+    queryKey: ["bible-reading-cycles", learningItemId],
+    queryFn: async () => {
+      const { data, error } = await db.from("bible_reading_cycles").select("*")
+        .eq("learning_item_id", learningItemId).order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Cycle[];
+    },
+    enabled: Boolean(user?.id && learningItemId),
+  });
+  const activeCycle = (cyclesQuery.data ?? []).find((cycle) => cycle.status === "active") ?? null;
+  const latestCycle = (cyclesQuery.data ?? [])[0] ?? null;
+  const cycle = activeCycle ?? latestCycle;
+  const progressQuery = useQuery({
+    queryKey: ["bible-reading-progress", cycle?.id],
+    queryFn: async () => {
+      if (!cycle) return [] as DayProgress[];
+      const { data, error } = await db.from("bible_reading_day_progress").select("*")
+        .eq("cycle_id", cycle.id).order("day_number");
+      if (error) throw error;
+      return (data ?? []) as DayProgress[];
+    },
+    enabled: Boolean(cycle?.mode === "annual_plan"),
+  });
+  const stats = useMemo(
+    () => bibleChapterProgress(progressQuery.data ?? []),
+    [progressQuery.data],
+  );
+
+  if (cyclesQuery.isLoading || progressQuery.isLoading) {
+    return <p className="mt-1 text-xs text-muted-foreground">Calculando capítulos leídos…</p>;
+  }
+  if (cyclesQuery.isError || progressQuery.isError) {
+    return <p className="mt-1 text-xs text-destructive">No se pudo calcular el avance bíblico.</p>;
+  }
+  if (!cycle) {
+    return <p className="mt-1 text-xs text-muted-foreground">Activa el plan anual para contar tus capítulos leídos.</p>;
+  }
+  if (cycle.mode !== "annual_plan") {
+    return <p className="mt-1 text-xs text-muted-foreground">Lectura libre activa · consulta tus pasajes en el Plan Bíblico.</p>;
+  }
+
+  return (
+    <div className="mt-1 space-y-1.5">
+      <p className="text-xs text-muted-foreground">
+        {stats.read.toLocaleString("es-CO")} de {stats.total.toLocaleString("es-CO")} capítulos · {stats.percent.toLocaleString("es-CO", { maximumFractionDigits: 2 })}% · {stats.remaining.toLocaleString("es-CO")} restantes
+      </p>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary transition-all" style={{ width: stats.percent + "%" }} />
+      </div>
+    </div>
   );
 }
