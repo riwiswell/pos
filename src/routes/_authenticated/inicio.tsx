@@ -232,7 +232,7 @@ function HomePage() {
         </div>
       </section>
 
-      <div className="mb-1"><WeatherCard compact /></div>
+      <div className="mb-1"><WeatherCard /></div>
       <div className="inicio-dashboard-grid grid gap-3">
         <div className="inicio-habits-column min-w-0">
           {showHabits && (
@@ -449,22 +449,23 @@ function CurrentBookCard(){
  };
  const completedBooks=allBooks.filter((item:any)=>Boolean(item.completed_on)||item.status==="completed"||progressOf(item)>=100);
  const completedBook=[...completedBooks].sort((a,b)=>(Date.parse(b.completed_on??b.updated_at??b.created_at??"")||0)-(Date.parse(a.completed_on??a.updated_at??a.created_at??"")||0))[0];
- const activeBooks=allBooks.filter((item:any)=>item.status==="active"&&!completedBooks.some((done:any)=>done.id===item.id));
+ const activeBooks=allBooks.filter((item:any)=>item.status!=="archived"&&!completedBooks.some((done:any)=>done.id===item.id)&&progressOf(item)<100);
  const book=[...activeBooks].sort((a,b)=>{
   const byProgress=progressOf(b)-progressOf(a);
   return byProgress!==0?byProgress:(Date.parse(b.updated_at??b.created_at??"")||0)-(Date.parse(a.updated_at??a.created_at??"")||0);
  })[0];
  const total=Number(book?.total_pages??0), page=Number(book?.current_page??0), progress=book?progressOf(book):0;
+ const completedPageCount=Number(completedBook?.current_page??completedBook?.total_pages??0);
  return <section className="inicio-learning-card relative min-w-0 overflow-hidden rounded-[24px] border border-sky-400/20 bg-gradient-to-br from-[#152a3b] via-[#172331] to-card p-4 shadow-sm">
   <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-400/10 blur-2xl"/>
   <div className="relative">
    <div className="flex items-center justify-between gap-2">
-    <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-400/15 text-sky-300"><BookOpen className="h-5 w-5"/></span><div><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-sky-300">Aprendizaje</p><h2 className="text-sm font-semibold text-white">Lectura en curso</h2></div></div>
+    <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-400/15 text-sky-300"><BookOpen className="h-5 w-5"/></span><div><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-sky-300">Aprendizaje</p><h2 className="text-sm font-semibold text-white">{book?"Lectura actual":"Tu recorrido de lectura"}</h2></div></div>
     <Link to="/aprendizaje" search={(prev:Record<string,unknown>)=>prev} className="text-[11px] font-medium text-sky-300 hover:underline">Biblioteca <ArrowUpRight className="ml-0.5 inline h-3 w-3"/></Link>
    </div>
    {query.isLoading?<p className="mt-4 text-xs text-slate-300">Buscando tu lectura…</p>:query.isError?<p className="mt-4 text-xs text-slate-300">No se pudo consultar Aprendizaje.</p>:<>
-    {completedBook&&<div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/10 p-2.5 text-amber-100"><Trophy className="mt-0.5 h-4 w-4 shrink-0 text-amber-300"/><p className="text-xs"><b>¡Lectura completada!</b> Terminaste <b>{completedBook.title}</b>. ¡Un logro más para tu biblioteca!</p></div>}
-    {book?<><p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-sky-300">La lectura más avanzada</p><p className="mt-1 line-clamp-2 text-base font-semibold text-white">{book.title}</p><div className="mt-3 flex items-end justify-between gap-3"><p className="text-2xl font-semibold tabular-nums text-white">{Math.round(progress)}%</p><p className="text-right text-[11px] text-slate-300">{total>0?`Página ${page} de ${total} · ${Math.max(0,total-page)} restantes`:"Progreso registrado"}</p></div><Progress value={progress} className="mt-2 h-2 bg-white/10"/></>:<div className="mt-3 rounded-xl border border-white/10 bg-white/[.04] p-3"><p className="text-sm font-medium text-white">{completedBook?"¡Felicitaciones por terminar tu lectura!":"Aún no tienes una lectura activa"}</p><p className="mt-1 text-xs text-slate-300">{completedBook?"Agrega el siguiente libro para continuar tu recorrido.":"Añade un libro en Aprendizaje y aparecerá aquí con su progreso real."}</p></div>}
+    {completedBook&&<div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/10 p-2.5 text-amber-100"><Trophy className="mt-0.5 h-4 w-4 shrink-0 text-amber-300"/><div className="min-w-0 text-xs"><b>¡Felicitaciones! Terminaste {completedBook.title}.</b><p className="mt-0.5 text-amber-100/80">{completedPageCount>0?completedPageCount+" páginas completadas · ":""}{completedBooks.length} {completedBooks.length===1?"libro terminado":"libros terminados"} en tu biblioteca.</p></div></div>}
+    {book?<><p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-sky-300">La lectura más cerca de terminar</p><p className="mt-1 line-clamp-2 text-base font-semibold text-white">{book.title}</p><div className="mt-3 flex items-end justify-between gap-3"><p className="text-2xl font-semibold tabular-nums text-white">{Math.round(progress)}%</p><p className="text-right text-[11px] text-slate-300">{total>0?"Página "+page+" de "+total+" · "+Math.max(0,total-page)+" restantes":"Progreso registrado"}</p></div><Progress value={progress} className="mt-2 h-2 bg-white/10"/></>:<div className="mt-3 rounded-xl border border-white/10 bg-white/[.04] p-3"><p className="text-sm font-medium text-white">{completedBook?"¡Has completado todas tus lecturas registradas!":"Aún no tienes una lectura activa"}</p><p className="mt-1 text-xs text-slate-300">{completedBook?"Agrega el siguiente libro a tu biblioteca para continuar tu recorrido.":"Añade un libro en Aprendizaje y aparecerá aquí con su progreso real."}</p></div>}
    </>}
   </div>
  </section>;
@@ -473,61 +474,36 @@ function CurrentBookCard(){
 function CurrentGameCard() {
   const query = useLGList("learning_items", "updated_at");
   const activeGames = (query.data ?? []).filter(
-    (item: any) => (item.kind === "game" || item.kind === "video_game") && item.status === "active" && Number(item.progress ?? 0) < 100,
+    (item: any) =>
+      (item.kind === "game" || item.kind === "video_game") &&
+      item.status !== "completed" &&
+      item.status !== "archived" &&
+      Number(item.progress ?? 0) < 100,
   ) as any[];
-
-  // Show the active game closest to completion, not merely the last edited entry.
   const game = [...activeGames].sort((a, b) => {
     const byProgress = Number(b.progress ?? 0) - Number(a.progress ?? 0);
     if (byProgress !== 0) return byProgress;
     return (Date.parse(b.updated_at ?? b.created_at ?? "") || 0) - (Date.parse(a.updated_at ?? a.created_at ?? "") || 0);
   })[0];
   const progress = Math.min(100, Math.max(0, Number(game?.progress ?? 0)));
-  const progressLabel = progress.toLocaleString("es-CO", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
-
+  const progressLabel = progress.toLocaleString("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   return (
     <section className="inicio-game-card relative min-w-0 overflow-hidden rounded-[24px] border border-violet-400/20 bg-gradient-to-br from-[#292044] via-[#211d31] to-card p-4 shadow-sm">
       <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-400/10 blur-2xl" />
       <div className="relative">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-400/15 text-violet-300">
-              <Gamepad2 className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[.15em] text-violet-300">Ocio digital</p>
-              <h2 className="text-sm font-semibold text-white">Juego actual</h2>
-            </div>
-          </div>
-          <Link to="/aprendizaje" search={(prev: Record<string, unknown>) => prev} className="text-[11px] font-medium text-violet-300 hover:underline">
-            Mis juegos <ArrowUpRight className="ml-0.5 inline h-3 w-3" />
-          </Link>
+          <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-400/15 text-violet-300"><Gamepad2 className="h-5 w-5" /></span><div><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-violet-300">Ocio digital</p><h2 className="text-sm font-semibold text-white">Juego actual</h2></div></div>
+          <Link to="/aprendizaje" search={(prev: Record<string, unknown>) => prev} className="text-[11px] font-medium text-violet-300 hover:underline">Mis juegos <ArrowUpRight className="ml-0.5 inline h-3 w-3" /></Link>
         </div>
-        {query.isLoading ? (
-          <p className="mt-4 text-xs text-slate-300">Buscando tu juego…</p>
-        ) : query.isError ? (
-          <p className="mt-4 text-xs text-slate-300">No se pudo consultar tu biblioteca de juegos.</p>
-        ) : game ? (
+        {query.isLoading ? <p className="mt-4 text-xs text-slate-300">Buscando tu juego…</p> : query.isError ? <p className="mt-4 text-xs text-slate-300">No se pudo consultar tu biblioteca de juegos.</p> : game ? (
           <>
             <p className="mt-4 line-clamp-2 text-base font-semibold text-white">{game.title}</p>
-            {(game.goal_description || game.goal_date || game.notes) && <p className="mt-1 line-clamp-2 text-xs text-slate-300">{game.goal_description || game.notes}{game.goal_date ? ` · Meta: ${game.goal_date}` : ""}</p>}
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-medium text-emerald-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> En curso
-              </span>
-              <span className="text-xs tabular-nums text-slate-300">{progressLabel}% registrado</span>
-            </div>
+            {(game.platform || game.genre) && <p className="mt-1 text-[11px] text-violet-200">{[game.platform, game.genre].filter(Boolean).join(" · ")}</p>}
+            {(game.goal_description || game.goal_date || game.notes) && <p className="mt-1 line-clamp-2 text-xs text-slate-300">{game.goal_description || game.notes}{game.goal_date ? " · Meta: " + game.goal_date : ""}</p>}
+            <div className="mt-3 flex items-center justify-between gap-3"><span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-medium text-emerald-200"><span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> En curso</span><span className="text-xs tabular-nums text-slate-300">{progressLabel}% registrado</span></div>
             <Progress value={progress} className="mt-2 h-2 bg-white/10" />
           </>
-        ) : (
-          <div className="mt-4 rounded-xl border border-white/10 bg-white/[.04] p-3">
-            <p className="text-sm font-medium text-white">Todavía no has elegido un juego activo</p>
-            <p className="mt-1 text-xs text-slate-300">Añade un juego desde la pestaña Videojuegos de Aprendizaje y aparecerá aquí automáticamente.</p>
-          </div>
-        )}
+        ) : <div className="mt-4 rounded-xl border border-white/10 bg-white/[.04] p-3"><p className="text-sm font-medium text-white">Todavía no has elegido un juego activo</p><p className="mt-1 text-xs text-slate-300">Añade un juego desde la pestaña Videojuegos de Aprendizaje y aparecerá aquí automáticamente.</p></div>}
       </div>
     </section>
   );

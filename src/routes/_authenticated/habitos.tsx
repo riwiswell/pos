@@ -195,11 +195,21 @@ function HabitsPage() {
           return (
             <section key={group.key} className="glass rounded-2xl p-4">
               <div className="flex items-center gap-2">
-                <span
-                  aria-hidden
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
+                {group.category?.icon ? (
+                  <span
+                    aria-hidden
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-lg"
+                    style={{ backgroundColor: color + "22" }}
+                  >
+                    {group.category.icon}
+                  </span>
+                ) : (
+                  <span
+                    aria-hidden
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                )}
                 <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
                   {group.category?.name ?? "Sin categoría"}
                 </h2>

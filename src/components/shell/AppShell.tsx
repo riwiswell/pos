@@ -152,6 +152,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
   const mobilePrimaryItems = items.filter((item) => MOBILE_PRIMARY_KEYS.has(item.key));
   const mobileMoreItems = items.filter((item) => !MOBILE_PRIMARY_KEYS.has(item.key));
+  const mobileMoreGroups = NAV_GROUPS
+    .map((group) => ({ group, items: mobileMoreItems.filter((item) => item.group === group) }))
+    .filter((entry) => entry.items.length > 0);
+  const mobileUngroupedItems = mobileMoreItems.filter((item) => !item.group);
   const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
@@ -412,23 +416,40 @@ export function AppShell({ children }: { children: ReactNode }) {
             <SheetTitle>Más módulos</SheetTitle>
             <SheetDescription>Accede al resto de Personal OS sin desplazar una barra interminable.</SheetDescription>
           </SheetHeader>
-          <div className="grid grid-cols-2 gap-2">
-            {mobileMoreItems.map((item) => (
-              <Link
-                key={item.key}
-                to={item.to}
-                search={(p: Record<string, unknown>) => p}
-                onClick={() => setMoreOpen(false)}
-                aria-current={pathname.startsWith(item.to) ? "page" : undefined}
-                className={cn(
-                  "flex min-h-12 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent",
-                  pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary",
-                )}
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                <span className="min-w-0 truncate">{item.label}</span>
-              </Link>
+          <div className="space-y-3">
+            {mobileMoreGroups.map(({ group, items: groupItems }) => (
+              <details key={group} className="overflow-hidden rounded-xl border border-border bg-card/40" open={group === activeGroup}>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold marker:hidden">
+                  <span>{group}</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">{groupItems.length}</span>
+                </summary>
+                <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
+                  {groupItems.map((item) => (
+                    <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
+                      onClick={() => setMoreOpen(false)}
+                      aria-current={pathname.startsWith(item.to) ? "page" : undefined}
+                      className={cn("flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
+                      <item.icon className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              </details>
             ))}
+            {mobileUngroupedItems.length > 0 && (
+              <section className="space-y-2">
+                <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cuenta</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {mobileUngroupedItems.map((item) => (
+                    <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
+                      onClick={() => setMoreOpen(false)}
+                      aria-current={pathname.startsWith(item.to) ? "page" : undefined}
+                      className={cn("flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
+                      <item.icon className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         </SheetContent>
       </Sheet>

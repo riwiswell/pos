@@ -23,7 +23,9 @@ export function useDoses(date: string) {
   return useQuery({
     queryKey: medKeys.doses(date),
     queryFn: () => medicationsService.dosesFor(date),
-    staleTime: 15_000,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 

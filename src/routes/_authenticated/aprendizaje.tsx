@@ -364,7 +364,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover}:{item:any;onEdit:(
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
     </div>
     <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
-      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game")&&<div className="mt-2 space-y-1.5"><div className="flex items-center justify-between text-[11px]"><span className="font-medium text-muted-foreground">Progreso de la historia</span><span className="font-semibold tabular-nums">{Math.min(100,Math.max(0,Number(item.progress)||0)).toLocaleString("es-CO",{maximumFractionDigits:1})}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div><p className="text-[10px] text-muted-foreground">{Number(item.progress)>=100?"Completado":Number(item.progress)>0?"En curso":"Pendiente de iniciar"}</p></div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
+      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{(item.kind==="video_game"||item.kind==="game")&&(item.platform||item.genre)&&<p className="mt-1 text-[11px] font-medium text-primary">{[item.platform,item.genre].filter(Boolean).join(" · ")}</p>}{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game")&&<div className="mt-2 space-y-1.5"><div className="flex items-center justify-between text-[11px]"><span className="font-medium text-muted-foreground">Progreso de la historia</span><span className="font-semibold tabular-nums">{Math.min(100,Math.max(0,Number(item.progress)||0)).toLocaleString("es-CO",{maximumFractionDigits:1})}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div><p className="text-[10px] text-muted-foreground">{Number(item.progress)>=100?"Completado":Number(item.progress)>0?"En curso":"Pendiente de iniciar"}</p></div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
       <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
     </div>
   </article>;
@@ -384,29 +384,31 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const[goalDescription,setGoalDescription]=useState("");
   const[goalDate,setGoalDate]=useState("");
   const[gameProgress,setGameProgress]=useState("0");
+  const[platform,setPlatform]=useState("");
+  const[genre,setGenre]=useState("");
   const[filter,setFilter]=useState("all");
   const isGameItem=(item:any)=>item.kind==="video_game"||item.kind==="game";
   const allItems=(q.data||[]).filter((item:any)=>item.kind!=="book"&&item.kind!=="language");
   const items=allItems.filter((item:any)=>isGames?isGameItem(item):!isGameItem(item));
   const visibleItems=sortLearningItems(isGames?items:items.filter((item:any)=>filter==="all"||item.kind===filter),sessions.data||[],sort);
-  const resetForm=()=>{setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setEditingId(null);setAdding(false);};
-  const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setEditingId(item.id);setAdding(true);};
+  const resetForm=()=>{setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setPlatform("");setGenre("");setEditingId(null);setAdding(false);};
+  const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setPlatform(item.platform||"");setGenre(item.genre||"");setEditingId(item.id);setAdding(true);};
   const saveItem=async()=>{
     const isGame=kind==="video_game"||kind==="game";
     if(!title.trim()){toast.error("Escribe el nombre del elemento.");return;}
     const progress=Math.min(100,Math.max(0,Number(gameProgress)||0));
     if(editingId){
-      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined}});
+      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null}});
       toast.success("Elemento actualizado.");
     }else{
-      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:0});
+      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:0,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null});
       toast.success("Elemento agregado.");
     }
     resetForm();
   };
   return <section className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, objetivos y avance de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div><div className="flex items-center gap-2"><LearningSortControl value={sort} onChange={setSort}/><Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button></div>
+      <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, objetivos y avance de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div><div className="flex items-center gap-2"><LearningSortControl value={sort} onChange={setSort}/><Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setPlatform("");setGenre("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button></div>
     </div>
     {adding&&<div className="glass max-w-2xl space-y-2 rounded-2xl p-3">
       <div className="grid gap-2 sm:grid-cols-[1fr_190px_auto]">
@@ -417,7 +419,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
         <Button size="sm" disabled={!title.trim()||m.create.isPending||m.update.isPending} onClick={()=>void saveItem()}><Save className="mr-1 h-3.5 w-3.5"/>{editingId?"Guardar":"Agregar"}</Button>
       </div>
       {(isGames||editingId)&&<textarea className="min-h-16 w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm" rows={2} placeholder={isGames?"Notas, edición, plataforma o detalles del juego (opcional)":"Notas o descripción (opcional)"} value={notes} onChange={e=>setNotes(e.target.value)}/>}
-      {isGames&&<div className="grid gap-2 sm:grid-cols-3"><label className="text-xs text-muted-foreground">Objetivo<Input className="mt-1" placeholder="Ej. Terminar la historia" value={goalDescription} onChange={e=>setGoalDescription(e.target.value)}/></label><label className="text-xs text-muted-foreground">Fecha objetivo<Input className="mt-1" type="date" value={goalDate} onChange={e=>setGoalDate(e.target.value)}/></label><label className="text-xs text-muted-foreground">Avance (%)<Input className="mt-1" type="number" min="0" max="100" value={gameProgress} onChange={e=>setGameProgress(e.target.value)}/></label></div>}
+      {isGames&&<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"><label className="text-xs text-muted-foreground">Plataforma<Input className="mt-1" placeholder="Ej. PC, PS5, Xbox" value={platform} onChange={e=>setPlatform(e.target.value)} maxLength={80}/></label><label className="text-xs text-muted-foreground">Género<Input className="mt-1" placeholder="Ej. Aventura, RPG" value={genre} onChange={e=>setGenre(e.target.value)} maxLength={80}/></label><label className="text-xs text-muted-foreground">Objetivo<Input className="mt-1" placeholder="Ej. Terminar la historia" value={goalDescription} onChange={e=>setGoalDescription(e.target.value)}/></label><label className="text-xs text-muted-foreground">Fecha objetivo<Input className="mt-1" type="date" value={goalDate} onChange={e=>setGoalDate(e.target.value)}/></label><label className="text-xs text-muted-foreground">Avance (%)<Input className="mt-1" type="number" min="0" max="100" value={gameProgress} onChange={e=>setGameProgress(e.target.value)}/></label></div>}
       {editingId&&<p className="text-xs text-muted-foreground">Puedes actualizar el nombre, la categoría y la descripción.</p>}
     </div>}
     {!isGames&&<div className="flex flex-wrap gap-1.5">
@@ -425,7 +427,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     </div>}
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">{isGames?"Todavía no has agregado videojuegos. Pulsa Agregar para registrar el que estás jugando.":"Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno."}</div>}
-    <div className={isGames?"grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3":"grid grid-cols-1 gap-3 sm:grid-cols-2"}>
+    <div className={isGames?"grid grid-cols-1 gap-3 md:grid-cols-3":"grid grid-cols-1 gap-3 sm:grid-cols-2"}>
       {visibleItems.map((item:any)=><OtherLearningCard key={item.id} item={item} onEdit={()=>startEdit(item)} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>) }
     </div>
   </section>;
@@ -475,18 +477,7 @@ function Languages(){
   return <section className="space-y-4">
     {(q.isError||s.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:s.error instanceof Error?s.error.message:"No se pudieron cargar idiomas o sesiones."}/>}
     <div className="grid grid-cols-1 gap-3">
-      <div className="glass order-2 space-y-3 rounded-2xl p-4">
-        <div><h2 className="font-semibold">Agregar o configurar un idioma</h2><p className="text-xs text-muted-foreground">Elige el idioma y su variante regional, define tu nivel actual y tu meta.</p></div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="space-y-1 text-xs text-muted-foreground">Idioma<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]);}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select></label>
-          <label className="space-y-1 text-xs text-muted-foreground">País / variante<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={locale} onChange={e=>setLocale(e.target.value)}>{(LANGS.find((x:any)=>x.code===code)||LANGS[0]).variants.map((x:any)=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
-          <label className="space-y-1 text-xs text-muted-foreground">Nivel actual<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={level} onChange={e=>setLevel(e.target.value)}>{["A1","A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select></label>
-          <label className="space-y-1 text-xs text-muted-foreground">Meta<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={target} onChange={e=>setTarget(e.target.value)}>{["A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select></label>
-        </div>
-        <Input placeholder="Enfoques: hablar, escuchar, vocabulario…" value={focus} onChange={e=>setFocus(e.target.value)}/>
-        <Button className="w-full sm:w-auto" onClick={()=>void saveLanguage()} disabled={m.create.isPending||m.update.isPending}><Plus className="mr-1 h-4 w-4"/>{selectedProfile?"Guardar cambios":"Agregar idioma"}</Button>
-      </div>
-      <div className="glass order-1 space-y-3 rounded-2xl p-4">
+      <div className="glass space-y-3 rounded-2xl p-4">
         <div><h2 className="font-semibold">Registrar práctica</h2><p className="text-xs text-muted-foreground">Guarda cada sesión para medir tu constancia y tiempo de estudio.</p></div>
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1 text-xs text-muted-foreground">Idioma<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]);}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select></label>
@@ -498,6 +489,17 @@ function Languages(){
         {!selectedProfile&&<p className="text-xs text-amber-600">Agrega primero el idioma y la variante para habilitar el registro.</p>}
       </div>
     </div>
+      <div className="glass space-y-3 rounded-2xl p-4">
+        <div><h2 className="font-semibold">Agregar o configurar un idioma</h2><p className="text-xs text-muted-foreground">Elige el idioma y su variante regional, define tu nivel actual y tu meta.</p></div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="space-y-1 text-xs text-muted-foreground">Idioma<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]);}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">País / variante<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={locale} onChange={e=>setLocale(e.target.value)}>{(LANGS.find((x:any)=>x.code===code)||LANGS[0]).variants.map((x:any)=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">Nivel actual<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={level} onChange={e=>setLevel(e.target.value)}>{["A1","A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">Meta<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={target} onChange={e=>setTarget(e.target.value)}>{["A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select></label>
+        </div>
+        <Input placeholder="Enfoques: hablar, escuchar, vocabulario…" value={focus} onChange={e=>setFocus(e.target.value)}/>
+        <Button className="w-full sm:w-auto" onClick={()=>void saveLanguage()} disabled={m.create.isPending||m.update.isPending}><Plus className="mr-1 h-4 w-4"/>{selectedProfile?"Guardar cambios":"Agregar idioma"}</Button>
+      </div>
     <div className="glass space-y-3 rounded-2xl p-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Mis idiomas</h2><p className="text-xs text-muted-foreground">Selecciona una tarjeta para editar el nivel y la meta.</p></div><LearningSortControl value={sort} onChange={setSort}/></div>
       {(q.data||[]).length===0?<p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">Todavía no has agregado idiomas. Usa el formulario de arriba para comenzar.</p>:<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{sortedLanguages.map((x:any)=><button type="button" key={x.id} onClick={()=>{setCode(x.language_code);setLocale(x.locale_code||((LANGS.find((l:any)=>l.code===x.language_code)||LANGS[0]).variants[0][0]));}} className={"flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition hover:border-primary "+(selectedProfile?.id===x.id?"border-primary bg-primary/5":"bg-background/50")}>
