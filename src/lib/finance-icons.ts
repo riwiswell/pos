@@ -1,5 +1,5 @@
 import {
-  Wallet, Banknote, PiggyBank, CreditCard, Coins, Landmark, HandCoins, Receipt, TrendingUp, TrendingDown, Gift, BadgeDollarSign, Vault, Bitcoin,
+  Wallet, Banknote, PiggyBank, CreditCard, Coins, Landmark, HandCoins, Receipt, TrendingUp, TrendingDown, Gift, BadgeDollarSign, Vault, Bitcoin, Necktie,
   Car, Bus, Bike, Fuel, Plane, Train, TramFront, ParkingCircle, Ship, Truck,
   ShoppingCart, ShoppingBag, Store, Tag, Package, Shirt, Gem, Watch,
   Utensils, Coffee, Pizza, Beer, Wine, IceCream, Apple, Salad, Sandwich, CupSoda,
@@ -16,11 +16,14 @@ import {
   Church, Star, Circle, MoreHorizontal, HelpCircle, Bookmark, MapPin, Camera,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { createElement } from "react";
 
 /**
  * PERSONAL OS icon library.
  * Minimal, coherent, and deliberately broad — no emojis used as a substitute.
  */
+const Necktie = (() => createElement("span", { className: "text-[1.65rem] leading-none", role: "img", "aria-label": "Corbata" }, "👔")) as unknown as LucideIcon;
+
 export interface IconGroup {
   label: string;
   icons: string[];
@@ -29,7 +32,8 @@ export interface IconGroup {
 export const ICON_GROUPS: IconGroup[] = [
   { label: "Finanzas", icons: ["Wallet", "Banknote", "PiggyBank", "CreditCard", "Coins", "Landmark", "HandCoins", "Receipt", "TrendingUp", "TrendingDown", "Gift", "BadgeDollarSign", "Vault", "Bitcoin"] },
   { label: "Transporte", icons: ["Car", "Bus", "Bike", "Fuel", "Plane", "Train", "TramFront", "ParkingCircle", "Ship", "Truck"] },
-  { label: "Compras", icons: ["ShoppingCart", "ShoppingBag", "Store", "Tag", "Package", "Shirt", "Gem", "Watch"] },
+  { label: "Ropa y accesorios", icons: ["Necktie", "Shirt", "Gem", "Watch"] },
+  { label: "Compras", icons: ["ShoppingCart", "ShoppingBag", "Store", "Tag", "Package"] },
   { label: "Comida y bebida", icons: ["Utensils", "Coffee", "Pizza", "Beer", "Wine", "IceCream", "Apple", "Salad", "Sandwich", "CupSoda"] },
   { label: "Casa", icons: ["Home", "Sofa", "Bed", "Lightbulb", "Wrench", "Hammer", "Droplets", "Flame", "Trash2", "PaintRoller"] },
   { label: "Salud", icons: ["HeartPulse", "Stethoscope", "Pill", "Cross", "Dumbbell", "Activity", "Syringe"] },
