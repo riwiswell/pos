@@ -55,7 +55,7 @@ BEGIN
     RAISE EXCEPTION 'El registro diario no pertenece a este perfil.';
   END IF;
 
-  IF NEW.log_date > CURRENT_DATE THEN
+  IF NEW.log_date > (now() AT TIME ZONE 'America/Bogota')::date THEN
     RAISE EXCEPTION 'No puedes registrar síntomas en una fecha futura.';
   END IF;
 
