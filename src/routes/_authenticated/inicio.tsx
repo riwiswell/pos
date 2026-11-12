@@ -190,7 +190,7 @@ function HomePage() {
 
 
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {showHabits && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur">
                 <div className="flex items-center gap-2 text-xs text-slate-300"><Target className="h-4 w-4 text-cyan-300" /> Hábitos</div>
