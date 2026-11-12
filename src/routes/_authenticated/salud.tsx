@@ -1,6 +1,6 @@
 import { useEffect,useMemo,useRef,useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { CalendarHeart,ChevronLeft,ChevronRight,ClipboardList,Coffee,HeartPulse,Pencil,Pill,Plus,Trash2 } from "lucide-react";
+import { CalendarHeart,ChevronDown,ChevronLeft,ChevronRight,ChevronUp,ClipboardList,Coffee,CupSoda,Droplets,HeartPulse,Leaf,Pencil,Pill,Plus,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label"; import { Switch } from "@/components/ui/switch";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { SleepPanel } from "@/components/health/SleepPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
 import { useGlobalDate } from "@/hooks/use-global-date";
@@ -57,6 +57,7 @@ function HydrationCard(){
  const [editName,setEditName]=useState("");
  const [editTime,setEditTime]=useState("08:00");
  const [confirmDeleteId,setConfirmDeleteId]=useState<string|null>(null);
+ const [showTodayDrinks,setShowTodayDrinks]=useState(false);
  const [schedule,setSchedule]=useState<HydrationConfig>(DEFAULT_HYDRATION);
  const [savingSchedule,setSavingSchedule]=useState(false);
  const [pushBusy,setPushBusy]=useState(false);
@@ -179,13 +180,15 @@ function HydrationCard(){
    {otherType==="other"&&<Input aria-label="Nombre de la bebida" className="h-9" placeholder="Nombre (aguapanela, Frutiño, jugo…)" value={otherName} onChange={e=>setOtherName(e.target.value)} maxLength={80}/>}
   </div>
   <div className="space-y-2 rounded-xl border p-3">
-   <div className="flex flex-wrap items-center justify-between gap-2">
-    <p className="text-sm font-semibold">{date===todayISO()?"Lo que has tomado hoy":"Bebidas registradas ese día"}</p>
-    <span className="text-xs text-muted-foreground">{dayEntries.length} {dayEntries.length===1?"registro":"registros"}</span>
-   </div>
+   <button type="button" className="flex w-full items-center justify-between gap-3 text-left" aria-expanded={showTodayDrinks} onClick={()=>setShowTodayDrinks(value=>!value)}>
+    <span className="min-w-0"><b className="block text-sm">{date===todayISO()?"Lo que has tomado hoy":"Bebidas registradas ese día"}</b><span className="text-xs text-muted-foreground">{dayEntries.length} {dayEntries.length===1?"registro":"registros"}</span></span>
+    {showTodayDrinks?<ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground"/>:<ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground"/>}
+   </button>
+   {showTodayDrinks&&<div className="space-y-2">
    {entries.isLoading?<p className="text-xs text-muted-foreground">Cargando registros…</p>:dayEntries.length===0?<p className="text-xs text-muted-foreground">Todavía no hay bebidas individuales registradas para esta fecha.</p>:<div className="space-y-2">
     {dayEntries.map(entry=>{
      const label=entry.beverage_type==="other"?(entry.note?.trim()||"Otra bebida"):beverageLabels[entry.beverage_type];
+     const Icon=entry.beverage_type==="water"?Droplets:entry.beverage_type==="coffee"?Coffee:entry.beverage_type==="tea"?Leaf:CupSoda;
      const timeLabel=new Date(entry.consumed_at).toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"});
      return <div key={entry.id} className="rounded-lg border border-border/70 p-2.5">
       {editingEntryId===entry.id?<div className="space-y-2">
@@ -202,7 +205,7 @@ function HydrationCard(){
         <Button type="button" size="sm" disabled={hydration.update.isPending} onClick={()=>void saveEntry()}>{hydration.update.isPending?"Guardando…":"Guardar cambios"}</Button>
        </div>
       </div>:<div className="flex flex-wrap items-center gap-2">
-       <span className="min-w-0 flex-1"><b className="text-sm">{label}</b><span className="ml-2 text-xs text-muted-foreground">{timeLabel}</span></span>
+       <span className="flex min-w-0 flex-1 items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-300"><Icon className="h-4 w-4"/></span><span className="min-w-0"><b className="text-sm">{label}</b><span className="ml-2 text-xs text-muted-foreground">{timeLabel}</span></span></span>
        <span className="text-sm font-medium tabular-nums">{fmt(entry.amount_ml)} ml</span>
        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={"Editar "+label} title="Editar registro" onClick={()=>startEditing(entry)}><Pencil className="h-4 w-4"/></Button>
        {confirmDeleteId===entry.id?<div className="flex items-center gap-1"><Button type="button" size="sm" variant="destructive" disabled={hydration.remove.isPending} onClick={()=>void deleteEntry(entry.id)}>Eliminar</Button><Button type="button" size="sm" variant="ghost" onClick={()=>setConfirmDeleteId(null)}>Cancelar</Button></div>:<Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-destructive" aria-label={"Eliminar "+label} title="Eliminar registro" onClick={()=>{setConfirmDeleteId(entry.id);setEditingEntryId(null);}}><Trash2 className="h-4 w-4"/></Button>}
@@ -211,6 +214,7 @@ function HydrationCard(){
     })}
    </div>}
    <p className="text-[11px] text-muted-foreground">Puedes corregir el tipo, nombre, cantidad y hora de cada bebida, o eliminar un registro incorrecto.</p>
+   </div>}
   </div>
   <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-muted-foreground">Ayer ({yesterdayDate}): {yesterdayEntries.isLoading?"cargando…":yesterdayEntries.isError?"sin conexión al historial":fmt(yesterdayWaterMl)+" ml de agua"}</span>{(entries.isError||yesterdayEntries.isError)&&<Button type="button" size="sm" variant="outline" className="h-7" onClick={()=>{void entries.refetch();void yesterdayEntries.refetch()}}>Reintentar carga</Button>}</div>
   {entries.isError&&<p className="text-xs text-destructive">No se pudo cargar el registro de bebidas. Puedes intentar registrar de todas formas; el error no bloquea el formulario. Detalle: {entries.error instanceof Error?entries.error.message:"error desconocido"}</p>}
@@ -675,6 +679,7 @@ function CycleProfile({
     </article>
   );
 }
+
 
 function Appointments(){const q=useLGList("medical_appointments","appointment_at");const m=useLGMutations("medical_appointments");const{user}=useAuth();const[title,setTitle]=useState(""),[date,setDate]=useState(""),[provider,setProvider]=useState(""),[location,setLocation]=useState(""),[notes,setNotes]=useState("");return <section className="glass space-y-3 rounded-2xl p-4"><div className="flex items-center gap-2"><ClipboardList className="h-4 w-4"/><h2 className="font-semibold">Citas médicas</h2></div><div className="grid gap-2 sm:grid-cols-2"><Input placeholder="Cita / examen" value={title} onChange={e=>setTitle(e.target.value)}/><Input type="datetime-local" value={date} onChange={e=>setDate(e.target.value)}/><Input placeholder="Profesional / clínica" value={provider} onChange={e=>setProvider(e.target.value)}/><Input placeholder="Lugar" value={location} onChange={e=>setLocation(e.target.value)}/></div><RichTextEditor value={notes} onChange={setNotes} placeholder="Indicaciones, preparación o preguntas…"/><Button disabled={!title.trim()||!date} onClick={()=>void m.create.mutateAsync({user_id:user?.id,title:title.trim(),appointment_at:new Date(date).toISOString(),provider:provider||null,location:location||null,notes:notes||null,reminder_minutes:[10080,1440,60,0],alarm_enabled:true}).then(()=>setTitle(""))}><Plus className="mr-1 h-4 w-4"/>Guardar cita</Button>{(q.data||[]).map((x:any)=><div key={x.id} className="flex gap-2 rounded-xl border p-3"><span className="flex-1"><b>{x.title}</b><span className="ml-2 text-xs text-muted-foreground">{new Date(x.appointment_at).toLocaleString("es-CO")}</span></span><Button size="icon" variant="ghost" onClick={()=>void m.remove.mutateAsync(x.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>)}</section>}
 function Nutrition(){const q=useLGList("nutrition_logs","log_date");const m=useLGMutations("nutrition_logs");const{user}=useAuth();const{date}=useGlobalDate();const[meal,setMeal]=useState(""),[cal,setCal]=useState(""),[protein,setProtein]=useState(""),[notes,setNotes]=useState("");useEffect(()=>{setMeal("");setCal("");setProtein("");setNotes("")},[date]);const clearForm=()=>{setMeal("");setCal("");setProtein("");setNotes("")};const hasNutritionInput=[meal,cal,protein,notes].some(v=>v.trim().length>0);return <section className="glass space-y-3 rounded-2xl p-4"><div className="flex items-center gap-2"><HeartPulse className="h-4 w-4"/><h2 className="flex items-center gap-2 font-semibold">Nutrición <HelpTip helpKey="health.nutrition" /></h2></div><div className="grid gap-2 sm:grid-cols-4"><Input placeholder="Comida (desayuno…)" value={meal} onChange={e=>setMeal(e.target.value)}/><Input type="number" placeholder="kcal" value={cal} onChange={e=>setCal(e.target.value)}/><Input type="number" placeholder="Proteína g" value={protein} onChange={e=>setProtein(e.target.value)}/></div><RichTextEditor value={notes} onChange={setNotes} placeholder="Alimentos, porciones y notas…"/><Button disabled={!hasNutritionInput||m.create.isPending} onClick={()=>void m.create.mutateAsync({user_id:user?.id,log_date:date,meal_type:meal.trim()||null,calories:cal.trim()?Number(cal):null,protein_g:protein.trim()?Number(protein):null,notes:notes.trim()||null}).then(clearForm)}><Plus className="mr-1 h-4 w-4"/>{m.create.isPending?"Guardando…":"Registrar"}</Button>{(q.data||[]).filter((x:any)=>x.log_date===date).map((x:any)=><div key={x.id} className="rounded-xl border p-3"><b>{x.meal_type||"Comida"}</b><span className="ml-2 text-xs text-muted-foreground">{x.calories||0} kcal · {x.protein_g||0} g proteína</span></div>)}</section>}
