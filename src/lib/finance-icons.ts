@@ -131,7 +131,7 @@ export function getIcon(name: string | null | undefined): LucideIcon {
 
 /** Better context-aware defaults when displaying finance categories. */
 export function getCategoryIconName(categoryName: string, fallback?: string | null): string {
-  const name = categoryName.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+  const name = categoryName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   if (/moto|gasolina|combustible/.test(name)) return /gasolina|combustible/.test(name) ? "Fuel" : "Bike";
   if (/comida|mercado|restaurante|pan|alimento/.test(name)) return "Utensils";
   if (/transporte|taxi|bus|parqueadero/.test(name)) return "Car";
