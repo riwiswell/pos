@@ -37,6 +37,7 @@ function hydrationMinutes(value: string): number {
 function HydrationCard(){
  const{date}=useGlobalDate();
  const metrics=usePersonalDateList<any>("health_metrics","metric_date",date);
+ const yesterdayMetrics=usePersonalDateList<any>("health_metrics","metric_date",yesterdayDate);
  const doses=useDoses(date);
  const yesterdayDate=useMemo(()=>{const d=new Date(date+"T12:00:00");d.setDate(d.getDate()-1);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")},[date]);
  const entries=useHydrationEntries(date);
@@ -62,7 +63,8 @@ function HydrationCard(){
  const dayEntries=entries.data??[];
  const recordedWaterMl=dayEntries.filter(x=>x.beverage_type==="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
  const otherFluidMl=dayEntries.filter(x=>x.beverage_type!=="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
- const yesterdayWaterMl=(yesterdayEntries.data??[]).filter(x=>x.beverage_type==="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
+ const legacyYesterdayWaterMl=Math.max(0,Math.round((Number(yesterdayMetrics.data?.[0]?.water_liters??0)||0)*1000));
+ const yesterdayWaterMl=legacyYesterdayWaterMl+(yesterdayEntries.data??[]).filter(x=>x.beverage_type==="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
  const medicineWaterMl=waterGlassesToMl(medicationWater(doses.data??[]));
  const waterMl=legacyWaterMl+recordedWaterMl+medicineWaterMl;
  const totalFluidMl=waterMl+otherFluidMl;
