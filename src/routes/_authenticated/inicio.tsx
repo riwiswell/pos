@@ -275,7 +275,6 @@ function HomePage() {
                           const habitLog = logByHabit.get(habit.id);
                           const complete = isDone(habit, habitLog);
                           const value = habitLog?.value ?? 0;
-                          const nextValue = value + 1;
                           return (
                             <div key={habit.id} className="flex min-w-0 items-center gap-2 rounded-xl bg-muted/55 px-2.5 py-1.5">
                               <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${complete ? "bg-emerald-500/15 text-emerald-500" : "bg-background text-muted-foreground"}`}>
