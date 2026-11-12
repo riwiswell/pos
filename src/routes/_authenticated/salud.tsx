@@ -6,7 +6,7 @@ import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import 
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { todayISO } from "@/lib/date";
 import { subscribeToBackgroundPush } from "@/services/push.service"; import { useAuth } from "@/hooks/use-auth"; import { usePersonalDateList } from "@/hooks/use-personal-domains"; import { useProfile, useProfileMutations } from "@/hooks/use-profile";
-import { supabase } from "@/integrations/supabase/client"; import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lastWater,useDoseHistory,useDoses,useMedicationMutations,useMedications,useTakenCounts } from "@/hooks/use-medications"; import { formatTime12,medicationScheduleLabel,formatStockQuantity,formatGlasses,formatWaterGlassOption,waterGlassesToMl,WATER_GLASS_ML,medicationWater,remainingQuantity,durationDays,WATER_OPTIONS,type BeverageType,type Medication } from "@/domain/health";
+import { supabase } from "@/integrations/supabase/client"; import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lastWater,useDoseHistory,useDoses,useMedicationMutations,useMedications,useTakenCounts } from "@/hooks/use-medications"; import { formatTime12,medicationScheduleLabel,formatStockQuantity,formatGlasses,formatWaterGlassOption,waterGlassesToMl,WATER_GLASS_ML,medicationWater,remainingQuantity,durationDays,WATER_OPTIONS,type BeverageType,type HydrationEntry,type Medication } from "@/domain/health";
 import { useHydrationEntries,useHydrationMutations } from "@/hooks/use-hydration";
 import { useMedicationStockTotals } from "@/hooks/use-medications";
 export const Route=createFileRoute("/_authenticated/salud")({component:HealthPage});
@@ -47,6 +47,13 @@ function HydrationCard(){
  const [customMl,setCustomMl]=useState("300");
  const [otherType,setOtherType]=useState<BeverageType>("tea");
  const [otherMl,setOtherMl]=useState("150");
+ const [otherName,setOtherName]=useState("");
+ const [editingEntryId,setEditingEntryId]=useState<string|null>(null);
+ const [editType,setEditType]=useState<BeverageType>("water");
+ const [editMl,setEditMl]=useState("325");
+ const [editName,setEditName]=useState("");
+ const [editTime,setEditTime]=useState("08:00");
+ const [confirmDeleteId,setConfirmDeleteId]=useState<string|null>(null);
  const [schedule,setSchedule]=useState<HydrationConfig>(DEFAULT_HYDRATION);
  const [savingSchedule,setSavingSchedule]=useState(false);
  const [pushBusy,setPushBusy]=useState(false);
@@ -69,10 +76,36 @@ function HydrationCard(){
  const waterMl=legacyWaterMl+recordedWaterMl+medicineWaterMl;
  const totalFluidMl=waterMl+otherFluidMl;
  const fmt=(value:number)=>Math.round(value).toLocaleString("es-CO");
- const busy=hydration.create.isPending;
- const addDrink=async(beverage_type:BeverageType,amount_ml:number)=>{
+ const busy=hydration.create.isPending||hydration.update.isPending||hydration.remove.isPending;
+ const beverageLabels:Record<BeverageType,string>={water:"Agua",coffee:"Café",tea:"Té",milk:"Leche",other:"Otra bebida"};
+ const addDrink=async(beverage_type:BeverageType,amount_ml:number,note?:string|null)=>{
   if(!Number.isInteger(amount_ml)||amount_ml<1||amount_ml>3000)return;
-  await hydration.create.mutateAsync({beverage_type,amount_ml});
+  if(beverage_type==="other"&&!note?.trim()){toast.error("Escribe el nombre de la bebida (por ejemplo, aguapanela o Frutiño).");return;}
+  await hydration.create.mutateAsync({beverage_type,amount_ml,note});
+  if(beverage_type==="other")setOtherName("");
+ };
+ const startEditing=(entry:HydrationEntry)=>{
+  const consumedAt=new Date(entry.consumed_at);
+  setEditingEntryId(entry.id);
+  setEditType(entry.beverage_type);
+  setEditMl(String(entry.amount_ml));
+  setEditName(entry.note??"");
+  setEditTime(Number.isNaN(consumedAt.getTime())?"08:00":String(consumedAt.getHours()).padStart(2,"0")+":"+String(consumedAt.getMinutes()).padStart(2,"0"));
+  setConfirmDeleteId(null);
+ };
+ const saveEntry=async()=>{
+  if(!editingEntryId)return;
+  const amount=Number(editMl);
+  if(!Number.isInteger(amount)||amount<1||amount>3000){toast.error("Introduce una cantidad entre 1 y 3000 ml.");return;}
+  if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(editTime)){toast.error("Introduce una hora válida.");return;}
+  if(editType==="other"&&!editName.trim()){toast.error("Escribe el nombre de la bebida.");return;}
+  try{
+   await hydration.update.mutateAsync({id:editingEntryId,beverage_type:editType,amount_ml:amount,note:editType==="other"?editName.trim():null,consumed_time:editTime});
+   setEditingEntryId(null);
+  }catch{}
+ };
+ const deleteEntry=async(id:string)=>{
+  try{await hydration.remove.mutateAsync(id);setConfirmDeleteId(null);setEditingEntryId(null);}catch{}
  };
  const saveSchedule=async()=>{
   if(!profile||savingSchedule)return;
@@ -132,12 +165,49 @@ function HydrationCard(){
    {WATER_OPTIONS.filter(glasses=>glasses>0).map(glasses=>{const ml=Math.round(waterGlassesToMl(glasses));return <Button key={glasses} size="sm" variant={glasses===1?"default":"outline"} disabled={disabled} onClick={()=>void addDrink("water",ml)}>+{formatWaterGlassOption(glasses)} agua</Button>})}
    <Button size="sm" variant="outline" className="gap-1" disabled={disabled} onClick={()=>void addDrink("coffee",100)}><Coffee className="h-3.5 w-3.5"/> +100 ml café</Button>
   </div>
-  <div className="grid grid-cols-[1fr_110px_auto] gap-2">
-   <select className="h-9 min-w-0 rounded-md border border-input bg-background px-2 text-sm" value={otherType} onChange={e=>setOtherType(e.target.value as BeverageType)}>
-    <option value="coffee">Café</option><option value="tea">Té</option><option value="milk">Leche</option><option value="other">Otra bebida</option>
-   </select>
-   <Input className="h-9" type="number" min="1" max="3000" step="25" value={otherMl} onChange={e=>setOtherMl(e.target.value)}/>
-   <Button size="sm" variant="outline" disabled={disabled||!Number.isInteger(Number(otherMl))||Number(otherMl)<1||Number(otherMl)>3000} onClick={()=>void addDrink(otherType,Number(otherMl))}>Registrar</Button>
+  <div className="space-y-2">
+   <div className="grid grid-cols-[minmax(0,1fr)_100px_auto] gap-2">
+    <select aria-label="Tipo de bebida" className="h-9 min-w-0 rounded-md border border-input bg-background px-2 text-sm" value={otherType} onChange={e=>setOtherType(e.target.value as BeverageType)}>
+     <option value="coffee">Café</option><option value="tea">Té</option><option value="milk">Leche</option><option value="other">Otra bebida</option>
+    </select>
+    <Input aria-label="Cantidad en mililitros" className="h-9" type="number" min="1" max="3000" step="25" value={otherMl} onChange={e=>setOtherMl(e.target.value)}/>
+    <Button size="sm" variant="outline" disabled={disabled||!Number.isInteger(Number(otherMl))||Number(otherMl)<1||Number(otherMl)>3000||(otherType==="other"&&!otherName.trim())} onClick={()=>void addDrink(otherType,Number(otherMl),otherType==="other"?otherName.trim():null)}>Registrar</Button>
+   </div>
+   {otherType==="other"&&<Input aria-label="Nombre de la bebida" className="h-9" placeholder="Nombre (aguapanela, Frutiño, jugo…)" value={otherName} onChange={e=>setOtherName(e.target.value)} maxLength={80}/>}
+  </div>
+  <div className="space-y-2 rounded-xl border p-3">
+   <div className="flex flex-wrap items-center justify-between gap-2">
+    <p className="text-sm font-semibold">{date===todayISO()?"Lo que has tomado hoy":"Bebidas registradas ese día"}</p>
+    <span className="text-xs text-muted-foreground">{dayEntries.length} {dayEntries.length===1?"registro":"registros"}</span>
+   </div>
+   {entries.isLoading?<p className="text-xs text-muted-foreground">Cargando registros…</p>:dayEntries.length===0?<p className="text-xs text-muted-foreground">Todavía no hay bebidas individuales registradas para esta fecha.</p>:<div className="space-y-2">
+    {dayEntries.map(entry=>{
+     const label=entry.beverage_type==="other"?(entry.note?.trim()||"Otra bebida"):beverageLabels[entry.beverage_type];
+     const timeLabel=new Date(entry.consumed_at).toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"});
+     return <div key={entry.id} className="rounded-lg border border-border/70 p-2.5">
+      {editingEntryId===entry.id?<div className="space-y-2">
+       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <select aria-label="Tipo de bebida al editar" className="h-9 min-w-0 rounded-md border border-input bg-background px-2 text-sm" value={editType} onChange={e=>setEditType(e.target.value as BeverageType)}>
+         <option value="water">Agua</option><option value="coffee">Café</option><option value="tea">Té</option><option value="milk">Leche</option><option value="other">Otra bebida</option>
+        </select>
+        <Input aria-label="Cantidad en mililitros al editar" className="h-9" type="number" min="1" max="3000" step="25" value={editMl} onChange={e=>setEditMl(e.target.value)}/>
+        <Input aria-label="Hora del registro" className="h-9" type="time" value={editTime} onChange={e=>setEditTime(e.target.value)}/>
+        {editType==="other"&&<Input aria-label="Nombre de la bebida al editar" className="h-9" placeholder="Nombre de la bebida" value={editName} onChange={e=>setEditName(e.target.value)} maxLength={80}/>}
+       </div>
+       <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="ghost" onClick={()=>setEditingEntryId(null)}>Cancelar</Button>
+        <Button type="button" size="sm" disabled={hydration.update.isPending} onClick={()=>void saveEntry()}>{hydration.update.isPending?"Guardando…":"Guardar cambios"}</Button>
+       </div>
+      </div>:<div className="flex flex-wrap items-center gap-2">
+       <span className="min-w-0 flex-1"><b className="text-sm">{label}</b><span className="ml-2 text-xs text-muted-foreground">{timeLabel}</span></span>
+       <span className="text-sm font-medium tabular-nums">{fmt(entry.amount_ml)} ml</span>
+       <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={"Editar "+label} title="Editar registro" onClick={()=>startEditing(entry)}><Pencil className="h-4 w-4"/></Button>
+       {confirmDeleteId===entry.id?<div className="flex items-center gap-1"><Button type="button" size="sm" variant="destructive" disabled={hydration.remove.isPending} onClick={()=>void deleteEntry(entry.id)}>Eliminar</Button><Button type="button" size="sm" variant="ghost" onClick={()=>setConfirmDeleteId(null)}>Cancelar</Button></div>:<Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-destructive" aria-label={"Eliminar "+label} title="Eliminar registro" onClick={()=>{setConfirmDeleteId(entry.id);setEditingEntryId(null);}}><Trash2 className="h-4 w-4"/></Button>}
+      </div>}
+     </div>;
+    })}
+   </div>}
+   <p className="text-[11px] text-muted-foreground">Puedes corregir el tipo, nombre, cantidad y hora de cada bebida, o eliminar un registro incorrecto.</p>
   </div>
   <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-muted-foreground">Ayer ({yesterdayDate}): {yesterdayEntries.isLoading?"cargando…":yesterdayEntries.isError?"sin conexión al historial":fmt(yesterdayWaterMl)+" ml de agua"}</span>{(entries.isError||yesterdayEntries.isError)&&<Button type="button" size="sm" variant="outline" className="h-7" onClick={()=>{void entries.refetch();void yesterdayEntries.refetch()}}>Reintentar carga</Button>}</div>
   {entries.isError&&<p className="text-xs text-destructive">No se pudo cargar el registro de bebidas. Puedes intentar registrar de todas formas; el error no bloquea el formulario. Detalle: {entries.error instanceof Error?entries.error.message:"error desconocido"}</p>}
@@ -159,7 +229,7 @@ function HydrationCard(){
    </div>
    <p className="text-[11px] text-muted-foreground">{schedule.background_push?"Push confirmado: los avisos pueden llegar con POS cerrado.":"Avisos locales: aparecen mientras Personal OS está abierto. Activa push para recibirlos con el navegador cerrado."}</p>
   </div>
-  <p className="text-xs text-muted-foreground">Las tomas de medicamentos registran el agua asociada. El café, té y leche suman a líquidos, pero no al objetivo de agua simple. Los registros antiguos de agua continúan visibles.</p>
+  <p className="text-xs text-muted-foreground">El agua asociada a medicamentos también suma al total de agua simple, pero se corrige desde la toma del medicamento. Los registros antiguos agregados siguen visibles en el total; esta lista permite editar los registros individuales de bebidas.</p>
  </section>;
 }
 
