@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { CategoryDialog } from "@/components/finance/CategoryDialog";
-import { getIcon } from "@/lib/finance-icons";
+import { getCategoryIconName, getIcon } from "@/lib/finance-icons";
 import { cn } from "@/lib/utils";
 import { useFinanceMutations } from "@/hooks/use-finance";
 import { categoryAppliesTo } from "@/domain/finance";
@@ -21,24 +21,6 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories: FinanceCategory[];
-}
-
-function categoryIconForDisplay(category: FinanceCategory): string {
-  const name = category.name.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
-  if (/moto|gasolina|combustible/.test(name)) return /gasolina|combustible/.test(name) ? "Fuel" : "Bike";
-  if (/comida|mercado|restaurante|pan|alimento/.test(name)) return "Utensils";
-  if (/transporte|taxi|bus|parqueadero/.test(name)) return "Car";
-  if (/juego|videojuego|entretenimiento/.test(name)) return "Gamepad2";
-  if (/salud|medic|farmacia/.test(name)) return "HeartPulse";
-  if (/internet|servicio|telefono|celular|tv|streaming/.test(name)) return "Wifi";
-  if (/wiswellart|arte|clase|material/.test(name)) return "Palette";
-  if (/diezmo|iglesia|ofrenda/.test(name)) return "Church";
-  if (/casa|arriendo|hogar|vivienda/.test(name)) return "Home";
-  if (/libro|educaci|estudio/.test(name)) return "BookOpen";
-  if (/banco|credito|tarjeta|deuda/.test(name)) return "CreditCard";
-  if (/ahorro|reserva|alcancia/.test(name)) return "PiggyBank";
-  if (/regalo|ayuda|angela|reembolso/.test(name)) return "HandCoins";
-  return category.icon;
 }
 
 /** Full CRUD for finance categories, reachable from the Finanzas screen. */
@@ -91,7 +73,7 @@ export function CategoryManagerDialog({ open, onOpenChange, categories }: Props)
               </li>
             )}
             {list.map((category) => {
-              const Icon = getIcon(categoryIconForDisplay(category));
+              const Icon = getIcon(getCategoryIconName(category.name, category.icon));
               return (
                 <li
                   key={category.id}
