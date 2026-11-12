@@ -38,15 +38,15 @@ const INITIAL_READING_ORDER = [
   "conceptos fundamentales de la historia del arte",
 ];
 function sortLearningItems(items:any[],sessions:any[],sort:LearningSort){
- const usage=new Map<string,number>(),latest=new Map<string,string>();
- for(const session of sessions){const id=String(session.learning_item_id||"");if(!id)continue;usage.set(id,(usage.get(id)||0)+1);const date=String(session.session_date||session.created_at||"");if(date>String(latest.get(id)||""))latest.set(id,date);}
+ const usage=new Map<string,number>(),sessionCounts=new Map<string,number>(),latest=new Map<string,string>();
+ for(const session of sessions){const id=String(session.learning_item_id||"");if(!id)continue;usage.set(id,(usage.get(id)||0)+Math.max(0,Number(session.minutes)||0));sessionCounts.set(id,(sessionCounts.get(id)||0)+1);const date=String(session.session_date||session.created_at||"");if(date>String(latest.get(id)||""))latest.set(id,date);}
  return [...items].sort((a,b)=>{
-  const aId=String(a.id),bId=String(b.id),aCount=usage.get(aId)||0,bCount=usage.get(bId)||0;
+  const aId=String(a.id),bId=String(b.id),aCount=sessionCounts.get(aId)||0,bCount=sessionCounts.get(bId)||0,aMinutes=usage.get(aId)||0,bMinutes=usage.get(bId)||0;
   const names=String(a.title||"").localeCompare(String(b.title||""),"es",{sensitivity:"base",numeric:true});
   const createdA=String(a.created_at||""),createdB=String(b.created_at||"");
   if(sort==="title_asc")return names;
   if(sort==="title_desc")return -names;
-  if(sort==="used_asc")return aCount-bCount||names;
+  if(sort==="used_asc")return aMinutes-bMinutes||aCount-bCount||names;
   if(sort==="recent")return createdB.localeCompare(createdA)||names;
   if(sort==="oldest"){
    const aPinned=INITIAL_READING_ORDER.indexOf(String(a.title||"").trim().toLocaleLowerCase("es"));
@@ -58,7 +58,7 @@ function sortLearningItems(items:any[],sessions:any[],sort:LearningSort){
    }
    return createdA.localeCompare(createdB)||names;
   }
-  return bCount-aCount||names;
+  return bMinutes-aMinutes||bCount-aCount||names;
  });
 }
 function LearningSortControl({value,onChange}:{value:LearningSort;onChange:(value:LearningSort)=>void}){return <select aria-label="Ordenar elementos" title="Ordenar elementos" className="h-9 max-w-[148px] rounded-lg border border-input bg-background px-2 text-xs text-foreground" value={value} onChange={event=>onChange(event.target.value as LearningSort)}><option value="used_desc">Más usado</option><option value="used_asc">Menos usado</option><option value="title_asc">A–Z</option><option value="title_desc">Z–A</option><option value="recent">Más reciente</option><option value="oldest">Más antiguo</option></select>;}
