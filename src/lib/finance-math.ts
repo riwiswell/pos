@@ -7,25 +7,52 @@ import type { FinanceAccount, FinanceSettings, FinanceTransaction } from "@/doma
 
 export type BalanceRow = Pick<
   FinanceTransaction,
-  "account_id" | "transfer_account_id" | "type" | "amount"
+  "account_id" | "transfer_account_id" | "type" | "amount" | "occurred_on" | "occurred_time"
 >;
 
 /**
  * Ledger movement per account. Transfers move money between accounts, so they
  * subtract from the origin and add to the destination.
  */
-export function accountBalances(rows: BalanceRow[]): Map<string, number> {
+function isAfterAccountCutoff(row: BalanceRow, account: FinanceAccount | undefined): boolean {
+  if (!account?.balance_cutoff_on) return true;
+  if (row.occurred_on !== account.balance_cutoff_on) {
+    return row.occurred_on > account.balance_cutoff_on;
+  }
+
+  // Times are stored as the user's local wall-clock time. A missing time on
+  // the cutoff date is treated as before the cutoff, never guessed as later.
+  const occurredTime = (row.occurred_time ?? "00:00:00").slice(0, 8);
+  const cutoffTime = (account.balance_cutoff_time ?? "23:59:59").slice(0, 8);
+  return occurredTime > cutoffTime;
+}
+
+/**
+ * Ledger movement per account. A cutoff is evaluated independently for each
+ * side of a transfer, so historical movements remain visible without being
+ * counted again after a balance snapshot.
+ */
+export function accountBalances(
+  rows: BalanceRow[],
+  accounts: FinanceAccount[] = [],
+): Map<string, number> {
   const map = new Map<string, number>();
+  const accountsById = new Map(accounts.map((account) => [account.id, account]));
   const add = (id: string | null, delta: number) => {
     if (!id) return;
     map.set(id, (map.get(id) ?? 0) + delta);
   };
+
   for (const row of rows) {
     const amount = Number(row.amount);
     if (row.type === "transfer") {
-      add(row.account_id, -amount);
-      add(row.transfer_account_id, amount);
-    } else {
+      if (isAfterAccountCutoff(row, accountsById.get(row.account_id ?? ""))) {
+        add(row.account_id, -amount);
+      }
+      if (isAfterAccountCutoff(row, accountsById.get(row.transfer_account_id ?? ""))) {
+        add(row.transfer_account_id, amount);
+      }
+    } else if (isAfterAccountCutoff(row, accountsById.get(row.account_id ?? ""))) {
       add(row.account_id, row.type === "income" ? amount : -amount);
     }
   }
