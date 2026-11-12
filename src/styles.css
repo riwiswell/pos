@@ -343,3 +343,246 @@
     gap: 0.625rem;
   }
 }
+
+
+/* Weather card: the sky itself reflects the current Open-Meteo condition. */
+.weather-card {
+  position: relative;
+  isolation: isolate;
+  color: #f8fafc;
+  border-color: rgb(255 255 255 / 22%);
+  background: linear-gradient(125deg, #173c62, #285d7c 58%, #38647a);
+}
+
+.weather-card::before,
+.weather-card::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+}
+
+.weather-card__content {
+  position: relative;
+  z-index: 1;
+}
+
+.weather-card .text-muted-foreground {
+  color: rgb(241 247 255 / 78%);
+}
+
+.weather-card .bg-primary\/10 {
+  color: #fff;
+  background-color: rgb(255 255 255 / 17%);
+}
+
+.weather-card [class*="bg-background/55"],
+.weather-card [class*="bg-background/45"] {
+  border: 1px solid rgb(255 255 255 / 12%);
+  background-color: rgb(3 20 42 / 24%);
+  backdrop-filter: blur(8px);
+}
+
+.weather-card select {
+  color: #fff;
+  border-color: rgb(255 255 255 / 28%);
+  background-color: rgb(3 20 42 / 34%);
+}
+
+.weather-card select option {
+  color: #172033;
+  background: #fff;
+}
+
+.weather-card button {
+  color: #fff;
+  border-color: rgb(255 255 255 / 32%);
+}
+
+.weather-card button:disabled {
+  opacity: 0.65;
+}
+
+.weather-card--neutral {
+  background: linear-gradient(125deg, #24435e, #345b70);
+}
+
+.weather-card--clear {
+  background: linear-gradient(118deg, #155184 0%, #3285ac 58%, #b77c43 100%);
+}
+
+.weather-card--clear::before {
+  background: repeating-conic-gradient(
+    from 0deg at 78% 20%,
+    transparent 0deg 9deg,
+    rgb(255 239 185 / 26%) 10deg 12deg,
+    transparent 13deg 22deg
+  );
+  mask-image: radial-gradient(ellipse 52% 100% at 78% 20%, #000 0 14%, transparent 72%);
+  animation: weather-sun-rays 48s linear infinite;
+}
+
+.weather-card--clear::after {
+  background: radial-gradient(circle at 78% 20%, rgb(255 222 143 / 42%), transparent 15rem);
+}
+
+.weather-card--night {
+  background: linear-gradient(125deg, #101c3a, #233b61 65%, #314969);
+}
+
+.weather-card--night::before {
+  background-image:
+    radial-gradient(2px 2px at 14% 24%, rgb(255 255 255 / 90%) 45%, transparent 55%),
+    radial-gradient(1.5px 1.5px at 37% 66%, rgb(255 255 255 / 82%) 45%, transparent 55%),
+    radial-gradient(2px 2px at 61% 18%, rgb(255 255 255 / 82%) 45%, transparent 55%),
+    radial-gradient(1.5px 1.5px at 88% 64%, rgb(255 255 255 / 86%) 45%, transparent 55%),
+    radial-gradient(1px 1px at 73% 42%, rgb(255 255 255 / 70%) 45%, transparent 55%);
+  background-size: 230px 150px;
+}
+
+.weather-card--night::after {
+  background: radial-gradient(circle at 84% 18%, rgb(210 229 255 / 28%), transparent 8rem);
+}
+
+.weather-card--partly-cloudy {
+  background: linear-gradient(120deg, #28628c, #4e8aa5 64%, #849da8);
+}
+
+.weather-card--partly-cloudy::before {
+  background:
+    radial-gradient(ellipse 16% 22% at 72% 24%, rgb(255 255 255 / 48%) 0 48%, transparent 74%),
+    radial-gradient(ellipse 22% 26% at 84% 24%, rgb(255 255 255 / 38%) 0 48%, transparent 74%),
+    radial-gradient(ellipse 18% 20% at 91% 30%, rgb(255 255 255 / 34%) 0 45%, transparent 75%);
+  animation: weather-cloud-drift 24s ease-in-out infinite alternate;
+}
+
+.weather-card--partly-cloudy::after {
+  background: radial-gradient(circle at 72% 18%, rgb(255 225 155 / 28%), transparent 12rem);
+}
+
+.weather-card--cloudy {
+  background: linear-gradient(125deg, #34495e, #637b8c 58%, #71848c);
+}
+
+.weather-card--cloudy::before {
+  background:
+    radial-gradient(ellipse 28% 34% at 18% 20%, rgb(235 243 248 / 23%) 0 48%, transparent 73%),
+    radial-gradient(ellipse 35% 38% at 42% 12%, rgb(235 243 248 / 19%) 0 48%, transparent 73%),
+    radial-gradient(ellipse 38% 42% at 78% 22%, rgb(235 243 248 / 20%) 0 48%, transparent 73%);
+  animation: weather-cloud-drift 32s ease-in-out infinite alternate;
+}
+
+.weather-card--fog {
+  background: linear-gradient(125deg, #526777, #7d9099 55%, #637b89);
+}
+
+.weather-card--fog::before {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 18px,
+    rgb(245 250 255 / 13%) 24px 37px,
+    transparent 45px 66px
+  );
+  filter: blur(5px);
+  animation: weather-fog-drift 16s ease-in-out infinite alternate;
+}
+
+.weather-card--drizzle {
+  background: linear-gradient(125deg, #254a6b, #3d6d87 58%, #526f82);
+}
+
+.weather-card--drizzle::before {
+  background: repeating-linear-gradient(
+    108deg,
+    transparent 0 20px,
+    rgb(224 241 255 / 24%) 21px 22px,
+    transparent 23px 42px
+  );
+  background-size: 150px 190px;
+  animation: weather-rain-fall 1.8s linear infinite;
+}
+
+.weather-card--rain {
+  background: linear-gradient(125deg, #152f4d, #285271 58%, #3e6177);
+}
+
+.weather-card--rain::before,
+.weather-card--storm::before {
+  background: repeating-linear-gradient(
+    108deg,
+    transparent 0 13px,
+    rgb(221 239 255 / 32%) 14px 15px,
+    transparent 16px 29px
+  );
+  background-size: 130px 170px;
+  animation: weather-rain-fall 0.95s linear infinite;
+}
+
+.weather-card--storm {
+  background: linear-gradient(125deg, #101a32, #263b59 58%, #394e67);
+}
+
+.weather-card--storm::after {
+  background: radial-gradient(ellipse at 72% 8%, rgb(225 236 255 / 28%), transparent 35%);
+  animation: weather-lightning 7s ease-in-out infinite;
+}
+
+.weather-card--snow {
+  background: linear-gradient(125deg, #315978, #5c8298 60%, #7297a8);
+}
+
+.weather-card--snow::before {
+  background-image:
+    radial-gradient(2px 2px at 12% 24%, rgb(255 255 255 / 88%) 55%, transparent 65%),
+    radial-gradient(2px 2px at 43% 71%, rgb(255 255 255 / 82%) 55%, transparent 65%),
+    radial-gradient(3px 3px at 79% 38%, rgb(255 255 255 / 85%) 55%, transparent 65%),
+    radial-gradient(1.5px 1.5px at 63% 12%, rgb(255 255 255 / 90%) 55%, transparent 65%);
+  background-size: 110px 110px;
+  animation: weather-snow-fall 9s linear infinite;
+}
+
+.weather-card--planner .weather-card__content > .flex:first-child {
+  gap: 0.5rem;
+}
+
+.weather-card--planner .weather-card__content > .flex:first-child > div:last-child {
+  gap: 0.375rem;
+}
+
+@keyframes weather-sun-rays {
+  to { transform: rotate(360deg) scale(1.2); }
+}
+
+@keyframes weather-cloud-drift {
+  from { transform: translateX(-1.2%); }
+  to { transform: translateX(1.2%); }
+}
+
+@keyframes weather-fog-drift {
+  from { transform: translateX(-2%); }
+  to { transform: translateX(2%); }
+}
+
+@keyframes weather-rain-fall {
+  from { background-position: 0 -30px; }
+  to { background-position: -18px 170px; }
+}
+
+@keyframes weather-snow-fall {
+  from { background-position: 0 -40px; }
+  to { background-position: 24px 110px; }
+}
+
+@keyframes weather-lightning {
+  0%, 88%, 92%, 100% { opacity: 0.16; }
+  89%, 91% { opacity: 0.72; }
+  90% { opacity: 0.28; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weather-card::before,
+  .weather-card::after {
+    animation: none !important;
+  }
+}

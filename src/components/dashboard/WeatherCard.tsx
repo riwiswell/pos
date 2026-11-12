@@ -67,8 +67,20 @@ function weatherDescription(code: number) {
   return "Condiciones variables";
 }
 
-function WeatherIcon({ code, isDay }: { code: number; isDay: boolean }) {
-  const className = "h-12 w-12 text-primary";
+function weatherMood(code: number, isDay: boolean) {
+  if (code === 0) return isDay ? "clear" : "night";
+  if ([1, 2].includes(code)) return "partly-cloudy";
+  if (code === 3) return "cloudy";
+  if ([45, 48].includes(code)) return "fog";
+  if ([51, 53, 55, 56, 57].includes(code)) return "drizzle";
+  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "rain";
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "snow";
+  if ([95, 96, 99].includes(code)) return "storm";
+  return "cloudy";
+}
+
+function WeatherIcon({ code, isDay, small = false }: { code: number; isDay: boolean; small?: boolean }) {
+  const className = small ? "h-10 w-10 text-white" : "h-12 w-12 text-white";
   if (code === 0) return isDay ? <Sun className={className} /> : <Cloud className={className} />;
   if ([1, 2].includes(code)) return <CloudSun className={className} />;
   if (code === 3 || [45, 48].includes(code)) return code === 3 ? <Cloud className={className} /> : <CloudFog className={className} />;
@@ -79,7 +91,7 @@ function WeatherIcon({ code, isDay }: { code: number; isDay: boolean }) {
   return <Cloud className={className} />;
 }
 
-export function WeatherCard({ compact = false }: { compact?: boolean } = {}) {
+export function WeatherCard({ compact = false, planner = false }: { compact?: boolean; planner?: boolean } = {}) {
   const [location, setLocation] = useState<LocationChoice>(readLocation);
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,7 +108,7 @@ export function WeatherCard({ compact = false }: { compact?: boolean } = {}) {
       longitude: String(location.longitude),
       current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day",
       daily: "weather_code,precipitation_probability_max,temperature_2m_max,temperature_2m_min",
-      forecast_days: "5",
+      forecast_days: planner ? "7" : "5",
       timezone: "auto",
     });
     fetch("https://api.open-meteo.com/v1/forecast?" + params.toString(), { signal: controller.signal })
@@ -155,28 +167,30 @@ export function WeatherCard({ compact = false }: { compact?: boolean } = {}) {
 
   const current = weather?.current;
   const rainChance = weather?.daily?.precipitation_probability_max?.[0];
+  const mood = current ? weatherMood(current.weather_code, current.is_day === 1) : "neutral";
 
   return (
-    <section className={`glass overflow-hidden rounded-2xl border border-border/70 ${compact ? "p-3" : "p-4 sm:p-5"}`}>
+    <section className={`glass weather-card weather-card--${mood} overflow-hidden rounded-2xl border border-border/70 ${compact || planner ? "p-3" : "p-4 sm:p-5"}`}>
+      <div className="weather-card__content">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><CloudSun className="h-5 w-5" /></span>
+          <span className={`flex items-center justify-center rounded-xl bg-primary/10 text-primary ${planner ? "h-8 w-8" : "h-9 w-9"}`}><CloudSun className={planner ? "h-4 w-4" : "h-5 w-5"} /></span>
           <div>
-            <h2 className="font-semibold">Clima</h2>
+            <h2 className={planner ? "text-sm font-semibold" : "font-semibold"}>Clima</h2>
             <p className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{location.label}</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
             aria-label="Ciudad para consultar el clima"
-            className="h-9 max-w-[150px] rounded-lg border border-input bg-background px-2 text-xs"
+            className={`max-w-[150px] rounded-lg border border-input bg-background px-2 text-xs ${planner ? "h-8" : "h-9"}`}
             value={location.id === "current" ? "current" : location.id}
             onChange={(event) => chooseCity(event.target.value)}
           >
             <option value="current" disabled>Mi ubicación</option>
             {CITIES.map((city) => <option key={city.id} value={city.id}>{city.label}</option>)}
           </select>
-          <Button type="button" size={compact ? "icon" : "sm"} variant="outline" className={compact ? "h-8 w-8" : "h-9 gap-1.5"} onClick={useCurrentLocation} disabled={locating} aria-label="Usar mi ubicación actual" title="Usar mi ubicación actual">
+          <Button type="button" size={compact ? "icon" : "sm"} variant="outline" className={compact ? "h-8 w-8" : planner ? "h-8 gap-1.5" : "h-9 gap-1.5"} onClick={useCurrentLocation} disabled={locating} aria-label="Usar mi ubicación actual" title="Usar mi ubicación actual">
             <LocateFixed className="h-3.5 w-3.5" />{!compact && (locating ? "Ubicando…" : "Dónde estoy")}
           </Button>
         </div>
@@ -206,39 +220,41 @@ export function WeatherCard({ compact = false }: { compact?: boolean } = {}) {
             </div>
           </div>
         ) : (
-          <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-[1.25fr_1fr_1fr_1fr] sm:items-center">
-            <div className="col-span-2 flex items-center gap-4 sm:col-span-1">
-              <WeatherIcon code={current.weather_code} isDay={current.is_day === 1} />
+          <div className={planner ? "mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-[1.2fr_1fr_1fr_1fr] sm:items-center" : "mt-5 grid grid-cols-2 gap-4 sm:grid-cols-[1.25fr_1fr_1fr_1fr] sm:items-center"}>
+            <div className="col-span-2 flex items-center gap-3 sm:col-span-1">
+              <WeatherIcon code={current.weather_code} isDay={current.is_day === 1} small={planner} />
               <div>
-                <p className="text-4xl font-semibold tracking-tight tabular-nums">{Math.round(current.temperature_2m)}°</p>
+                <p className={planner ? "text-3xl font-semibold tracking-tight tabular-nums" : "text-4xl font-semibold tracking-tight tabular-nums"}>{Math.round(current.temperature_2m)}°</p>
                 <p className="text-sm text-muted-foreground">{weatherDescription(current.weather_code)}</p>
                 <p className="text-xs text-muted-foreground">Sensación {Math.round(current.apparent_temperature)}°</p>
               </div>
             </div>
-            <div className="rounded-xl bg-background/55 p-3">
+            <div className={planner ? "rounded-xl bg-background/55 p-2" : "rounded-xl bg-background/55 p-3"}>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Droplets className="h-3.5 w-3.5" />Prob. de lluvia</div>
               <p className="mt-1 text-xl font-semibold tabular-nums">{rainChance ?? "—"}{rainChance == null ? "" : "%"}</p>
             </div>
-            <div className="rounded-xl bg-background/55 p-3">
+            <div className={planner ? "rounded-xl bg-background/55 p-2" : "rounded-xl bg-background/55 p-3"}>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wind className="h-3.5 w-3.5" />Viento</div>
               <p className="mt-1 text-xl font-semibold tabular-nums">{Math.round(current.wind_speed_10m)} <span className="text-xs font-normal">km/h</span></p>
             </div>
-            <div className="rounded-xl bg-background/55 p-3">
+            <div className={planner ? "rounded-xl bg-background/55 p-2" : "rounded-xl bg-background/55 p-3"}>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Droplets className="h-3.5 w-3.5" />Humedad</div>
               <p className="mt-1 text-xl font-semibold tabular-nums">{Math.round(current.relative_humidity_2m)}%</p>
             </div>
           </div>
         )) : null}
       {!compact && weather?.daily?.time && (
-        <div className="mt-5 grid grid-cols-5 gap-2 border-t border-border/70 pt-4">
+        <div className={planner ? "mt-3 grid grid-cols-7 gap-1 border-t border-border/70 pt-3" : "mt-5 grid grid-cols-5 gap-2 border-t border-border/70 pt-4"}>
           {weather.daily.time.map((day, index) => (
-            <div key={day} className="min-w-0 rounded-xl bg-background/45 px-1.5 py-2 text-center">
+            <div key={day} className={planner ? "min-w-0 rounded-lg bg-background/45 px-0.5 py-1.5 text-center" : "min-w-0 rounded-xl bg-background/45 px-1.5 py-2 text-center"}>
               <p className="text-[10px] capitalize text-muted-foreground">
                 {index === 0 ? "Hoy" : new Intl.DateTimeFormat("es-CO", { weekday: "short" }).format(new Date(day + "T12:00:00"))}
               </p>
               <p className="my-1 text-base" aria-label={weatherDescription(weather.daily?.weather_code?.[index] ?? 0)}>
                 {([0, 1, 2].includes(weather.daily?.weather_code?.[index] ?? -1) ? "🌤️" :
-                  [61, 63, 65, 80, 81, 82, 95, 96, 99].includes(weather.daily?.weather_code?.[index] ?? -1) ? "🌧️" : "☁️")}
+                  [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99].includes(weather.daily?.weather_code?.[index] ?? -1) ? "🌧️" :
+                  [71, 73, 75, 77, 85, 86].includes(weather.daily?.weather_code?.[index] ?? -1) ? "❄️" :
+                  [45, 48].includes(weather.daily?.weather_code?.[index] ?? -1) ? "🌫️" : "☁️")}
               </p>
               <p className="text-xs font-semibold tabular-nums">
                 {Math.round(weather.daily?.temperature_2m_max?.[index] ?? 0)}° <span className="font-normal text-muted-foreground">{Math.round(weather.daily?.temperature_2m_min?.[index] ?? 0)}°</span>
@@ -250,7 +266,8 @@ export function WeatherCard({ compact = false }: { compact?: boolean } = {}) {
           ))}
         </div>
       )}
-      {!compact && <p className="mt-4 border-t border-border/70 pt-3 text-[11px] text-muted-foreground">Datos meteorológicos de Open-Meteo. La ubicación del dispositivo solo se consulta cuando pulsas «Dónde estoy».</p>}
+      {!compact && <p className={planner ? "mt-3 border-t border-border/70 pt-2 text-[10px] text-muted-foreground" : "mt-4 border-t border-border/70 pt-3 text-[11px] text-muted-foreground"}>Datos meteorológicos de Open-Meteo. La ubicación del dispositivo solo se consulta cuando pulsas «Dónde estoy».</p>}
+      </div>
     </section>
   );
 }
