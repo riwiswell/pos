@@ -203,7 +203,7 @@ function HabitsPage() {
                   style={{ backgroundColor: color }}
                 />
                 <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
-                  {group.category?.name ?? "Sin categoría"}
+                  {group.category?.icon ? group.category.icon + " " : ""}{group.category?.name ?? "Sin categoría"}
                 </h2>
                 <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
                   {done}/{total}
