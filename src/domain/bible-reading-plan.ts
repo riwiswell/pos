@@ -420,16 +420,16 @@ const SINGLE_CHAPTER_BOOKS = new Set(["abd", "2 jn", "3 jn", "jud", "flm"]);
 
 /** Converts a plan reference into all chapters touched by that passage. */
 function chaptersInReference(reference: string): string[] {
-  const match = reference.trim().match(/^(.+?)\\s+(\\d+)(?:\\.(\\d+))?(.*)$/);
+  const match = reference.trim().match(/^(.+?)\s+(\d+)(?:\.(\d+))?(.*)$/);
   if (!match) {
-    const book = reference.trim().replace(/\\s+/g, " ").toLowerCase();
+    const book = reference.trim().replace(/\s+/g, " ").toLowerCase();
     return SINGLE_CHAPTER_BOOKS.has(book) ? [book + "|1"] : [];
   }
 
-  const book = match[1]!.trim().replace(/\\s+/g, " ").toLowerCase();
+  const book = match[1]!.trim().replace(/\s+/g, " ").toLowerCase();
   const start = Number(match[2]);
   const rest = match[4] ?? "";
-  const range = rest.match(/^[—–-]\\s*(\\d+)(?:\\.(\\d+))?/);
+  const range = rest.match(/^[—–-]\s*(\d+)(?:\.(\d+))?/);
   const end = range ? Number(range[1]) : start;
 
   // Expand chapter ranges even if a verse is specified at only one endpoint.
