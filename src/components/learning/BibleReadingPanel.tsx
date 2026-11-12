@@ -111,6 +111,8 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
   const [passage, setPassage] = useState("");
   const [readingDate, setReadingDate] = useState(todayISO());
   const [note, setNote] = useState("");
+  const todayCardRef = useRef<HTMLElement | null>(null);
+  const hasAutoScrolled = useRef(false);
 
   const cyclesQuery = useQuery({
     queryKey: ["bible-reading-cycles", learningItemId],
@@ -273,6 +275,16 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
     }
   }, [activeCycle?.id, activeCycle?.mode, activeCycle?.status, completedDays]);
 
+  useEffect(() => {
+    if (activeCycle?.mode !== "annual_plan" || progressQuery.isLoading || hasAutoScrolled.current) return;
+    if (currentDayNumber < 1 || currentDayNumber > 365 || selectedMonth !== currentPlanMonth) return;
+    const frame = window.requestAnimationFrame(() => {
+      todayCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      hasAutoScrolled.current = true;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeCycle?.id, activeCycle?.mode, currentDayNumber, currentPlanMonth, selectedMonth, progressQuery.isLoading]);
+
   const todayPlanDay = activeCycle?.mode === "annual_plan" && currentDayNumber >= 1 && currentDayNumber <= 365
     ? BIBLE_READING_PLAN[currentDayNumber - 1]
     : undefined;
@@ -357,7 +369,7 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
               const completed = completedCount === 3;
               const assignedDate = addDaysISO(activeCycle.start_date, day.dayNumber - 1);
               return (
-                <article key={day.dayNumber} className={"min-w-0 rounded-xl border p-3 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5" : "bg-background/65")}>
+                <article ref={day.dayNumber === currentDayNumber ? todayCardRef : undefined} key={day.dayNumber} aria-current={day.dayNumber === currentDayNumber ? "date" : undefined} className={"min-w-0 rounded-xl border p-3 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20" : "bg-background/65")}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold">Día {day.dayNumber} · {displayDate(assignedDate)}</p>
