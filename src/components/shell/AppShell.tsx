@@ -360,7 +360,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             : "md:ml-[272px] md:w-[calc(100%_-_272px)]",
         )}
       >
-        <div className="mx-auto w-full max-w-6xl">{children}</div>
+        <div className={cn("mx-auto w-full", pathname === "/inicio" ? "max-w-none" : "max-w-6xl")}>{children}</div>
       </main>
 
       {/* Five frequent destinations plus a compact drawer for the remaining modules. */}
