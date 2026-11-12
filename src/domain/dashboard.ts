@@ -7,16 +7,97 @@ export const DASHBOARD_WIDGETS = [
 export type DashboardWidgetKey = (typeof DASHBOARD_WIDGETS)[number]["key"];
 export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetKey[] = ["planner", "focus", "habits"];
 
+export const HOME_DASHBOARD_WIDGETS = [
+  { key: "weather", label: "Clima", description: "Condiciones y pronóstico de tu ciudad." },
+  { key: "habits", label: "Hábitos del día", description: "Tu avance y ritmo semanal." },
+  { key: "agenda", label: "Agenda", description: "Tareas y eventos de la fecha." },
+  { key: "reading", label: "Lectura actual", description: "Progreso de tus libros." },
+  { key: "games", label: "Juego actual", description: "El videojuego que tienes en curso." },
+  { key: "hydration", label: "Hidratación", description: "Agua y otros líquidos registrados." },
+  { key: "diary", label: "Diario del día", description: "Ideas, pensamientos y capturas." },
+  { key: "activity", label: "Actividad reciente", description: "Tu historial conectado." },
+  { key: "shared-challenges", label: "Retos compartidos", description: "Metas que avanzas con otras personas." },
+] as const;
+
+export type HomeDashboardWidgetKey = (typeof HOME_DASHBOARD_WIDGETS)[number]["key"];
+
+export interface HomeDashboardLayout {
+  order: HomeDashboardWidgetKey[];
+  visible: HomeDashboardWidgetKey[];
+}
+
+export const DEFAULT_HOME_DASHBOARD_ORDER: HomeDashboardWidgetKey[] =
+  HOME_DASHBOARD_WIDGETS.map((widget) => widget.key);
+export const DEFAULT_HOME_DASHBOARD_LAYOUT: HomeDashboardLayout = {
+  order: [...DEFAULT_HOME_DASHBOARD_ORDER],
+  visible: [...DEFAULT_HOME_DASHBOARD_ORDER],
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /**
- * Older profiles and newly created profiles are initialized by the migration.
- * Once a user explicitly saves an empty list, respect that choice and let Home
- * show its clean empty state instead of silently turning disabled widgets back on.
+ * Supports both the original array and the expanded per-user settings object.
+ * The original three switches in Perfil continue to work without a migration.
  */
 export function normalizeDashboardWidgets(value: unknown): DashboardWidgetKey[] {
-  if (!Array.isArray(value)) return [...DEFAULT_DASHBOARD_WIDGETS];
-  if (value.length === 0) return [];
-  const valid = value.filter((key): key is DashboardWidgetKey =>
+  const stored = Array.isArray(value)
+    ? value
+    : isRecord(value) && Array.isArray(value.legacyWidgets)
+      ? value.legacyWidgets
+      : null;
+  if (!stored) return [...DEFAULT_DASHBOARD_WIDGETS];
+  if (stored.length === 0) return [];
+  const valid = stored.filter((key): key is DashboardWidgetKey =>
     DASHBOARD_WIDGETS.some((widget) => widget.key === key),
   );
   return valid.length ? Array.from(new Set(valid)) : [...DEFAULT_DASHBOARD_WIDGETS];
+}
+
+/**
+ * Old profiles only stored the three legacy switches. Their initial home view
+ * therefore keeps all previous cards except the ones they had disabled.
+ */
+export function normalizeHomeDashboardLayout(value: unknown): HomeDashboardLayout {
+  if (isRecord(value) && isRecord(value.homeLayout)) {
+    const saved = value.homeLayout;
+    const requestedOrder = Array.isArray(saved.order) ? saved.order : [];
+    const order = requestedOrder.filter((key): key is HomeDashboardWidgetKey =>
+      HOME_DASHBOARD_WIDGETS.some((widget) => widget.key === key),
+    );
+    const completeOrder = [
+      ...new Set([...order, ...DEFAULT_HOME_DASHBOARD_ORDER]),
+    ];
+    const requestedVisible = Array.isArray(saved.visible) ? saved.visible : DEFAULT_HOME_DASHBOARD_ORDER;
+    const visible = Array.from(new Set(requestedVisible.filter((key): key is HomeDashboardWidgetKey =>
+      HOME_DASHBOARD_WIDGETS.some((widget) => widget.key === key),
+    )));
+    return { order: completeOrder, visible };
+  }
+
+  const legacy = normalizeDashboardWidgets(value);
+  const visible = DEFAULT_HOME_DASHBOARD_ORDER.filter((key) => {
+    if (key === "agenda") return legacy.includes("planner");
+    if (key === "habits") return legacy.includes("habits");
+    return true;
+  });
+  return { order: [...DEFAULT_HOME_DASHBOARD_ORDER], visible };
+}
+
+/** Preserve the old Perfil switches while saving the new Home arrangement. */
+export function mergeDashboardSettings(
+  currentValue: unknown,
+  legacyWidgets: DashboardWidgetKey[],
+  homeLayout?: HomeDashboardLayout,
+) {
+  return {
+    legacyWidgets: [...legacyWidgets],
+    homeLayout: homeLayout
+      ? {
+          order: [...homeLayout.order],
+          visible: [...homeLayout.visible],
+        }
+      : normalizeHomeDashboardLayout(currentValue),
+  };
 }
