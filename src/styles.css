@@ -199,8 +199,9 @@
 }
 
 /*
- * Inicio: full-width responsive card canvas with natural document flow.
- * Every row intentionally uses the available width; cards never overlap or clip.
+ * Inicio: full-width welcome hero and two-column dashboard.
+ * The welcome stays left, climate fills its open right side, and card columns
+ * keep the requested sequence from top to bottom.
  */
 .inicio-dashboard {
   display: flex;
@@ -212,94 +213,99 @@
   overflow: visible;
 }
 
+.inicio-hero {
+  width: 100%;
+  min-width: 0;
+}
+
+.inicio-hero-layout {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.inicio-hero-layout--no-weather {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.inicio-hero-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.875rem;
+}
+
+.inicio-hero-weather {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.inicio-hero-weather .weather-card {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+}
+
 .inicio-dashboard-grid {
   display: grid;
   width: 100%;
   min-width: 0;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
   gap: 0.875rem;
-  overflow: visible;
+}
+
+.inicio-dashboard-column {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.875rem;
 }
 
 .inicio-widget {
+  width: 100%;
   min-width: 0;
-  grid-column: span 6;
-  align-self: start;
+  align-self: stretch;
 }
 
-.inicio-widget--weather,
-.inicio-widget--activity,
-.inicio-widget--shared-challenges {
+.inicio-dashboard-activity {
+  min-width: 0;
   grid-column: 1 / -1;
 }
 
-.inicio-widget--habits {
-  grid-column: span 7;
-}
+@media (max-width: 900px) {
+  .inicio-hero-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-.inicio-widget--agenda {
-  grid-column: span 5;
-}
+  .inicio-hero-weather .weather-card {
+    height: auto;
+  }
 
-.inicio-widget--hydration,
-.inicio-widget--diary,
-.inicio-widget--reading,
-.inicio-widget--games {
-  grid-column: span 6;
-}
-
-.inicio-habits-column,
-.inicio-planner-column,
-.inicio-wellbeing-column,
-.inicio-planner-column > div {
-  display: contents;
-}
-
-.inicio-hero {
-  min-width: 0;
-  width: 100%;
-}
-
-@media (max-width: 1100px) {
   .inicio-dashboard-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .inicio-widget,
-  .inicio-widget--habits,
-  .inicio-widget--agenda,
-  .inicio-widget--hydration,
-  .inicio-widget--diary,
-  .inicio-widget--reading,
-  .inicio-widget--games {
-    grid-column: span 1;
-  }
-
-  .inicio-widget--weather,
-  .inicio-widget--activity,
-  .inicio-widget--shared-challenges {
-    grid-column: 1 / -1;
+  .inicio-dashboard-activity {
+    grid-column: 1;
   }
 }
 
 @media (max-width: 680px) {
-  .inicio-dashboard-grid {
-    grid-template-columns: minmax(0, 1fr);
+  .inicio-dashboard,
+  .inicio-dashboard-grid,
+  .inicio-dashboard-column {
     gap: 0.75rem;
   }
 
-  .inicio-widget,
-  .inicio-widget--weather,
-  .inicio-widget--habits,
-  .inicio-widget--agenda,
-  .inicio-widget--hydration,
-  .inicio-widget--diary,
-  .inicio-widget--reading,
-  .inicio-widget--games,
-  .inicio-widget--activity,
-  .inicio-widget--shared-challenges {
-    grid-column: 1 / -1;
+  .inicio-hero {
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 }
 
