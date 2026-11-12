@@ -18,19 +18,36 @@ export function useHydrationEntries(date: string) {
     queryKey: hydrationKeys.day(date),
     queryFn: async (): Promise<HydrationEntry[]> => {
       const user_id = await currentUserId();
-      const { data, error } = await supabase
+      const withIcon = await supabase
         .from("hydration_entries")
         .select("id,user_id,consumed_on,consumed_at,beverage_type,icon,amount_ml,note,created_at")
         .eq("user_id", user_id)
         .eq("consumed_on", date)
         .order("consumed_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as HydrationEntry[];
+
+      if (!withIcon.error) return (withIcon.data ?? []) as HydrationEntry[];
+
+      // The icon column is an optional presentation enhancement. Older
+      // installations may not have applied the icon migration yet; that must
+      // not make existing hydration records disappear or break the summary.
+      const missingOptionalIcon =
+        ["42703", "PGRST204"].includes(String(withIcon.error.code ?? "")) &&
+        /icon/i.test(withIcon.error.message ?? "");
+      if (!missingOptionalIcon) throw withIcon.error;
+
+      const legacy = await supabase
+        .from("hydration_entries")
+        .select("id,user_id,consumed_on,consumed_at,beverage_type,amount_ml,note,created_at")
+        .eq("user_id", user_id)
+        .eq("consumed_on", date)
+        .order("consumed_at", { ascending: true });
+      if (legacy.error) throw legacy.error;
+      return (legacy.data ?? []).map((entry) => ({ ...entry, icon: null })) as HydrationEntry[];
     },
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
-    retry: 2,
+    staleTime: 30_000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 }
 
