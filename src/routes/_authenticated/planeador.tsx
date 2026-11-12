@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HelpTip } from "@/components/common/HelpTip";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Clock, MapPin, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
@@ -20,7 +20,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PlannerItemDialog } from "@/components/planner/PlannerItemDialog";
 import { PlannerCategoryDialog } from "@/components/planner/PlannerCategoryDialog";
 import { useGlobalDate } from "@/hooks/use-global-date";
-import { usePlannerCategories, usePlannerItems, usePlannerMutations } from "@/hooks/use-planner";
+import { usePlannerCategories, usePlannerItems, usePlannerItemsRange, usePlannerMutations } from "@/hooks/use-planner";
 import { cn } from "@/lib/utils";
 import { formatDayLabel } from "@/lib/date";
 import {
@@ -51,9 +51,22 @@ export const Route = createFileRoute("/_authenticated/planeador")({
 
 function PlannerPage() {
   const { date, setDate, goToday } = useGlobalDate();
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(date + "T12:00:00"));
+  const monthYear = calendarMonth.getFullYear();
+  const monthIndex = calendarMonth.getMonth();
+  const monthStart = `${monthYear}-${String(monthIndex + 1).padStart(2, "0")}-01`;
+  const monthEnd = `${monthYear}-${String(monthIndex + 1).padStart(2, "0")}-${String(new Date(monthYear, monthIndex + 1, 0).getDate()).padStart(2, "0")}`;
   const categoriesQuery = usePlannerCategories();
   const itemsQuery = usePlannerItems(date);
+  const monthItemsQuery = usePlannerItemsRange(monthStart, monthEnd);
   const m = usePlannerMutations(date);
+
+  useEffect(() => {
+    const nextMonth = new Date(date + "T12:00:00");
+    if (nextMonth.getFullYear() !== calendarMonth.getFullYear() || nextMonth.getMonth() !== calendarMonth.getMonth()) {
+      setCalendarMonth(nextMonth);
+    }
+  }, [date, calendarMonth]);
 
   const [itemDialog, setItemDialog] = useState<{
     open: boolean;
@@ -72,6 +85,13 @@ function PlannerPage() {
 
   const categories = categoriesQuery.data ?? [];
   const items = itemsQuery.data ?? [];
+  const monthItems = monthItemsQuery.data ?? [];
+  const markedDates = useMemo(
+    () => [...new Set(monthItems.map((item) => item.scheduled_on))].map((day) => new Date(day + "T12:00:00")),
+    [monthItems],
+  );
+  const monthTaskCount = monthItems.filter((item) => item.type === "task").length;
+  const monthEventCount = monthItems.filter((item) => item.type === "event").length;
 
   const { timed, untimed } = useMemo(() => {
     const sorted = [...items].sort(compareChronologically);
@@ -129,18 +149,36 @@ function PlannerPage() {
             <div><h2 className="text-sm font-semibold">Calendario</h2><p className="text-xs text-muted-foreground">Selecciona un día para ver o programar tus tareas y eventos.</p></div>
             <Button type="button" size="sm" variant="outline" onClick={goToday}>Hoy</Button>
           </div>
-          <Calendar mode="single" selected={new Date(date + "T12:00:00")} onSelect={(day) => {
-            if (!day) return;
-            const year = day.getFullYear();
-            const month = String(day.getMonth() + 1).padStart(2, "0");
-            const dayNumber = String(day.getDate()).padStart(2, "0");
-            setDate(year + "-" + month + "-" + dayNumber);
-          }} className="mx-auto sm:mx-0"/>
+          <Calendar
+            mode="single"
+            month={calendarMonth}
+            onMonthChange={setCalendarMonth}
+            selected={new Date(date + "T12:00:00")}
+            modifiers={{ hasItems: markedDates }}
+            modifiersClassNames={{ hasItems: "after:absolute after:bottom-1 after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-primary" }}
+            onSelect={(day) => {
+              if (!day) return;
+              const year = day.getFullYear();
+              const month = String(day.getMonth() + 1).padStart(2, "0");
+              const dayNumber = String(day.getDate()).padStart(2, "0");
+              setDate(year + "-" + month + "-" + dayNumber);
+            }}
+            className="mx-auto sm:mx-0"
+          />
         </div>
         <div className="min-w-0 flex-1 self-center rounded-xl bg-muted/30 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Día seleccionado</p>
           <p className="mt-1 text-base font-semibold capitalize">{formatDayLabel(date)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">La agenda de este día aparece debajo. Puedes cambiar de fecha desde el calendario.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {items.length ? `${items.length} elementos · ${items.filter((item) => item.type === "task").length} tareas · ${items.filter((item) => item.type === "event").length} citas o eventos` : "Este día está libre por ahora."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button type="button" size="sm" onClick={() => setItemDialog({ open: true, item: null, type: "task" })}><Plus className="mr-1 h-3.5 w-3.5"/>Añadir tarea</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setItemDialog({ open: true, item: null, type: "event" })}><Plus className="mr-1 h-3.5 w-3.5"/>Añadir cita o evento</Button>
+          </div>
+          <p className="mt-3 border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
+            {monthItemsQuery.isLoading ? "Actualizando el mes…" : `${monthTaskCount} tareas y ${monthEventCount} citas o eventos en este mes. Puedes registrar tantos como necesites por día.`}
+          </p>
         </div>
       </section>
 
