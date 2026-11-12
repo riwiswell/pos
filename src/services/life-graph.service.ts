@@ -54,6 +54,7 @@ export const lifeGraphService={
   if(table==="relationship_interactions")add("relationship_interaction",id,"relationship",input.relationship_id,"interaction_with");
   if(table==="checklist_items")add("checklist_item",id,"checklist",input.checklist_id,"belongs_to");
   if(table==="menstrual_records")add("menstrual_record",id,"menstrual_profile",input.profile_id,"belongs_to");
+  if(table==="menstrual_daily_logs")add("menstrual_daily_log",id,"menstrual_profile",input.profile_id,"belongs_to");
   if(table==="work_items"){
    add("work_item",id,"work_item",input.parent_work_item_id,"subtask_of");
    add("journal_entry",String(input.source_journal_entry_id??""),"work_item",id,"became_project");
