@@ -1,6 +1,6 @@
 import { useEffect,useMemo,useRef,useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { CalendarDays,CalendarHeart,ChevronDown,ChevronLeft,ChevronRight,ChevronUp,ClipboardList,Coffee,CupSoda,Droplets,HeartPulse,Leaf,Pencil,Pill,Plus,Trash2 } from "lucide-react";
+import { CalendarHeart,ChevronDown,ChevronLeft,ChevronRight,ChevronUp,ClipboardList,Coffee,CupSoda,Droplets,HeartPulse,Leaf,Pencil,Pill,Plus,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label"; import { Switch } from "@/components/ui/switch";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { SleepPanel } from "@/components/health/SleepPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
 import { useGlobalDate } from "@/hooks/use-global-date";
@@ -263,7 +263,7 @@ function Medications(){const{date}=useGlobalDate();const meds=useMedications();c
 </div>
 </div></section><div className="grid gap-3 md:grid-cols-2">{displayedMeds.map((x:any)=>{const remaining=remainingQuantity(x,Number(taken.data?.[x.id]??0),Number(stock.data?.[x.id]??0));const days=remaining===null?null:durationDays({...x,total_quantity:remaining});return <article key={x.id} className={"glass rounded-2xl border p-4 "+(x.active?"border-border":"border-dashed border-muted-foreground/40 opacity-90")}><div className="flex items-start gap-3"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{x.name}</h2><span className={"rounded-full px-2 py-0.5 text-[10px] font-semibold "+(x.active?"bg-primary/10 text-primary":"bg-muted text-muted-foreground")}>{x.active?"Activo":"Pausado"}</span></div><p className="text-xs text-muted-foreground">{medicationScheduleLabel(x)}</p>{remaining!==null&&<p className="mt-2 text-sm">Restantes: <b>{formatStockQuantity(remaining,x.stock_unit||"unidades")}</b> <HelpTip helpKey="medication.remaining"/></p>}{days!==null&&<p className="text-xs text-muted-foreground">Duración estimada: {days} días aproximados </p>}</div></div>{remaining!==null&&remaining<=0&&<p className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300">Sin existencias. El registro y los recordatorios siguen activos; repón el inventario cuando compres más.</p>}<div className="mt-3 grid grid-cols-[1fr_auto] gap-2 border-t border-border pt-3"><Input aria-label={"Cantidad para reponer "+x.name} type="number" min="0.001" step="0.001" className="h-9" placeholder={"Reponer ("+(x.stock_unit||"unidades")+")"} value={restockInputs[x.id]??""} onChange={e=>setRestockInputs(current=>({...current,[x.id]:e.target.value}))}/><Button size="sm" variant="outline" disabled={!Number.isFinite(Number(restockInputs[x.id]))||Number(restockInputs[x.id])<=0||m.addStock.isPending} onClick={()=>void m.addStock.mutateAsync({medicationId:x.id,quantity:Number(restockInputs[x.id])}).then(()=>setRestockInputs(current=>({...current,[x.id]:""})))}><Plus className="mr-1 h-3.5 w-3.5"/>Reponer</Button></div><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>{setEditing(x);setOpen(true)}}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="sm" variant={x.active?"ghost":"default"} onClick={()=>{if(x.active){void m.remove.mutateAsync(x.id).catch(()=>undefined)}else{setEditing({...x,active:true,start_date:x.start_date<todayISO()?todayISO():x.start_date,end_date:null});setOpen(true)}}}>{x.active?"Pausar medicamento":"Reactivar medicamento"}</Button></div></article>})}</div>{displayedMeds.length===0&&<p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{showPaused?"No hay medicamentos registrados todavía.":"No tienes medicamentos activos. Puedes mostrar los pausados o registrar uno nuevo."}</p>}<MedicationDialog open={open} onOpenChange={o=>{setOpen(o);if(!o)setEditing(null)}} medication={editing} pending={m.create.isPending||m.update.isPending} onSubmit={async input=>{if(editing)await m.update.mutateAsync({id:editing.id,patch:input});else await m.create.mutateAsync(input);}}/></section>}
 const CYCLE_SYMPTOMS = [
- "Có calambres", "Dolor de cabeza", "Hinchazón", "Cansancio", "Sensibilidad en los senos",
+ "Cólicos", "Dolor de cabeza", "Hinchazón", "Cansancio", "Sensibilidad en los senos",
  "Acné", "Cambios de humor", "Antojos", "Náuseas", "Dolor lumbar", "Diarrea", "Estreñimiento",
  "Mareos", "Dificultad para dormir"
 ];
@@ -285,13 +285,13 @@ function Cycle(){
  const profileMutations=useLGMutations("menstrual_profiles");
  const recordMutations=useLGMutations("menstrual_records");
  const dailyMutations=useLGMutations("menstrual_daily_logs");
- const{user}=useAuth();
  const[isMine,setIsMine]=useState(true);
  const[subject,setSubject]=useState("");
  const[type,setType]=useState("partner");
  const[cycle,setCycle]=useState("28");
  const[creating,setCreating]=useState(false);
  const profiles=q.data||[];
+ const hasOwnProfile=profiles.some((profile:any)=>profile.subject_type==="self");
  const createProfile=async()=>{
   const name=isMine?"Mi ciclo":subject.trim();
   if(!name)return;
@@ -323,7 +323,7 @@ function Cycle(){
     </label>
     <p className="self-end text-xs text-muted-foreground">Se usa únicamente como referencia orientativa. El calendario conserva las fechas reales registradas.</p>
    </div>
-   <Button disabled={creating||(!isMine&&!subject.trim())} onClick={()=>void createProfile()}><Plus className="mr-1 h-4 w-4"/>{creating?"Guardando…":isMine?"Crear mi seguimiento":"Agregar seguimiento"}</Button>
+   <Button disabled={creating||(!isMine&&!subject.trim())||(isMine&&hasOwnProfile)} onClick={()=>void createProfile()}><Plus className="mr-1 h-4 w-4"/>{creating?"Guardando…":isMine&&hasOwnProfile?"Ya existe tu seguimiento":isMine?"Crear mi seguimiento":"Agregar seguimiento"}</Button>
   </div>
   {q.isError&&<p className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">No se pudieron cargar los perfiles. Intenta actualizar la pantalla.</p>}
   {profiles.length===0&&!q.isLoading&&<p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Todavía no hay seguimientos. Marca «Este seguimiento es mío» para crear el tuyo.</p>}
@@ -413,7 +413,7 @@ function CycleProfile({profile,records,dailyLogs,recordMutations,dailyMutations,
      const period=recordForDay(date);
      const isSelected=date===selectedDate;
      const hasLog=dailyLogs.some((entry:any)=>entry.log_date===date);
-     return <button type="button" key={date} onClick={()=>setSelectedDate(date)} aria-pressed={isSelected}
+     return <button type="button" key={date} disabled={date>today} onClick={()=>setSelectedDate(date)} aria-pressed={isSelected}
       className={"relative grid h-10 place-items-center rounded-lg text-sm transition "+(period?"bg-rose-600 font-semibold text-white hover:bg-rose-700": "hover:bg-muted")+(isSelected?" ring-2 ring-primary ring-offset-1":"")+(date===today?" after:absolute after:bottom-1 after:h-1 after:w-1 after:rounded-full after:bg-current":"")}>
       {day}{hasLog&&<span className={"absolute right-1 top-1 h-1.5 w-1.5 rounded-full "+(period?"bg-white":"bg-primary")}/>}
      </button>;
