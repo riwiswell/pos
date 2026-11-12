@@ -343,13 +343,15 @@ export const medicationsService = {
   },
 
   async setStatus(id: string, status: DoseStatus, water?: number, takenAt?: string) {
-    const patch: { status: string; taken_at?: string | null; snoozed_until?: string | null; water_glasses?: number | null } = { status };
+    const patch: { status: string; taken_at?: string | null; snoozed_until?: string | null; water_glasses?: number | null; entry_origin?: string } = { status };
     if (status === "taken") {
       patch.taken_at = takenAt ?? new Date().toISOString();
+      patch.entry_origin = "manual";
       if (water !== undefined) patch.water_glasses = water;
     } else {
       patch.taken_at = null;
-      patch.water_glasses = null; // un-taking reverts the water contribution
+      patch.water_glasses = null; // skipped doses do not contribute water
+      if (status === "skipped") patch.entry_origin = "manual";
     }
     if (status === "snoozed") {
       // Same row, new reminder time: never duplicates the original dose.
