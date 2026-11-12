@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { HabitCategory, HabitCategoryInput } from "@/domain/types";
 
+const CATEGORY_ICONS = ["📁","🎯","💧","🥤","☕","🍵","🧋","🧃","🍹","🍎","🥗","🍽️","💊","🩺","🏃","🚴","🧘","📚","📖","🎨","🎮","🎧","💼","💰","🏠","🧹","🌱","🐾","❤️","⭐","✨","📅","🧠","🛠️","✈️","🙏"];
+
 const PALETTE = [
   "#7dd3fc",
   "#a7f3d0",
@@ -34,17 +36,19 @@ interface Props {
 export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Props) {
   const [name, setName] = useState("");
   const [color, setColor] = useState(PALETTE[0]!);
+  const [icon, setIcon] = useState("📁");
 
   useEffect(() => {
     if (!open) return;
     setName(category?.name ?? "");
     setColor(category?.color ?? PALETTE[0]!);
+    setIcon(category?.icon ?? "📁");
   }, [open, category]);
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    onSubmit({ name: name.trim(), color });
+    onSubmit({ name: name.trim(), icon, color });
     onOpenChange(false);
   }
 
@@ -65,6 +69,12 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Props
               autoFocus
               required
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Icono</Label>
+            <div className="grid grid-cols-8 gap-1.5 rounded-xl border border-border/60 p-2">
+              {CATEGORY_ICONS.map((option) => <button key={option} type="button" aria-label={"Elegir icono " + option} aria-pressed={icon===option} onClick={() => setIcon(option)} className={cn("grid h-9 w-9 place-items-center rounded-lg border text-xl", icon===option ? "border-primary bg-primary/10 ring-2 ring-primary/20" : "border-border/60 hover:bg-accent")}>{option}</button>)}
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Color</Label>
