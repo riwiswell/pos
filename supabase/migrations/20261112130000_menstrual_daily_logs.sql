@@ -26,8 +26,20 @@ drop policy if exists menstrual_daily_logs_all_own on public.menstrual_daily_log
 create policy menstrual_daily_logs_all_own
   on public.menstrual_daily_logs
   for all to authenticated
-  using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
+  using (
+    (select auth.uid()) = user_id
+    and exists (
+      select 1 from public.menstrual_profiles profile
+      where profile.id = profile_id and profile.user_id = (select auth.uid())
+    )
+  )
+  with check (
+    (select auth.uid()) = user_id
+    and exists (
+      select 1 from public.menstrual_profiles profile
+      where profile.id = profile_id and profile.user_id = (select auth.uid())
+    )
+  );
 
 drop trigger if exists menstrual_daily_logs_updated_at on public.menstrual_daily_logs;
 create trigger menstrual_daily_logs_updated_at
