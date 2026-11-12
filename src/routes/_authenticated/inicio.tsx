@@ -8,7 +8,6 @@ import {
   Clock3,
   Droplets,
   Gamepad2,
-  HeartHandshake,
   Plus,
   Sparkles,
   Target,
@@ -234,10 +233,10 @@ function HomePage() {
       </section>
 
       <div className="mb-1"><WeatherCard compact /></div>
-      <Link to="/relaciones" search={(prev: Record<string, unknown>) => prev} className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><HeartHandshake className="h-5 w-5"/></span>
-        <span className="min-w-0 flex-1"><b className="block text-sm">Retos y hábitos compartidos</b><span className="text-xs text-muted-foreground">Accede directamente a tus espacios con amigos y pareja.</span></span>
-        <ArrowUpRight className="h-4 w-4 shrink-0 text-primary"/>
+      <Link to="/gamificacion" hash="#desafios" search={(prev: Record<string, unknown>) => prev} className="group flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-3 transition hover:border-primary/40 hover:bg-primary/[.07]">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Target className="h-5 w-5"/></span>
+        <span className="min-w-0 flex-1"><b className="block text-sm">Retos compartidos</b><span className="text-xs text-muted-foreground">Crea un reto o revisa los desafíos que ya están en marcha.</span></span>
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">Ver y crear <ArrowUpRight className="h-4 w-4"/></span>
       </Link>
       <div className="inicio-dashboard-grid grid gap-3">
         <div className="inicio-habits-column min-w-0">
