@@ -637,30 +637,85 @@ function HydrationOverview({ date, compact = false }: { date: string; compact?: 
   const metrics = usePersonalDateList<{ water_liters: number | null }>("health_metrics", "metric_date", date);
   const doses = useDoses(date);
   const entries = useHydrationEntries(date);
-  const legacyWaterMl = (Number(metrics.data?.[0]?.water_liters ?? 0) || 0) * 1000;
-  const recordedWaterMl = (entries.data ?? []).filter((entry) => entry.beverage_type === "water").reduce((sum, entry) => sum + Number(entry.amount_ml || 0), 0);
-  const otherFluidMl = (entries.data ?? []).filter((entry) => entry.beverage_type !== "water").reduce((sum, entry) => sum + Number(entry.amount_ml || 0), 0);
-  const medicineWaterMl = waterGlassesToMl(medicationWater(doses.data ?? []));
+
+  const failedSources = [
+    metrics.isError ? "el resumen de salud" : null,
+    doses.isError ? "los registros de medicamentos" : null,
+    entries.isError ? "las bebidas registradas" : null,
+  ].filter((value): value is string => Boolean(value));
+  const allFailed = failedSources.length === 3;
+  const ready = !metrics.isLoading && !doses.isLoading && !entries.isLoading;
+
+  // A failed source should not hide values returned successfully by the others.
+  const legacyWaterMl = metrics.isError ? 0 : (Number(metrics.data?.[0]?.water_liters ?? 0) || 0) * 1000;
+  const recordedWaterMl = entries.isError ? 0 : (entries.data ?? [])
+    .filter((entry) => entry.beverage_type === "water")
+    .reduce((sum, entry) => sum + Number(entry.amount_ml || 0), 0);
+  const otherFluidMl = entries.isError ? 0 : (entries.data ?? [])
+    .filter((entry) => entry.beverage_type !== "water")
+    .reduce((sum, entry) => sum + Number(entry.amount_ml || 0), 0);
+  const medicineWaterMl = doses.isError ? 0 : waterGlassesToMl(medicationWater(doses.data ?? []));
   const waterMl = legacyWaterMl + recordedWaterMl + medicineWaterMl;
   const totalFluidMl = waterMl + otherFluidMl;
   const targetLiters = 2.25;
   const percent = Math.min(100, Math.round((waterMl / (targetLiters * 1000)) * 100));
   const waterAmount = (waterMl / 1000).toLocaleString("es-CO", { maximumFractionDigits: 2 });
   const fmtMl = (value: number) => Math.round(value).toLocaleString("es-CO");
+  const retry = () => void Promise.all([metrics.refetch(), doses.refetch(), entries.refetch()]);
 
   return (
-    <section className="relative overflow-hidden rounded-[24px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[.13] via-card to-card p-3.5 shadow-sm">
-      <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-400/10 blur-2xl" />
+    <section className="relative min-w-0 overflow-hidden rounded-[24px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[.13] via-card to-card p-3.5 shadow-sm">
+      <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-400/10" />
       <div className="relative">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400/15 text-cyan-400"><Droplets className="h-5 w-5" /></span><div><p className="text-[11px] font-semibold uppercase tracking-[.14em] text-cyan-500">Bienestar</p><h2 className="font-semibold">Hidratación</h2></div></div>
-          <Button asChild size="sm" variant="ghost" className="rounded-xl"><Link to="/salud" search={(prev: Record<string, unknown>) => prev}>Registrar <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link></Button>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-400/15 text-cyan-400">
+              <Droplets className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-cyan-500">Bienestar</p>
+              <h2 className="font-semibold">Hidratación</h2>
+            </div>
+          </div>
+          <Button asChild size="sm" variant="ghost" className="shrink-0 rounded-xl">
+            <Link to="/salud" search={(prev: Record<string, unknown>) => prev}>
+              Registrar <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+            </Link>
+          </Button>
         </div>
-        {metrics.isError || doses.isError || entries.isError ? <p className="mt-4 text-xs text-muted-foreground">No se pudo cargar el resumen de hidratación.</p> : (
+
+        {allFailed ? (
+          <div className="mt-3 rounded-xl border border-dashed border-border/70 bg-background/30 p-3">
+            <p className="text-xs text-muted-foreground">
+              No pude consultar Hidratación: fallaron {failedSources.join(", ")}.
+            </p>
+            <Button type="button" size="sm" variant="outline" className="mt-2 h-8" onClick={retry}>
+              Reintentar
+            </Button>
+          </div>
+        ) : (
           <>
-            <div className="mt-3 flex items-end justify-between gap-3"><p className="text-2xl font-semibold tabular-nums">{metrics.isLoading || doses.isLoading || entries.isLoading ? "…" : waterAmount}<span className="ml-1 text-sm font-normal text-muted-foreground">/ {targetLiters.toLocaleString("es-CO")} L</span></p><span className="text-sm font-semibold text-cyan-500 tabular-nums">{metrics.isLoading || doses.isLoading || entries.isLoading ? " " : `${percent}%`}</span></div>
-            <Progress value={metrics.isLoading || doses.isLoading || entries.isLoading ? 0 : percent} className="mt-3 h-2.5" />
-            {!metrics.isLoading && !doses.isLoading && !entries.isLoading && <div className="mt-2 space-y-0.5 text-[11px] text-muted-foreground"><p>Agua simple: {fmtMl(waterMl)} ml · Otros líquidos: {fmtMl(otherFluidMl)} ml</p><p>Total registrado: {fmtMl(totalFluidMl)} ml</p></div>}
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <p className="text-2xl font-semibold tabular-nums">
+                {!ready ? "…" : waterAmount}
+                <span className="ml-1 text-sm font-normal text-muted-foreground">/ {targetLiters.toLocaleString("es-CO")} L</span>
+              </p>
+              <span className="text-sm font-semibold text-cyan-500 tabular-nums">
+                {!ready ? " " : `${percent}%`}
+              </span>
+            </div>
+            <Progress value={!ready || allFailed ? 0 : percent} className="mt-3 h-2.5" />
+            {ready && (
+              <div className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
+                <p>Agua simple: {fmtMl(waterMl)} ml · Otros líquidos: {fmtMl(otherFluidMl)} ml</p>
+                <p>Total registrado: {fmtMl(totalFluidMl)} ml</p>
+              </div>
+            )}
+            {failedSources.length > 0 && (
+              <p className="mt-2 text-[10px] leading-4 text-amber-500">
+                Resumen parcial: no se pudieron consultar {failedSources.join(" y ")}.
+              </p>
+            )}
           </>
         )}
       </div>
