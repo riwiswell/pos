@@ -299,7 +299,7 @@ function FinancePage() {
       income: [...scores.income.entries()].sort((a, b) => b[1].count - a[1].count || b[1].lastUsed.localeCompare(a[1].lastUsed)).slice(0, 5).map(([id]) => id),
     };
   }, [titheHistory.data]);
-  const balances = accountBalances(balanceRows.data ?? []);
+  const balances = accountBalances(balanceRows.data ?? [], accountList);
   const total = totalBalance(accountList, balances);
   const expenses = sumBy(list, "expense");
   const income = sumBy(list, "income");
