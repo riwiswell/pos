@@ -235,7 +235,7 @@ function HomePage() {
               <WeatherCard compact />
               {homeLayout.visible.includes("activity") && (
                 <div className="inicio-widget inicio-widget--activity" style={{ order: homeLayout.order.indexOf("activity") }}>
-                  <LifeActivityFeed connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} />
+                  <LifeActivityFeed date={date} connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} />
                 </div>
               )}
             </div>
