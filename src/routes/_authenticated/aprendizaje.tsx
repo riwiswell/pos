@@ -507,8 +507,8 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   };
   return <section className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, tiempo jugado y progreso de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div><div className="flex items-center gap-2">
-      {isGames&&items.length>0&&!existingGamesUpdated&&<Button size="sm" variant="outline" onClick={()=>void applyExistingGameDefaults()}>Actualizar juegos actuales</Button>}
+      <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, tiempo jugado y progreso de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div><div className="flex flex-wrap items-center gap-2">
+      {isGames&&items.length>0&&!existingGamesUpdated&&items.some((item:any)=>item.platform!=="PC"||item.genre!=="Acción y Aventuras")&&<Button size="sm" variant="outline" onClick={()=>void applyExistingGameDefaults()} title="Solo actualiza los videojuegos ya registrados; los próximos se agregarán sin valores predeterminados.">Actualizar juegos actuales</Button>}
       <LearningSortControl value={sort} onChange={setSort} includeGenre={isGames}/>
       <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setPlatform("");setGenre("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
     </div>
