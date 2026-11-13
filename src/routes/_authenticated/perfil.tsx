@@ -55,7 +55,7 @@ function ProfilePage() {
   const { save, uploadMedia } = useProfileMutations();
   const help = useHelpEnabled();
   const setHelp = useSetHelpEnabled();
-  const { theme, setTheme, accentColor, setAccentColor, accentOptions } = useTheme();
+  const { theme, setTheme, workspaceColor, setWorkspaceColor, workspaceColorOptions } = useTheme();
 
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -90,8 +90,15 @@ function ProfilePage() {
     setBusy(true);
     try {
       const path = await uploadMedia.mutateAsync({ file, kind });
-      if (kind === "avatar") setAvatar(path);
-      else setBackground(path);
+      if (kind === "avatar") {
+        setAvatar(path);
+      } else {
+        // Uploading a background also saves its profile reference immediately.
+        // Previously the file was uploaded but remained inactive until Save configuration.
+        await save.mutateAsync({ background_url: path });
+        setBackground(path);
+        await profileQuery.refetch();
+      }
     } catch {
       // The shared mutation reports the specific storage/validation error.
     } finally {
@@ -224,7 +231,7 @@ function ProfilePage() {
     <div className="space-y-5 pb-24">
       <header>
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-semibold">Perfil y configuración</h1>
+          <h1 className="text-xl font-semibold text-foreground">Perfil y configuración</h1>
           <HelpTip helpKey="profile" />
         </div>
         <p className="text-sm text-muted-foreground">
@@ -233,7 +240,7 @@ function ProfilePage() {
       </header>
 
       <section className="glass space-y-4 rounded-2xl p-4">
-        <h2 className="font-semibold">Identidad y apariencia</h2>
+        <h2 className="font-semibold text-foreground">Identidad y apariencia</h2>
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16">
             <AvatarImage src={avatarUrl || undefined} />
@@ -255,16 +262,48 @@ function ProfilePage() {
             <Upload className="mr-1 h-4 w-4" /> Fondo
           </Button>
           <input ref={backgroundInput} type="file" accept="image/*" hidden onChange={(e) => { void pick(e.target.files?.[0], "background"); e.currentTarget.value = ""; }} />
-          {backgroundUrl && <span className="self-center text-xs text-muted-foreground">Fondo cargado</span>}
+          {backgroundUrl && <span className="self-center text-xs text-muted-foreground">Fondo aplicado</span>}
         </div>
-        <div className="space-y-2">
-          <Label>Color de la pantalla</Label>
-          <div className="flex flex-wrap items-center gap-2">
-            {accentOptions.map((option) => (
-              <button key={option.value} type="button" title={option.label} aria-label={"Usar color "+option.label} aria-pressed={accentColor===option.value} onClick={() => setAccentColor(option.value)} className={cn("h-9 w-9 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",accentColor===option.value?"scale-110 border-foreground ring-2 ring-primary ring-offset-2 ring-offset-background":"border-border hover:scale-105")} style={{backgroundColor:option.value}} />
-            ))}
+        {backgroundUrl ? (
+          <div className="overflow-hidden rounded-xl border border-border">
+            <img src={backgroundUrl} alt="Vista previa del fondo personalizado" className="max-h-44 w-full object-cover" />
           </div>
-          <p className="text-xs text-muted-foreground">Aplica el color elegido directamente al fondo del espacio de trabajo. Las tarjetas, formularios y controles conservan sus propios colores para mantener la lectura. Se guarda en tu perfil.</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">Puedes subir una imagen para usarla como fondo. Se guardará y aplicará automáticamente.</p>
+        )}
+        <div className="space-y-2">
+          <Label>Color del fondo — {theme === "light" ? "Claro" : "Oscuro"}</Label>
+          <div className="flex flex-wrap items-center gap-2">
+            {workspaceColorOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                title={option.label}
+                aria-label={"Usar fondo " + option.label}
+                aria-pressed={workspaceColor.toUpperCase() === option.value.toUpperCase()}
+                onClick={() => setWorkspaceColor(option.value)}
+                className={cn(
+                  "h-9 w-9 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  workspaceColor.toUpperCase() === option.value.toUpperCase()
+                    ? "scale-110 border-foreground ring-2 ring-primary ring-offset-2 ring-offset-background"
+                    : "border-border hover:scale-105",
+                )}
+                style={{ backgroundColor: option.value }}
+              />
+            ))}
+            <label className="flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-border text-lg font-semibold text-foreground hover:scale-105" title="Elegir otro color">
+              <input
+                aria-label="Elegir color personalizado para el fondo"
+                type="color"
+                value={workspaceColor}
+                onChange={(event) => setWorkspaceColor(event.target.value)}
+                className="h-12 w-12 cursor-pointer border-0 bg-transparent p-0"
+              />
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            La paleta cambia según el modo. El color solo se aplica al fondo del espacio de trabajo; tarjetas, formularios y controles conservan sus propios colores.
+          </p>
         </div>
         <div className="flex items-center justify-between rounded-xl border p-3">
           <span className="flex items-center gap-1 text-sm font-medium">Ayudas contextuales <HelpTip helpKey="settings.help" /></span>
@@ -273,7 +312,7 @@ function ProfilePage() {
       </section>
 
       <section className="glass space-y-3 rounded-2xl p-4">
-        <h2 className="font-semibold">Funciones opcionales</h2>
+        <h2 className="font-semibold text-foreground">Funciones opcionales</h2>
         {FEATURE_LABELS.map(([key, label]) => (
           <div key={key} className="flex items-center justify-between rounded-xl border p-3">
             <span className="text-sm">{label}</span>
@@ -283,7 +322,7 @@ function ProfilePage() {
       </section>
 
       <section className="glass space-y-3 rounded-2xl p-4">
-        <h2 className="font-semibold">Inicio y widgets</h2>
+        <h2 className="font-semibold text-foreground">Inicio y widgets</h2>
         <p className="text-xs text-muted-foreground">Solo aparecen aquí los bloques disponibles en Inicio. Mantén al menos uno visible para conservar una pantalla de entrada útil.</p>
         {WIDGETS.map(({ key, label, description }) => (
           <div key={key} className="flex items-center justify-between rounded-xl border p-3">
@@ -309,7 +348,7 @@ function ProfilePage() {
       </section>
 
       <section className="glass space-y-3 rounded-2xl p-4">
-        <h2 className="font-semibold">Notificaciones y privacidad</h2>
+        <h2 className="font-semibold text-foreground">Notificaciones y privacidad</h2>
         <div className="flex items-center justify-between rounded-xl border p-3">
           <span className="text-sm">Cumpleaños, aniversarios y seguimientos de relaciones</span>
           <Switch checked={relationshipNotifications} onCheckedChange={setRelationshipNotifications} />
@@ -328,7 +367,7 @@ function ProfilePage() {
       </section>
 
       <section className="glass space-y-3 rounded-2xl p-4">
-        <h2 className="font-semibold">Exportar / importar / backup</h2>
+        <h2 className="font-semibold text-foreground">Exportar / importar / backup</h2>
         <p className="text-xs text-muted-foreground">
           El JSON combina registros por ID y no borra datos que falten en el archivo; no es una restauración transaccional. Las fotos y otros archivos de Storage, así como las suscripciones push del navegador, no se copian al JSON. Conserva la misma cuenta de usuario y revisa cada resultado antes de usar la importación como recuperación.
         </p>
