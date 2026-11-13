@@ -247,7 +247,14 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
     if(newTargetPages.trim()&&(!Number.isInteger(parsedTarget)||parsedTarget<1)){toast.error("La meta de páginas debe ser un entero mayor que cero.");return;}
     const parsedYear=Number(newPublicationYear);
     if(newPublicationYear.trim()&&(!Number.isInteger(parsedYear)||parsedYear<0||parsedYear>3000)){toast.error("El año debe ser un número entero válido.");return;}
-    await onSave({title:newTitle.trim(),author:newAuthor.trim()||null,publication_year:newPublicationYear.trim()?parsedYear:null,total_pages:newTotal.trim()?parsedTotal:null,target_pages:newTargetPages.trim()?parsedTarget:null});
+    const patch:any={title:newTitle.trim(),author:newAuthor.trim()||null,publication_year:newPublicationYear.trim()?parsedYear:null,total_pages:newTotal.trim()?parsedTotal:null,target_pages:newTargetPages.trim()?parsedTarget:null};
+    // A completed book remains completed when its bibliographic page count is corrected.
+    // Keep the recorded reading and percentage aligned with the new total.
+    if(book.status==="completed"&&parsedTotal>0){
+      patch.current_page=parsedTotal;
+      patch.progress=100;
+    }
+    await onSave(patch);
     setPanel(null);
     toast.success("Libro actualizado.");
   };
