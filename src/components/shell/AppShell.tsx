@@ -42,9 +42,16 @@ function useCollapsed() {
 }
 
 function orderedAllItems(order: string[] | undefined) {
-  const keys = [...(order ?? []), ...NAV_ITEMS.map((item) => item.key)];
+  const savedOrder = order ?? [];
+  const keys = [...savedOrder, ...NAV_ITEMS.map((item) => item.key)];
   const rank = new Map<string, number>();
   keys.forEach((key, index) => { if (!rank.has(key)) rank.set(key, index); });
+  const legacyOrganizationPositions = ["habitos", "planeador", "trabajo"]
+    .map((key) => savedOrder.indexOf(key))
+    .filter((index) => index >= 0);
+  if (legacyOrganizationPositions.length && !savedOrder.includes("organizacion")) {
+    rank.set("organizacion", Math.min(...legacyOrganizationPositions));
+  }
   return NAV_ITEMS.filter((item) => item.key !== "perfil")
     .sort((a, b) => (rank.get(a.key) ?? 999) - (rank.get(b.key) ?? 999));
 }
@@ -169,17 +176,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
-  const activeGroup = currentNavItem?.group ?? "Principal";
-  const desktopMenuGroups = useMemo(() => {
-    const groups: { label: string; items: typeof menuItems }[] = [];
-    for (const item of menuItems) {
-      const label = item.group ?? "Principal";
-      let group = groups.find((entry) => entry.label === label);
-      if (!group) { group = { label, items: [] }; groups.push(group); }
-      group.items.push(item);
-    }
-    return groups;
-  }, [menuItems]);
+  const activeGroup = currentNavItem?.group ?? null;
 
   const background = profile?.background_url ?? null;
   const isColor = Boolean(background?.startsWith("#"));
@@ -294,17 +291,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </div>
-          {collapsed
-            ? menuItems.map((item) => renderMenuItem(item))
-            : desktopMenuGroups.map(({ label, items: groupItems }) => (
-                <details key={label} className="overflow-hidden rounded-xl border border-sidebar-border/70 bg-sidebar/40" open={menuEditing || label === activeGroup}>
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-sidebar-foreground/85 marker:hidden hover:bg-sidebar-accent">
-                    <span>{label}</span>
-                    <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">{groupItems.length}</span>
-                  </summary>
-                  <div className="space-y-1 border-t border-sidebar-border/60 p-1.5">{groupItems.map((item) => renderMenuItem(item))}</div>
-                </details>
-              ))}
+          {menuItems.map((item) => renderMenuItem(item))}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
