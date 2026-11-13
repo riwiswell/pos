@@ -29,7 +29,7 @@ export function useGlobalDate() {
         resetScroll: false,
       });
     },
-    [navigate],
+    [date, navigate],
   );
 
   const shiftDate = useCallback((days: number) => setDate(addDaysISO(date, days)), [date, setDate]);
