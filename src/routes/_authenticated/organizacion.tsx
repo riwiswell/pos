@@ -5,6 +5,9 @@ import { PlannerPage } from "./planeador";
 import { WorkPage } from "./trabajo";
 
 export const Route = createFileRoute("/_authenticated/organizacion")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: typeof search.tab === "string" ? search.tab : "habitos",
+  }),
   component: OrganizationPage,
 });
 
