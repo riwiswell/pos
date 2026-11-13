@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
@@ -126,7 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: profile } = useProfile();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { theme } = useTheme();
+  const { theme, accentColor } = useTheme();
   useMedicationReminders();
   useHydrationReminders();
   useAppointmentReminders();
@@ -190,14 +190,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const background = profile?.background_url ?? null;
   const isColor = Boolean(background?.startsWith("#"));
   const bgImageUrl = useProfileMediaUrl(background && !isColor ? background : null).data;
-  const style = isColor
-    ? theme === "light"
-      ? {
-          // Keep the selected workspace hue as a subtle tint in light mode;
-          // never let a dark custom color turn the whole canvas dark.
-          backgroundColor: `color-mix(in oklab, var(--background) 88%, ${background} 12%)`,
-        }
-      : { backgroundColor: background! }
+  // A chosen screen color is applied directly to the workspace canvas.
+  // Uploaded backgrounds take precedence; cards and controls keep their own surfaces.
+  const screenColor = isColor ? background! : !bgImageUrl ? accentColor : null;
+  const style: CSSProperties = screenColor
+    ? { backgroundColor: screenColor }
     : {
         backgroundImage: bgImageUrl
           ? `linear-gradient(color-mix(in oklab, var(--background) 82%, transparent),color-mix(in oklab, var(--background) 92%, transparent)),url(${bgImageUrl})`
