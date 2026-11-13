@@ -8,6 +8,13 @@ interface Props {
   date: string;
 }
 
+function compactBriefing(value: string) {
+  const sentences = value.replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s+/).filter(Boolean).slice(0, 2);
+  const summary = sentences.join(" ");
+  const words = summary.split(/\s+/);
+  return words.length > 26 ? `${words.slice(0, 25).join(" ")}…` : summary;
+}
+
 export function ProactiveBriefing({ date }: Props) {
   const { user } = useAuth();
   const query = useQuery({
@@ -53,6 +60,7 @@ export function ProactiveBriefing({ date }: Props) {
   }
 
   if (!query.data) return null;
+  const summary = compactBriefing(query.data);
 
   return (
     <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-amber-300/20 bg-amber-300/[0.08] px-3 py-2.5 text-left">
@@ -61,7 +69,7 @@ export function ProactiveBriefing({ date }: Props) {
       </span>
       <div className="min-w-0">
         <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-amber-200">POS te sugiere</p>
-        <p className="mt-0.5 text-sm leading-5 text-slate-100">{query.data}</p>
+        <p className="mt-0.5 text-sm leading-5 text-slate-100" title={query.data}>{summary}</p>
       </div>
     </div>
   );
