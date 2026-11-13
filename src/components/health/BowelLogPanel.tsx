@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/common/States";
 import { useGlobalDate } from "@/hooks/use-global-date";
+import { useAuth } from "@/hooks/use-auth";
 import { usePersonalDateList, usePersonalMutations, usePersonalRecentList } from "@/hooks/use-personal-domains";
 import { todayISO } from "@/lib/date";
 
@@ -98,6 +99,7 @@ function BowelLogCard({
 
 export function BowelLogPanel() {
   const { date } = useGlobalDate();
+  const { user } = useAuth();
   const [logDate, setLogDate] = useState(date);
   const [logTime, setLogTime] = useState(currentClock);
   const [bristol, setBristol] = useState("");
@@ -142,6 +144,10 @@ export function BowelLogPanel() {
   };
 
   const save = async () => {
+    if (!user?.id) {
+      toast.error("No hay una sesión activa. Inicia sesión nuevamente para guardar el registro.");
+      return;
+    }
     if (!logDate || !logTime) {
       toast.error("Indica la fecha y la hora del registro.");
       return;
@@ -157,6 +163,7 @@ export function BowelLogPanel() {
 
     const loggedAt = new Date(logDate + "T" + logTime + ":00").toISOString();
     const payload = {
+      user_id: user.id,
       log_date: logDate,
       log_time: logTime,
       logged_at: loggedAt,

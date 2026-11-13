@@ -455,13 +455,32 @@ function kindIcon(kind:string){
   return "📚";
 }
 
-function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,minutesPlayed=0,sessionCount=0}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;onRecordSession:(minutes:number)=>Promise<unknown>;minutesPlayed?:number;sessionCount?:number}){
+function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,minutesPlayed=0,sessionCount=0,recentSessions=[]}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;onRecordSession:(minutes:number,sessionDate?:string,source?:string)=>Promise<unknown>;minutesPlayed?:number;sessionCount?:number;recentSessions?:any[]}){
   const[uploading,setUploading]=useState(false);
   const[recording,setRecording]=useState(false);
   const[sessionMinutes,setSessionMinutes]=useState("30");
+  const[sessionDate,setSessionDate]=useState(todayISO());
+  const[sessionSource,setSessionSource]=useState("chess.com");
   const[savingSession,setSavingSession]=useState(false);
   const input=useRef<HTMLInputElement>(null);
   const totalPlayedMinutes=Math.round(minutesPlayed);
+  const isChess=item.kind==="chess";
+  const saveRecordedSession=async()=>{
+    const value=Number(sessionMinutes);
+    if(!Number.isInteger(value)||value<1||value>1440){toast.error("La duración debe estar entre 1 y 1440 minutos.");return;}
+    const selectedDate=isChess?sessionDate:todayISO();
+    if(isChess&&(!selectedDate||selectedDate>todayISO())){toast.error("Selecciona una fecha válida que no sea futura.");return;}
+    setSavingSession(true);
+    try{
+      await onRecordSession(value,selectedDate,isChess?sessionSource:undefined);
+      toast.success(isChess?"Tiempo de ajedrez registrado.":"Tiempo jugado guardado.");
+      setRecording(false);
+      setSessionMinutes("30");
+      setSessionDate(todayISO());
+      setSessionSource("chess.com");
+    }catch{/* El hook informa el error de guardado. */}
+    finally{setSavingSession(false);}
+  };
   const path=item.cover_path?String(item.cover_path):null;
   const photoQuery=usePrivatePhotos(path?[path]:[],Boolean(path));
   const photoUrl=photoQuery.data?.find(photo=>photo.path===path)?.url;
@@ -492,14 +511,14 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,min
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
     </div>
     <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
-      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{(item.kind==="video_game"||item.kind==="game")&&(item.platform||item.genre)&&<p className="mt-1 text-[11px] font-medium text-primary">{[item.platform,item.genre].filter(Boolean).join(" · ")}</p>}{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game")&&<div className="mt-2 space-y-2">
+      <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{(item.kind==="video_game"||item.kind==="game")&&(item.platform||item.genre)&&<p className="mt-1 text-[11px] font-medium text-primary">{[item.platform,item.genre].filter(Boolean).join(" · ")}</p>}{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game"||isChess)&&<div className="mt-2 space-y-2">
         {Number(item.progress)>0&&<>
           <div className="flex items-center justify-between text-[11px]"><span className="font-medium text-muted-foreground">Progreso de la historia</span><span className="font-semibold tabular-nums">{Math.min(100,Math.max(0,Number(item.progress)||0)).toLocaleString("es-CO",{maximumFractionDigits:1})}%</span></div>
           <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div><p className="text-[10px] text-muted-foreground">{Number(item.progress)>=100?"Completado":Number(item.progress)>0?"En curso":"Pendiente de iniciar"}</p>
         </>}
         <div className="rounded-xl border border-border/60 bg-muted/25 px-2.5 py-2">
           <div className="flex items-center justify-between gap-2 text-[11px]">
-            <span className="font-medium text-muted-foreground">Tiempo jugado</span>
+            <span className="font-medium text-muted-foreground">{isChess?"Tiempo de ajedrez":"Tiempo jugado"}</span>
             <span className="font-semibold tabular-nums">{totalPlayedMinutes>0?(totalPlayedMinutes>=60?Math.floor(totalPlayedMinutes/60)+" h"+(totalPlayedMinutes%60?" "+(totalPlayedMinutes%60)+" min":""):totalPlayedMinutes+" min"):"Sin sesiones"}</span>
           </div>
           {minutesPlayed>0&&Number(item.progress)<=0&&<>
@@ -510,15 +529,25 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,min
           </>}
           {Number(item.progress)>0&&minutesPlayed===0&&<p className="mt-1 text-[10px] text-muted-foreground">Porcentaje de historia registrado; todavía no hay tiempo de juego anotado.</p>}
         </div>
+        {isChess&&recentSessions.length>0&&<div className="space-y-1.5 rounded-lg border border-border/50 p-2">
+          <p className="text-[11px] font-medium text-muted-foreground">Últimos registros</p>
+          {recentSessions.slice(0,4).map((entry:any)=><div key={entry.id} className="flex items-center justify-between gap-2 text-[11px]"><span className="text-muted-foreground">{entry.session_date} · {String(entry.notes||"").includes("Duolingo")?"Duolingo · práctica":String(entry.notes||"").includes("chess.com")?"chess.com · online":"Presencial"}</span><span className="font-medium tabular-nums">{entry.minutes} min</span></div>)}
+        </div>}
         {recording?<div className="flex flex-wrap items-end gap-2 rounded-xl border border-border/60 bg-background/60 p-2">
-          <label className="min-w-0 flex-1 text-[11px] text-muted-foreground">Duración
-            <select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionMinutes} onChange={event=>setSessionMinutes(event.target.value)}>
+          {isChess&&<label className="min-w-[130px] flex-1 text-[11px] text-muted-foreground">Fecha de juego
+            <Input className="mt-1 h-9" type="date" max={todayISO()} value={sessionDate} onChange={event=>setSessionDate(event.target.value)}/>
+          </label>}
+          <label className="min-w-[110px] flex-1 text-[11px] text-muted-foreground">Duración (minutos)
+            {isChess?<Input className="mt-1 h-9" type="number" min="1" max="1440" step="1" value={sessionMinutes} onChange={event=>setSessionMinutes(event.target.value)}/>:<select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionMinutes} onChange={event=>setSessionMinutes(event.target.value)}>
               <option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option><option value="90">1 h 30 min</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="240">4 horas</option>
-            </select>
+            </select>}
           </label>
-          <Button size="sm" disabled={savingSession} onClick={async()=>{setSavingSession(true);try{await onRecordSession(Number(sessionMinutes));toast.success("Tiempo jugado guardado.");setRecording(false);}catch{/* El hook ya informa el error de guardado. */}finally{setSavingSession(false);}}}>{savingSession?"Guardando…":"Guardar"}</Button>
+          {isChess&&<label className="min-w-[120px] flex-1 text-[11px] text-muted-foreground">Modalidad
+            <select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionSource} onChange={event=>setSessionSource(event.target.value)}><option value="chess.com">chess.com · online</option><option value="duolingo">Duolingo · práctica</option><option value="presencial">Presencial</option></select>
+          </label>}
+          <Button size="sm" disabled={savingSession} onClick={()=>void saveRecordedSession()}>{savingSession?"Guardando…":"Guardar"}</Button>
           <Button size="sm" variant="ghost" disabled={savingSession} onClick={()=>setRecording(false)}>Cancelar</Button>
-        </div>:<Button size="sm" variant="outline" className="w-full" onClick={()=>setRecording(true)}><Clock className="mr-1 h-3.5 w-3.5"/>Registrar tiempo jugado</Button>}
+        </div>:<Button size="sm" variant="outline" className="w-full" onClick={()=>{setSessionDate(todayISO());setSessionSource("chess.com");setRecording(true)}}><Clock className="mr-1 h-3.5 w-3.5"/>{isChess?"Registrar tiempo de ajedrez":"Registrar tiempo jugado"}</Button>}
       </div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
       <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
     </div>
@@ -605,7 +634,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">{isGames?"Todavía no has agregado videojuegos. Pulsa Agregar para registrar el que estás jugando.":"Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno."}</div>}
     <div className={isGames?"grid grid-cols-1 gap-3 md:grid-cols-3":"grid grid-cols-1 gap-3 sm:grid-cols-2"}>
-      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id);const minutesPlayed=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={itemSessions.length} onEdit={()=>startEdit(item)} onRecordSession={async(minutes:number)=>{await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:todayISO(),minutes,notes:"Videojuego: "+item.title});}} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
+      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).sort((a:any,b:any)=>String(b.session_date||"").localeCompare(String(a.session_date||""))||String(b.created_at||"").localeCompare(String(a.created_at||"")));const minutesPlayed=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={itemSessions.length} recentSessions={item.kind==="chess"?itemSessions:[]} onEdit={()=>startEdit(item)} onRecordSession={async(minutes:number,sessionDate?:string,source?:string)=>{await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:item.kind==="chess"&&sessionDate?sessionDate:todayISO(),minutes,notes:item.kind==="chess"?"Ajedrez · "+(source==="chess.com"?"chess.com (online)":source==="duolingo"?"Duolingo (práctica)":"Presencial"):"Videojuego: "+item.title});}} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
     </div>
   </section>;
 }
