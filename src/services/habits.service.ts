@@ -42,8 +42,18 @@ export const habitsService = {
   },
 
   async updateCategory(id: string, patch: Partial<HabitCategoryInput & { position: number }>) {
-    const { error } = await supabase.from("habit_categories").update(patch).eq("id", id);
+    const user_id = await currentUserId();
+    const { data, error } = await supabase
+      .from("habit_categories")
+      .update(patch)
+      .eq("id", id)
+      .eq("user_id", user_id)
+      .select("id")
+      .maybeSingle();
     if (error) throw error;
+    if (!data) {
+      throw new Error("No se pudo guardar la categoría: no se encontró o no tienes permiso para modificarla.");
+    }
   },
 
   async deleteCategory(id: string) {
