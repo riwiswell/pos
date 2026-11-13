@@ -118,27 +118,39 @@ export function SleepPanel() {
   const calculatedHours = sleepDurationHours(sleepDetails.bedtime, sleepDetails.wakeTime);
   const hoursValue = calculatedHours ?? (manualHours.trim() ? Number(manualHours.replace(",", ".")) : null);
 
-  const history = useMemo(() => {
+  // Keep every row that actually contains sleep information, even when its
+  // duration is incomplete. The chart uses valid durations; the visible
+  // history still shows incomplete records so a saved night is never hidden.
+  const allSleepRecords = useMemo(() => {
     return (historyQuery.data ?? [])
       .map((row) => {
         const details = readSleepDetails(row.notes);
         const storedHours = row.sleep_hours == null ? null : Number(row.sleep_hours);
-        // If an older form saved 0/invalid hours but kept the real times in notes,
-        // recover the duration from those times instead of hiding that night.
         const hasValidStoredHours =
           storedHours !== null && Number.isFinite(storedHours) && storedHours > 0 && storedHours <= 24;
-        const hours = hasValidStoredHours
+        const recoveredHours = hasValidStoredHours
           ? storedHours
           : sleepDurationHours(details.bedtime, details.wakeTime);
-        return { date: row.metric_date, hours, details };
+        const hasSleepData =
+          row.sleep_hours !== null && row.sleep_hours !== undefined ||
+          Boolean(details.bedtime || details.wakeTime || details.awakenings || details.napMinutes);
+        const hours = recoveredHours !== null && Number.isFinite(recoveredHours) &&
+          recoveredHours > 0 && recoveredHours <= 24 ? recoveredHours : null;
+        return { date: row.metric_date, hours, details, hasSleepData };
       })
-      .filter((row): row is { date: string; hours: number; details: SleepDetails } =>
-        row.hours !== null && Number.isFinite(row.hours) && row.hours > 0 && row.hours <= 24,
-      )
+      .filter((row) => row.hasSleepData)
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(-30)
       .map((row) => ({ ...row, label: shortDate(row.date) }));
   }, [historyQuery.data]);
+
+  const history = useMemo(
+    () => allSleepRecords.filter(
+      (row): row is { date: string; hours: number; details: SleepDetails; hasSleepData: boolean; label: string } =>
+        row.hours !== null,
+    ),
+    [allSleepRecords],
+  );
 
   const average = history.length
     ? history.reduce((sum, row) => sum + row.hours, 0) / history.length
@@ -311,8 +323,9 @@ export function SleepPanel() {
             </p>
           </div>
           <div className="rounded-xl border bg-background/60 p-3">
-            <p className="text-[11px] text-muted-foreground">Registros graficados</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{history.length}</p>
+            <p className="text-[11px] text-muted-foreground">Registros recientes</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">{allSleepRecords.length}</p>
+            <p className="text-[10px] text-muted-foreground">{history.length} con duración válida</p>
           </div>
           <div className="rounded-xl border bg-background/60 p-3 col-span-2 sm:col-span-1">
             <p className="text-[11px] text-muted-foreground">Último registro</p>
@@ -367,7 +380,7 @@ export function SleepPanel() {
       <section className="glass space-y-3 rounded-2xl p-4">
         <div>
           <h3 className="font-semibold">Evolución del sueño</h3>
-          <p className="text-xs text-muted-foreground">Hasta 30 registros recientes, ordenados por fecha.</p>
+          <p className="text-xs text-muted-foreground">Hasta 30 noches con duración válida. Las noches incompletas siguen visibles en el historial.</p>
         </div>
         {historyQuery.isLoading ? (
           <p className="text-sm text-muted-foreground">Cargando historial de sueño…</p>
@@ -375,7 +388,9 @@ export function SleepPanel() {
           <p className="text-sm text-destructive">No se pudo cargar el historial de sueño.</p>
         ) : history.length === 0 ? (
           <div className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">
-            Todavía no hay duraciones de sueño para graficar. Guarda el primer registro y aparecerá aquí.
+            {allSleepRecords.length > 0
+              ? `Hay ${allSleepRecords.length} registro(s) de sueño guardados, pero falta una duración válida para graficarlos. Revisa “Últimos registros” y completa las horas.`
+              : "Todavía no hay duraciones de sueño para graficar. Guarda el primer registro y aparecerá aquí."}
           </div>
         ) : (
           <div className="h-56 w-full">
@@ -439,8 +454,8 @@ export function SleepPanel() {
             Despertares
             <Input className="mt-1" type="number" min="0" max="30" step="1" value={sleepDetails.awakenings} onChange={(event) => setSleepDetails((value) => ({ ...value, awakenings: event.target.value }))} placeholder="0" />
           </label>
-          <div className="min-w-0 space-y-2">
-            <label className="block text-xs text-muted-foreground">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+            <label className="min-w-0 text-xs text-muted-foreground">
               Siesta (min)
               <Input className="mt-1" type="number" min="0" max="1440" step="5" value={sleepDetails.napMinutes} onChange={(event) => setSleepDetails((value) => ({ ...value, napMinutes: event.target.value }))} placeholder="0" />
             </label>
@@ -448,10 +463,10 @@ export function SleepPanel() {
               type="button"
               size="sm"
               variant="outline"
-              className="w-full px-2 text-xs"
+              className="h-10 whitespace-nowrap px-2 text-xs"
               onClick={() => void navigate({ to: "/diario", search: { capture: "dream" } })}
             >
-              <MoonStar className="mr-1.5 h-3.5 w-3.5" />
+              <MoonStar className="mr-1 h-3.5 w-3.5" />
               Sueño (soñar)
             </Button>
           </div>
@@ -501,21 +516,29 @@ export function SleepPanel() {
 
       <section className="glass space-y-3 rounded-2xl p-4">
         <h3 className="font-semibold">Últimos registros</h3>
-        {history.length === 0 ? (
+        {allSleepRecords.length === 0 ? (
           <p className="text-sm text-muted-foreground">Cuando registres noches de sueño, aparecerán aquí.</p>
         ) : (
           <div className="space-y-2">
-            {[...history].reverse().slice(0, 7).map((row) => (
+            {[...allSleepRecords].reverse().slice(0, 7).map((row) => (
               <article key={row.date} className="flex items-center justify-between gap-3 rounded-xl border p-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-medium">{formatDayLabel(row.date)}</p>
                   <p className="text-xs text-muted-foreground">
                     {row.details.bedtime && row.details.wakeTime
                       ? `${row.details.bedtime} – ${row.details.wakeTime}`
-                      : "Duración registrada manualmente"}
+                      : row.details.bedtime
+                        ? `Me acosté a las ${row.details.bedtime} · falta la hora de levantarse`
+                        : row.details.wakeTime
+                          ? `Me levanté a las ${row.details.wakeTime} · falta la hora de acostarse`
+                          : row.hours !== null
+                            ? "Duración registrada manualmente"
+                            : "Duración no registrada"}
                   </p>
                 </div>
-                <p className="shrink-0 text-sm font-semibold tabular-nums">{formatSleepHours(row.hours)}</p>
+                <p className="shrink-0 text-sm font-semibold tabular-nums">
+                  {row.hours === null ? <span className="text-xs font-medium text-amber-600">Incompleto</span> : formatSleepHours(row.hours)}
+                </p>
               </article>
             ))}
           </div>

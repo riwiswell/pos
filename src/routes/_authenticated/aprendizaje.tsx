@@ -100,7 +100,9 @@ function Books(){
   const[sort,setSort]=useState<LearningSort>("oldest");
   const m=useLGMutations("learning_items");
   const nm=useLGMutations("learning_notes");
+  const sessionMutation=useLGMutations("learning_sessions");
   const{user}=useAuth();
+  const{date}=useGlobalDate();
   const[adding,setAdding]=useState(false);
   const[title,setTitle]=useState("");
   const[author,setAuthor]=useState("");
@@ -161,12 +163,17 @@ function Books(){
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {books.map((book:any)=>{
         const bookNotes=(notes.data||[]).filter((entry:any)=>entry.learning_item_id===book.id);
+        const bookSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===book.id);
+        const hasCompletionReward=bookSessions.some((entry:any)=>entry.activity_type==="book_completion");
         return <BookCard
           key={book.id}
           book={book}
           notes={bookNotes}
           coverPath={book.cover_path||null}
+          hasCompletionReward={hasCompletionReward}
           onSave={(patch:any)=>m.update.mutateAsync({id:book.id,patch})}
+          onRecordSession={(minutes:number)=>sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:book.id,session_date:date,minutes,activity_type:"reading",notes:"Lectura: "+book.title})}
+          onCompleteReward={()=>sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:book.id,session_date:date,minutes:0,activity_type:"book_completion",notes:"Libro terminado: "+book.title})}
           onDelete={()=>deleteBook(book)}
           onAddNote={(patch:any)=>nm.create.mutateAsync({...patch,user_id:user?.id})}
           onDeleteNote={(id:string)=>nm.remove.mutateAsync(id)}
@@ -176,7 +183,7 @@ function Books(){
   </section>;
 }
 
-function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:{book:any;notes:any[];coverPath:string|null;onSave:(p:any)=>Promise<unknown>;onDelete:()=>Promise<unknown>;onAddNote:(p:any)=>Promise<unknown>;onDeleteNote:(id:string)=>Promise<unknown>}){
+function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSession,onCompleteReward,onDelete,onAddNote,onDeleteNote}:{book:any;notes:any[];coverPath:string|null;hasCompletionReward:boolean;onSave:(p:any)=>Promise<unknown>;onRecordSession:(minutes:number)=>Promise<unknown>;onCompleteReward:()=>Promise<unknown>;onDelete:()=>Promise<unknown>;onAddNote:(p:any)=>Promise<unknown>;onDeleteNote:(id:string)=>Promise<unknown>}){
   const isBible=isBibleBook(String(book.title||""));
   const total=isBible?1189:(Number(book.total_pages)||0);
   const[page,setPage]=useState(String(book.status==="completed"&&Number(book.total_pages)>0?book.total_pages:book.current_page||0));
@@ -190,7 +197,12 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
   const[newPublicationYear,setNewPublicationYear]=useState(String(book.publication_year||""));
   const[newTotal,setNewTotal]=useState(String(book.total_pages||""));
   const[newTargetPages,setNewTargetPages]=useState(String(book.target_pages||""));
-  const[panel,setPanel]=useState<"progress"|"summary"|"notes"|"details"|null>(null);
+  const[panel,setPanel]=useState<"progress"|"reading"|"summary"|"notes"|"details"|null>(null);
+  const[readingMinutes,setReadingMinutes]=useState("20");
+  const[readingSaving,setReadingSaving]=useState(false);
+  const[completionSaving,setCompletionSaving]=useState(false);
+  const[rewardClaimed,setRewardClaimed]=useState(hasCompletionReward);
+  useEffect(()=>{if(hasCompletionReward)setRewardClaimed(true)},[hasCompletionReward]);
   const[editingSummary,setEditingSummary]=useState(false);
   const[addingNote,setAddingNote]=useState(false);
   const[uploadingCover,setUploadingCover]=useState(false);
@@ -234,15 +246,60 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
     }
   };
 
+  const claimCompletionReward=async()=>{
+    if(isBible||rewardClaimed||hasCompletionReward||completionSaving)return;
+    setCompletionSaving(true);
+    try{
+      await onCompleteReward();
+      setRewardClaimed(true);
+      toast.success("Bono por terminar el libro: +10 XP.");
+    }catch(error){
+      toast.error(error instanceof Error?error.message:"No se pudo registrar el bono del libro.");
+    }finally{
+      setCompletionSaving(false);
+    }
+  };
+  const recordReadingSession=async()=>{
+    const minutes=Number(readingMinutes);
+    if(!Number.isInteger(minutes)||minutes<1||minutes>1440){toast.error("La duración debe estar entre 1 y 1440 minutos.");return;}
+    setReadingSaving(true);
+    try{
+      await onRecordSession(minutes);
+      setReadingMinutes("20");
+      setPanel(null);
+      toast.success("Sesión de lectura registrada: +10 XP.");
+    }catch(error){
+      toast.error(error instanceof Error?error.message:"No se pudo registrar la lectura.");
+    }finally{
+      setReadingSaving(false);
+    }
+  };
   const saveProgress=async()=>{
     const nextPage=total?Math.min(total,pageValue):pageValue;
     const nextProgress=total?Math.min(100,Math.max(0,nextPage/total*100)):Number(book.progress)||0;
+    const completesNow=Boolean(total&&nextPage>=total&&book.status!=="completed");
     await onSave({current_page:nextPage,progress:nextProgress,status:total&&nextPage>=total?"completed":"active",completed_on:total&&nextPage>=total?new Date().toISOString().slice(0,10):null});
     setPage(String(nextPage));
     setPanel(null);
+    if(completesNow&&!hasCompletionReward)await claimCompletionReward();
     toast.success(isBible?"Avance de capítulos guardado.":"Avance de lectura guardado.");
   };
-  const markFinished=async()=>{ if(!total){toast.error("Indica primero el total de páginas en Editar ficha.");setPanel("details");return;} const today=new Date().toISOString().slice(0,10); await onSave({current_page:total,progress:100,status:"completed",completed_on:today}); setPage(String(total)); setPanel(null); toast.success("Libro marcado como terminado."); };
+  const markFinished=async()=>{
+    if(!total){toast.error("Indica primero el total de páginas en Editar ficha.");setPanel("details");return;}
+    setCompletionSaving(true);
+    try{
+      const today=new Date().toISOString().slice(0,10);
+      await onSave({current_page:total,progress:100,status:"completed",completed_on:today});
+      setPage(String(total));
+      setPanel(null);
+      if(!hasCompletionReward&&!isBible)await onCompleteReward();
+      toast.success(!hasCompletionReward&&!isBible?"Libro terminado: +10 XP.":"Libro marcado como terminado.");
+    }catch(error){
+      toast.error(error instanceof Error?error.message:"No se pudo terminar el libro.");
+    }finally{
+      setCompletionSaving(false);
+    }
+  };
   const saveDetails=async()=>{
     if(!newTitle.trim()){toast.error("El título no puede quedar vacío.");return;}
     const parsedTotal=Number(newTotal);
@@ -305,7 +362,9 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
         <div className="flex flex-wrap gap-1.5">
           {isBible?<><a href="/biblia" target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"><BookOpen className="mr-1 h-3.5 w-3.5"/>Abrir Plan Bíblico <span className="ml-1">↗</span></a></>:<>
               <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>
-              <Button size="sm" variant={book.status==="completed"?"secondary":"outline"} onClick={()=>void markFinished()} disabled={book.status==="completed"}><Check className="mr-1 h-3.5 w-3.5"/> {book.status==="completed"?"Terminado":"Marcar terminado"}</Button>
+              <Button size="sm" variant={panel==="reading"?"default":"outline"} onClick={()=>setPanel(panel==="reading"?null:"reading")}><Clock className="mr-1 h-3.5 w-3.5"/>Registrar lectura</Button>
+              <Button size="sm" variant={book.status==="completed"?"secondary":"outline"} onClick={()=>void markFinished()} disabled={book.status==="completed"||completionSaving}><Check className="mr-1 h-3.5 w-3.5"/> {book.status==="completed"?"Terminado":"Marcar terminado"}</Button>
+              {book.status==="completed"&&!rewardClaimed&&!isBible&&<Button size="sm" variant="outline" disabled={completionSaving} onClick={()=>void claimCompletionReward()}>Reclamar +10 XP</Button>}
               <Button size="sm" variant={panel==="summary"?"default":"outline"} onClick={()=>setPanel(panel==="summary"?null:"summary")}><FileText className="mr-1 h-3.5 w-3.5"/>Resumen</Button>
               <Button size="sm" variant={panel==="notes"?"default":"outline"} onClick={()=>setPanel(panel==="notes"?null:"notes")}><NotebookPen className="mr-1 h-3.5 w-3.5"/>Notas ({mine.length})</Button>
               <Button size="sm" variant={panel==="details"?"default":"outline"} onClick={()=>setPanel(panel==="details"?null:"details")}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar ficha</Button>
@@ -327,6 +386,15 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
     </div>}
 
     {panel==="progress"&&<div className="space-y-2 border-t p-3"><p className="text-sm font-medium">{isBible?"Actualizar capítulos leídos":"Actualizar progreso"}</p>{isBible&&<p className="text-xs text-muted-foreground">Escribe el total acumulado de capítulos que has leído en toda la Biblia (de 0 a 1.189). Este dato calcula el porcentaje y los capítulos que te faltan; no modifica los días del plan anual.</p>}<div className="flex flex-wrap items-end gap-2"><label className="w-40 text-xs text-muted-foreground">{isBible?"Total de capítulos leídos":"Página actual"}<Input className="mt-1" type="number" min="0" max={total||undefined} value={page} onChange={e=>setPage(e.target.value)}/></label><Button size="sm" onClick={()=>void saveProgress()}><Save className="mr-1 h-3.5 w-3.5"/>{isBible?"Guardar capítulos":"Guardar página"}</Button>{total>0&&<span className="pb-2 text-xs text-muted-foreground">{remain.toLocaleString("es-CO")} {isBible?"capítulos":"páginas"} restantes</span>}</div></div>}
+    {panel==="reading"&&!isBible&&<div className="space-y-2 border-t bg-muted/20 p-3">
+      <p className="text-sm font-medium">Registrar sesión de lectura</p>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="w-40 text-xs text-muted-foreground">Minutos leídos<Input className="mt-1" type="number" min="1" max="1440" step="1" value={readingMinutes} onChange={event=>setReadingMinutes(event.target.value)}/></label>
+        <Button size="sm" disabled={readingSaving||!readingMinutes.trim()} onClick={()=>void recordReadingSession()}><Clock className="mr-1 h-3.5 w-3.5"/>{readingSaving?"Guardando…":"Guardar lectura · +10 XP"}</Button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">Cada sesión de lectura registrada suma 10 XP. Actualizar las páginas solo modifica tu avance.</p>
+    </div>}
+
 
     {panel==="summary"&&!isBible&&<div className="space-y-2 border-t p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -462,7 +530,6 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const m=useLGMutations("learning_items");
   const sessionMutation=useLGMutations("learning_sessions");
   const[sort,setSort]=useState<LearningSort>("used_desc");
-  const[existingGamesUpdated,setExistingGamesUpdated]=useState(false);
   const{user}=useAuth();
   const isGames=mode==="games";
   const[adding,setAdding]=useState(false);
@@ -479,16 +546,6 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const isGameItem=(item:any)=>item.kind==="video_game"||item.kind==="game";
   const allItems=(q.data||[]).filter((item:any)=>item.kind!=="book"&&item.kind!=="language");
   const items=allItems.filter((item:any)=>isGames?isGameItem(item):!isGameItem(item));
-  const applyExistingGameDefaults=async()=>{
-    if(!isGames||items.length===0)return;
-    try{
-      await Promise.all(items.map((item:any)=>m.update.mutateAsync({id:item.id,patch:{platform:"PC",genre:"Acción y Aventuras"}})));
-      setExistingGamesUpdated(true);
-      toast.success("Se actualizaron "+items.length+" juegos actuales: PC · Acción y Aventuras.");
-    }catch{
-      // La mutación muestra el detalle del error.
-    }
-  };
   const visibleItems=sortLearningItems(isGames?items:items.filter((item:any)=>filter==="all"||item.kind===filter),sessions.data||[],sort);
   const resetForm=()=>{setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setPlatform("");setGenre("");setEditingId(null);setAdding(false);};
   const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setPlatform(item.platform||"");setGenre(item.genre||"");setEditingId(item.id);setAdding(true);};
@@ -508,7 +565,6 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   return <section className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, tiempo jugado y progreso de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div><div className="flex flex-wrap items-center gap-2">
-      {isGames&&items.length>0&&!existingGamesUpdated&&items.some((item:any)=>item.platform!=="PC"||item.genre!=="Acción y Aventuras")&&<Button size="sm" variant="outline" onClick={()=>void applyExistingGameDefaults()} title="Solo actualiza los videojuegos ya registrados; los próximos se agregarán sin valores predeterminados.">Actualizar juegos actuales</Button>}
       <LearningSortControl value={sort} onChange={setSort} includeGenre={isGames}/>
       <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setPlatform("");setGenre("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
     </div>
