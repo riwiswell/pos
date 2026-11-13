@@ -457,8 +457,8 @@ function kindIcon(kind:string){
 
 function plainTextFromRichValue(value: unknown): string {
   return String(value ?? "")
-    .replace(/<\\s*br\\s*\\/?\\s*>/gi, " ")
-    .replace(/<\\/(p|div|li|h[1-6])\\s*>/gi, " ")
+    .replace(/<br[^>]*>/gi, " ")
+    .replace(/<\\/(p|div|li|h[1-6])[^>]*>/gi, " ")
     .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
@@ -466,7 +466,7 @@ function plainTextFromRichValue(value: unknown): string {
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
-    .replace(/\\s+/g, " ")
+    .replace(/ {2,}/g, " ")
     .trim();
 }
 
