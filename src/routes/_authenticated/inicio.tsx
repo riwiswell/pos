@@ -220,8 +220,13 @@ function HomePage() {
           </div>
           </div>
           {homeLayout.visible.includes("weather") && (
-            <div className="inicio-hero-weather">
+            <div className="inicio-hero-weather space-y-3">
               <WeatherCard compact />
+              {homeLayout.visible.includes("activity") && (
+                <div className="inicio-widget inicio-widget--activity" style={{ order: homeLayout.order.indexOf("activity") }}>
+                  <LifeActivityFeed connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -270,7 +275,7 @@ function HomePage() {
                                 </div>
                                 <Progress value={percent} className="h-2.5" />
                                 <div className="mt-3 grid grid-cols-1 gap-1.5">
-                                  {rankedHabits.slice(0, 4).map((habit) => {
+                                  {rankedHabits.slice(0, 5).map((habit) => {
                                     const habitLog = logByHabit.get(habit.id);
                                     const complete = isDone(habit, habitLog);
                                     const value = habitLog?.value ?? 0;
@@ -416,9 +421,6 @@ function HomePage() {
           </div>
         )}
 
-        <div className="inicio-dashboard-activity">
-          {homeLayout.visible.includes("activity") && <div className="inicio-widget inicio-widget--activity" style={{ order: homeLayout.order.indexOf("activity") }}><LifeActivityFeed connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} /></div>}
-        </div>
       </div>
 
       {homeLayout.visible.length === 0 && (
