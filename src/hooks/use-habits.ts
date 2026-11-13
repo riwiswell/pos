@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import { toast } from "sonner";
 
 import { habitsService } from "@/services/habits.service";
-import type { HabitCategoryInput, HabitInput } from "@/domain/types";
+import type { HabitCategoryInput, HabitInput, HabitLog } from "@/domain/types";
 
 export const habitKeys = {
   categories: ["habit_categories"] as const,
@@ -52,6 +53,10 @@ export function useRecentLogs() {
 
 export function useHabitMutations(date: string) {
   const qc = useQueryClient();
+  const logWriteSequence = useRef(0);
+  const latestLogWrite = useRef(new Map<string, number>());
+  const confirmedLogByHabit = useRef(new Map<string, HabitLog | null>());
+  const logWriteQueue = useRef(new Map<string, Promise<HabitLog>>());
 
   const invalidateCategories = () => qc.invalidateQueries({ queryKey: habitKeys.categories });
   const invalidateHabits = () => qc.invalidateQueries({ queryKey: ["habits"] });
@@ -140,9 +145,72 @@ export function useHabitMutations(date: string) {
     mutationFn: (vars: {
       habitId: string;
       patch: { completed?: boolean; value?: number; note?: string | null };
-    }) => habitsService.saveLog(vars.habitId, date, vars.patch),
-    onSuccess: () => { invalidateLogs(); invalidateLifeGraph(); },
-    onError,
+    }) => {
+      // Serialize quick repeated clicks so the last value is also the last DB write.
+      const previousWrite = logWriteQueue.current.get(vars.habitId);
+      const write = previousWrite
+        ? previousWrite.catch(() => undefined).then(() => habitsService.saveLog(vars.habitId, date, vars.patch))
+        : habitsService.saveLog(vars.habitId, date, vars.patch);
+      logWriteQueue.current.set(vars.habitId, write);
+      void write.finally(() => {
+        if (logWriteQueue.current.get(vars.habitId) === write) logWriteQueue.current.delete(vars.habitId);
+      }).catch(() => undefined);
+      return write;
+    },
+    onMutate: (vars) => {
+      const key = habitKeys.logs(date);
+      const sequence = ++logWriteSequence.current;
+      latestLogWrite.current.set(vars.habitId, sequence);
+
+      const current = qc.getQueryData<HabitLog[]>(key) ?? [];
+      const previous = current.find((log) => log.habit_id === vars.habitId);
+      if (!confirmedLogByHabit.current.has(vars.habitId)) {
+        confirmedLogByHabit.current.set(vars.habitId, previous ?? null);
+      }
+
+      void qc.cancelQueries({ queryKey: key });
+      const now = new Date().toISOString();
+      const optimistic: HabitLog = {
+        id: previous?.id ?? "optimistic-" + vars.habitId + "-" + sequence,
+        user_id: previous?.user_id ?? "",
+        habit_id: vars.habitId,
+        date,
+        completed: vars.patch.completed ?? previous?.completed ?? false,
+        value: vars.patch.value ?? previous?.value ?? 0,
+        note: vars.patch.note !== undefined ? vars.patch.note : previous?.note ?? null,
+        created_at: previous?.created_at ?? now,
+        updated_at: now,
+      };
+      qc.setQueryData<HabitLog[]>(key, (logs) => [
+        ...(logs ?? []).filter((log) => log.habit_id !== vars.habitId),
+        optimistic,
+      ]);
+
+      return { sequence };
+    },
+    onError: (error, vars, context) => {
+      if (context && latestLogWrite.current.get(vars.habitId) === context.sequence) {
+        const confirmed = confirmedLogByHabit.current.get(vars.habitId) ?? null;
+        qc.setQueryData<HabitLog[]>(habitKeys.logs(date), (logs) => [
+          ...(logs ?? []).filter((log) => log.habit_id !== vars.habitId),
+          ...(confirmed ? [confirmed] : []),
+        ]);
+        confirmedLogByHabit.current.delete(vars.habitId);
+      }
+      onError(error);
+    },
+    onSuccess: (saved, vars, context) => {
+      if (context && latestLogWrite.current.get(vars.habitId) === context.sequence) {
+        qc.setQueryData<HabitLog[]>(habitKeys.logs(date), (logs) => [
+          ...(logs ?? []).filter((log) => log.habit_id !== vars.habitId),
+          saved,
+        ]);
+        confirmedLogByHabit.current.set(vars.habitId, saved);
+      }
+      void qc.invalidateQueries({ queryKey: habitKeys.recent });
+      void qc.invalidateQueries({ queryKey: ["habit_logs", "range"] });
+      invalidateLifeGraph();
+    },
   });
 
   return {

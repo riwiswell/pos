@@ -26,10 +26,8 @@ export const getRouter = () => {
     queryCache,
     defaultOptions: {
       queries: {
-        // Reuse cached module data across navigation; writes invalidate their own keys.
-        // Background refetches keep rendered content visible instead of flashing loaders.
-        staleTime: 5 * 60 * 1000,
-        gcTime: 60 * 60 * 1000,
+        // Reuse cached data briefly; existing results stay visible during background refetches.
+        staleTime: 30_000,
         retry: 1,
         refetchOnWindowFocus: false,
       },

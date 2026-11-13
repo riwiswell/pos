@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -106,6 +106,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
   const [dragTarget, setDragTarget] = useState<string | null>(null);
   const dragState = useRef<{ key: string; pointerId: number; startY: number; active: boolean; targetKey: string | null; order: string[] } | null>(null);
+  const menuSaveSequence = useRef(0);
+  const menuSaveQueue = useRef<Promise<void>>(Promise.resolve());
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const signOut = useSignOut();
   const { data: profile } = useProfile();
@@ -122,18 +124,34 @@ export function AppShell({ children }: { children: ReactNode }) {
   const items = useMemo(() => orderedItems.filter((item) => !hiddenModules.includes(item.key)), [orderedItems, profile?.hidden_modules]);
   const menuItems = menuEditing ? orderedItems : items;
 
-  const persistMenu = async (order: string[], hidden: string[]) => {
-    if (!user?.id || menuSaving) return;
+  const persistMenu = (order: string[], hidden: string[]) => {
+    if (!user?.id) return;
+    const sequence = ++menuSaveSequence.current;
+    const key = profileKeys.profile(user.id);
+    const previous = queryClient.getQueryData(key);
+
+    // Reflect the new order immediately; persist menu changes in sequence.
+    queryClient.setQueryData(key, (current: any) =>
+      current ? { ...current, module_order: order, hidden_modules: hidden } : current,
+    );
     setMenuSaving(true);
-    try {
-      const saved = await profileService.upsert(user.id, { module_order: order, hidden_modules: hidden });
-      queryClient.setQueryData(profileKeys.profile(user.id), saved);
-      toast.success("Menú guardado", { duration: 1300 });
-    } catch (error) {
-      toast.error(error instanceof Error ? "No se pudo guardar el menú: " + error.message : "No se pudo guardar el menú.");
-    } finally {
-      setMenuSaving(false);
-    }
+
+    const save = async () => {
+      try {
+        const saved = await profileService.upsert(user.id, { module_order: order, hidden_modules: hidden });
+        if (sequence === menuSaveSequence.current) queryClient.setQueryData(key, saved);
+      } catch (error) {
+        if (sequence === menuSaveSequence.current) {
+          if (previous !== undefined) queryClient.setQueryData(key, previous);
+          toast.error(error instanceof Error ? "No se pudo guardar el menú: " + error.message : "No se pudo guardar el menú.");
+        }
+      } finally {
+        if (sequence === menuSaveSequence.current) setMenuSaving(false);
+      }
+    };
+
+    const next = menuSaveQueue.current.catch(() => undefined).then(save);
+    menuSaveQueue.current = next;
   };
 
   const toggleMenuItem = (key: string, visible: boolean) => {
@@ -196,44 +214,30 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3">
-          {(!menuEditing && !collapsed) ? (
-            <div className="space-y-0.5">
-              {menuItems.map((item) => (
-                <div key={item.key} className="flex min-w-0 items-center gap-1">
-                  <Link
-                    to={item.to}
-                    search={(p: Record<string, unknown>) => p}
-                    title={item.label}
-                    className={cn(
-                      "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
-                      pathname.startsWith(item.to) && "bg-sidebar-accent",
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                  <HelpTip helpKey={item.helpKey}/>
-                </div>
-              ))}
-            </div>          ) : (
-            <>
-              {menuItems.map((item) => {
+          <div className="mb-1 flex justify-end">
+            <Button
+              type="button"
+              size="icon"
+              variant={menuEditing ? "secondary" : "ghost"}
+              className="h-8 w-8"
+              onClick={() => setMenuEditing((current) => !current)}
+              aria-label="Opciones del menú"
+              title="Opciones del menú"
+              aria-pressed={menuEditing}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {menuItems.map((item) => {
             const visible = !hiddenModules.includes(item.key);
-            if (menuEditing) return (
-              <div key={item.key} className={cn("flex items-center gap-1 rounded-xl border border-sidebar-border px-1.5 py-1", !visible && "opacity-55")}>
-                <item.icon className="h-5 w-5 shrink-0 text-sidebar-foreground" />
-                {!collapsed && <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-sidebar-foreground">{item.label}</span>}
-                <div className="flex shrink-0 items-center gap-0">
-                  <Button type="button" size="icon" variant="ghost" className="h-7 w-7" disabled={menuSaving} title={(visible ? "Ocultar " : "Mostrar ")+item.label} aria-label={(visible ? "Ocultar " : "Mostrar ")+item.label} onClick={() => toggleMenuItem(item.key,!visible)}>{visible?<Eye className="h-3.5 w-3.5"/>:<EyeOff className="h-3.5 w-3.5"/>}</Button>
-                </div>
-              </div>
-            );
             return (
               <div
                 key={item.key}
                 data-sidebar-item-key={item.key}
                 className={cn(
-                  "flex items-center gap-1 rounded-xl transition-colors",
+                  "flex min-w-0 items-center gap-1 rounded-xl transition-colors",
+                  !visible && "opacity-55",
                   draggingKey === item.key && "opacity-45",
                   dragTarget === item.key && "bg-sidebar-accent ring-2 ring-sidebar-primary/60",
                 )}
@@ -243,7 +247,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     type="button"
                     aria-label={"Arrastrar para reordenar " + item.label}
                     title="Arrastra para cambiar de posición"
-                    className="flex h-10 w-4 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:text-sidebar-primary active:cursor-grabbing"
+                    className="flex h-10 w-5 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-primary active:cursor-grabbing"
                     onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
                       if (event.button !== 0) return;
                       event.currentTarget.setPointerCapture(event.pointerId);
@@ -259,7 +263,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     onPointerMove={(event: PointerEvent<HTMLButtonElement>) => {
                       const current = dragState.current;
                       if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
-                      if (!current.active && Math.abs(event.clientY - current.startY) < 8) return;
+                      if (!current.active && Math.abs(event.clientY - current.startY) < 5) return;
                       if (!current.active) {
                         current.active = true;
                         setDraggingKey(current.key);
@@ -277,16 +281,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                       setDraggingKey(null);
                       setDragTarget(null);
                       const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-sidebar-item-key]");
-                      const hitKey = hit?.dataset.sidebarItemKey;
-                      const targetKey = hitKey ?? current.targetKey;
+                      const targetKey = hit?.dataset.sidebarItemKey ?? current.targetKey;
                       if (!current.active || !targetKey) return;
-                      const next = [...current.order];
-                      const from = next.indexOf(current.key);
-                      const to = next.indexOf(targetKey);
+                      const nextOrder = [...current.order];
+                      const from = nextOrder.indexOf(current.key);
+                      const to = nextOrder.indexOf(targetKey);
                       if (from < 0 || to < 0 || from === to) return;
-                      next.splice(from, 1);
-                      next.splice(to, 0, current.key);
-                      void persistMenu(next, hiddenModules);
+                      nextOrder.splice(from, 1);
+                      nextOrder.splice(to, 0, current.key);
+                      void persistMenu(nextOrder, hiddenModules);
                     }}
                     onPointerCancel={(event: PointerEvent<HTMLButtonElement>) => {
                       const current = dragState.current;
@@ -299,20 +302,40 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <GripVertical className="h-4 w-4" />
                   </button>
                 )}
-                <Link to={item.to} title={item.label} className={cn(
-                  "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-sidebar-accent",
-                  collapsed && "flex-none justify-center px-0",
-                  pathname.startsWith(item.to) && "bg-sidebar-accent",
-                )}>
-                  <item.icon className="h-5 w-5 shrink-0" />
+
+                <Link
+                  to={item.to}
+                  search={(p: Record<string, unknown>) => p}
+                  title={item.label}
+                  className={cn(
+                    "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
+                    collapsed && "flex-none justify-center px-0",
+                    pathname.startsWith(item.to) && "bg-sidebar-accent",
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
                   {!collapsed && <span className="truncate">{item.label}</span>}
                 </Link>
-                {!collapsed && <HelpTip helpKey={item.helpKey} />}
+
+                {menuEditing ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    disabled={menuSaving}
+                    title={(visible ? "Ocultar " : "Mostrar ") + item.label}
+                    aria-label={(visible ? "Ocultar " : "Mostrar ") + item.label}
+                    onClick={() => toggleMenuItem(item.key, !visible)}
+                  >
+                    {visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                  </Button>
+                ) : (
+                  !collapsed && <HelpTip helpKey={item.helpKey} />
+                )}
               </div>
             );
-              })}
-            </>
-          )}
+          })}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
