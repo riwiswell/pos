@@ -197,23 +197,13 @@ export function HabitsPage() {
           return (
             <section key={group.key} className={"glass rounded-2xl p-4 " + (group.category?.layout_columns === 3 ? "lg:col-span-full" : "")}>
               <div className="flex items-center gap-2">
-                {group.category?.icon ? (
-                  <span
-                    aria-hidden
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-lg"
-                    style={{ backgroundColor: color + "22" }}
-                  >
-                    {group.category.icon}
-                  </span>
-                ) : (
-                  <span
-                    aria-hidden
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: color }}
-                  />
-                )}
+                <span
+                  aria-hidden
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
                 <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
-                  {group.category?.icon ? group.category.icon + " " : ""}{group.category?.name ?? "Sin categoría"}
+                  {group.category?.name ?? "Sin categoría"}
                 </h2>
                 <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
                   {done}/{total}
