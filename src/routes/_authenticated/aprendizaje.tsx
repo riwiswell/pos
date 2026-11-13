@@ -518,7 +518,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,min
         </>}
         <div className="rounded-xl border border-border/60 bg-muted/25 px-2.5 py-2">
           <div className="flex items-center justify-between gap-2 text-[11px]">
-            <span className="font-medium text-muted-foreground">Tiempo jugado</span>
+            <span className="font-medium text-muted-foreground">{isChess?"Tiempo de ajedrez":"Tiempo jugado"}</span>
             <span className="font-semibold tabular-nums">{totalPlayedMinutes>0?(totalPlayedMinutes>=60?Math.floor(totalPlayedMinutes/60)+" h"+(totalPlayedMinutes%60?" "+(totalPlayedMinutes%60)+" min":""):totalPlayedMinutes+" min"):"Sin sesiones"}</span>
           </div>
           {minutesPlayed>0&&Number(item.progress)<=0&&<>
@@ -531,7 +531,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,min
         </div>
         {isChess&&recentSessions.length>0&&<div className="space-y-1.5 rounded-lg border border-border/50 p-2">
           <p className="text-[11px] font-medium text-muted-foreground">Últimos registros</p>
-          {recentSessions.slice(0,4).map((entry:any)=><div key={entry.id} className="flex items-center justify-between gap-2 text-[11px]"><span className="text-muted-foreground">{entry.session_date} · {String(entry.notes||"").includes("chess.com")?"chess.com · online":"Presencial"}</span><span className="font-medium tabular-nums">{entry.minutes} min</span></div>)}
+          {recentSessions.slice(0,4).map((entry:any)=><div key={entry.id} className="flex items-center justify-between gap-2 text-[11px]"><span className="text-muted-foreground">{entry.session_date} · {String(entry.notes||"").includes("Duolingo")?"Duolingo · práctica":String(entry.notes||"").includes("chess.com")?"chess.com · online":"Presencial"}</span><span className="font-medium tabular-nums">{entry.minutes} min</span></div>)}
         </div>}
         {recording?<div className="flex flex-wrap items-end gap-2 rounded-xl border border-border/60 bg-background/60 p-2">
           {isChess&&<label className="min-w-[130px] flex-1 text-[11px] text-muted-foreground">Fecha de juego
@@ -543,7 +543,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,min
             </select>}
           </label>
           {isChess&&<label className="min-w-[120px] flex-1 text-[11px] text-muted-foreground">Modalidad
-            <select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionSource} onChange={event=>setSessionSource(event.target.value)}><option value="chess.com">chess.com · online</option><option value="presencial">Presencial</option></select>
+            <select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionSource} onChange={event=>setSessionSource(event.target.value)}><option value="chess.com">chess.com · online</option><option value="duolingo">Duolingo · práctica</option><option value="presencial">Presencial</option></select>
           </label>}
           <Button size="sm" disabled={savingSession} onClick={()=>void saveRecordedSession()}>{savingSession?"Guardando…":"Guardar"}</Button>
           <Button size="sm" variant="ghost" disabled={savingSession} onClick={()=>setRecording(false)}>Cancelar</Button>
@@ -634,7 +634,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">{isGames?"Todavía no has agregado videojuegos. Pulsa Agregar para registrar el que estás jugando.":"Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno."}</div>}
     <div className={isGames?"grid grid-cols-1 gap-3 md:grid-cols-3":"grid grid-cols-1 gap-3 sm:grid-cols-2"}>
-      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).sort((a:any,b:any)=>String(b.session_date||"").localeCompare(String(a.session_date||""))||String(b.created_at||"").localeCompare(String(a.created_at||"")));const minutesPlayed=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={itemSessions.length} recentSessions={item.kind==="chess"?itemSessions:[]} onEdit={()=>startEdit(item)} onRecordSession={async(minutes:number,sessionDate?:string,source?:string)=>{await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:item.kind==="chess"&&sessionDate?sessionDate:todayISO(),minutes,notes:item.kind==="chess"?"Ajedrez · "+(source==="chess.com"?"chess.com (online)":"Presencial"):"Videojuego: "+item.title});}} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
+      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).sort((a:any,b:any)=>String(b.session_date||"").localeCompare(String(a.session_date||""))||String(b.created_at||"").localeCompare(String(a.created_at||"")));const minutesPlayed=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={itemSessions.length} recentSessions={item.kind==="chess"?itemSessions:[]} onEdit={()=>startEdit(item)} onRecordSession={async(minutes:number,sessionDate?:string,source?:string)=>{await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:item.kind==="chess"&&sessionDate?sessionDate:todayISO(),minutes,notes:item.kind==="chess"?"Ajedrez · "+(source==="chess.com"?"chess.com (online)":source==="duolingo"?"Duolingo (práctica)":"Presencial"):"Videojuego: "+item.title});}} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
     </div>
   </section>;
 }
