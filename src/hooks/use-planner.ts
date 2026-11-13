@@ -28,6 +28,7 @@ export function usePlannerItems(date: string, enabled = true) {
     queryKey: plannerKeys.items(date),
     queryFn: () => plannerService.listByDate(date),
     staleTime: 15_000,
+    placeholderData: (previousData) => previousData,
     enabled,
   });
 }
