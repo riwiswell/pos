@@ -62,9 +62,9 @@ function BowelLogCard({
   onEdit: (entry: BowelLog) => void;
   onDelete: (entry: BowelLog) => void;
 }) {
-  const labels = entry.symptoms
+  const labels: string[] = entry.symptoms
     .map((value) => SYMPTOMS.find(([key]) => key === value)?.[1])
-    .filter((value): value is string => Boolean(value));
+    .filter(Boolean) as string[];
 
   return (
     <article className="rounded-xl border border-border bg-card/50 p-3">
