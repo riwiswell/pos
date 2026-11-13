@@ -17,3 +17,4 @@ jobs:
           version: latest
       - run: supabase start
       - run: supabase test db supabase/tests/database/personal_os_completion.sql
+      - run: supabase test db supabase/tests/database/gamification_historical_backfill.sql
