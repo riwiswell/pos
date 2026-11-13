@@ -20,7 +20,10 @@ const XP_ACTIONS = [
   ["Registrar un bloque de trabajo", 10],
   ["Registrar una medición de salud", 5],
   ["Registrar un movimiento financiero", 2],
-  ["Registrar una sesión de aprendizaje o tiempo jugado", 10],
+  ["Registrar una sesión de lectura de un libro", 10],
+  ["Registrar una sesión de estudio de idioma", 10],
+  ["Registrar una sesión de videojuego", 10],
+  ["Terminar un libro (bono único por libro)", 10],
   ["Registrar una interacción en Relaciones", 8],
   ["Registrar una práctica o reflexión espiritual", 5],
   ["Registrar una acción en una meta de Vida", 5],
@@ -86,7 +89,7 @@ function GamificationPage() {
   return <div className="space-y-5 pb-24">
     <GlobalDateHeader/>
     <div className="flex items-center gap-2"><Trophy className="h-5 w-5"/><h1 className="text-xl font-semibold">Gamificación</h1><HelpTip helpKey="gamification"/></div>
-    <p className="text-sm text-muted-foreground">El motor convierte acciones reales del sistema en XP y progreso. No se premia la presión ni se castigan los días sin actividad.</p>
+    <p className="text-sm text-muted-foreground">Cada 100 XP subes un nivel. Por ahora, el nivel mide tu avance; no desbloquea funciones adicionales. Los bonos se obtienen mediante logros y desafíos. Los registros históricos anteriores a la activación de XP no se convierten automáticamente en puntos.</p>
     <section className="relative overflow-hidden rounded-[28px] border border-violet-400/20 bg-gradient-to-br from-violet-500/15 via-card to-cyan-500/10 p-5 shadow-sm sm:p-7">
       <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl"/>
       <div className="relative grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -129,7 +132,7 @@ function GamificationPage() {
       </div>
       <div className="rounded-xl bg-muted/45 p-3 text-xs">
         <p className="font-semibold">Ejemplos para llegar a 30 XP en un día</p>
-        <p className="mt-1 text-muted-foreground">6 hábitos registrados (6 × 5 XP), o 3 sesiones de trabajo/aprendizaje (3 × 10 XP), o 4 interacciones en Relaciones (4 × 8 XP = 32 XP).</p>
+        <p className="mt-1 text-muted-foreground">6 hábitos registrados (6 × 5 XP), 3 sesiones de lectura o idiomas (3 × 10 XP), o 4 interacciones en Relaciones (4 × 8 XP = 32 XP). Terminar un libro suma otros 10 XP una sola vez por libro.</p>
       </div>
       <p className="text-xs text-muted-foreground">La meta diaria de 30 XP es una referencia de progreso: completarla no entrega otros 30 XP adicionales. Los bonos de logros sí se suman aparte, pero solo la primera vez. Las tomas de medicamentos, hidratación, registro menstrual y citas todavía no generan XP automático.</p>
     </section>
