@@ -323,7 +323,7 @@ export function SleepPanel() {
             </p>
           </div>
           <div className="rounded-xl border bg-background/60 p-3">
-            <p className="text-[11px] text-muted-foreground">Registros guardados</p>
+            <p className="text-[11px] text-muted-foreground">Registros recientes</p>
             <p className="mt-1 text-xl font-semibold tabular-nums">{allSleepRecords.length}</p>
             <p className="text-[10px] text-muted-foreground">{history.length} con duración válida</p>
           </div>
