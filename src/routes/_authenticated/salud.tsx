@@ -575,11 +575,6 @@ function CycleProfile({
             <Button size="icon" variant="outline" aria-label="Mes siguiente" onClick={() => setMonth(cycleMonthShift(month, 1))}><ChevronRight className="h-4 w-4" /></Button>
           </div>
         </div>
-          <div className="flex items-center gap-1">
-            <Button size="icon" variant="outline" aria-label="Mes anterior" onClick={() => setMonth(cycleMonthShift(month, -1))}><ChevronLeft className="h-4 w-4" /></Button>
-            <Button size="icon" variant="outline" aria-label="Mes siguiente" onClick={() => setMonth(cycleMonthShift(month, 1))}><ChevronRight className="h-4 w-4" /></Button>
-          </div>
-        </div>
         <div className="mx-auto w-full md:w-1/2 rounded-xl border border-border/70 p-3">
           <p className="mb-3 text-center text-sm font-semibold capitalize">{monthTitle}</p>
           <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground">
