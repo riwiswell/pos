@@ -173,7 +173,7 @@ function HydrationCard(){
   </div>
   <div className="flex flex-wrap items-center gap-2">
    {WATER_OPTIONS.filter(glasses=>glasses>0).map(glasses=>{const ml=Math.round(waterGlassesToMl(glasses));return <Button key={glasses} size="sm" variant={glasses===1?"default":"outline"} disabled={disabled} onClick={()=>void addDrink("water",ml)}>+{formatGlasses(glasses)} agua</Button>})}
-   <Button size="sm" variant="outline" className="gap-1" disabled={disabled} onClick={()=>void addDrink("coffee",100)}><Coffee className="h-3.5 w-3.5"/> +{formatGlasses(Number((100/WATER_GLASS_ML).toFixed(2)))} café</Button>
+   <Button size="sm" variant="outline" className="gap-1" disabled={disabled} onClick={()=>void addDrink("coffee",100)}><Coffee className="h-3.5 w-3.5"/> +1 taza de café</Button>
    <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("tea",325,"Té","🍵")}>+{formatGlasses(1)} té</Button>
    <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("other",325,"Frutiño","🧃")}>+{formatGlasses(1)} Frutiño</Button>
    <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("other",325,"Agua de panela","🧉")}>+{formatGlasses(1)} agua de panela</Button>
