@@ -252,7 +252,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
     try{
       await onCompleteReward();
       setRewardClaimed(true);
-      toast.success("Bono por terminar el libro: +10 XP.");
+      toast.success("Bono por terminar el libro: +20 XP.");
     }catch(error){
       toast.error(error instanceof Error?error.message:"No se pudo registrar el bono del libro.");
     }finally{
@@ -293,7 +293,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
       setPage(String(total));
       setPanel(null);
       if(!hasCompletionReward&&!isBible)await onCompleteReward();
-      toast.success(!hasCompletionReward&&!isBible?"Libro terminado: +10 XP.":"Libro marcado como terminado.");
+      toast.success(!hasCompletionReward&&!isBible?"Libro terminado: +20 XP.":"Libro marcado como terminado.");
     }catch(error){
       toast.error(error instanceof Error?error.message:"No se pudo terminar el libro.");
     }finally{
@@ -364,7 +364,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
               <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>
               <Button size="sm" variant={panel==="reading"?"default":"outline"} onClick={()=>setPanel(panel==="reading"?null:"reading")}><Clock className="mr-1 h-3.5 w-3.5"/>Registrar lectura</Button>
               <Button size="sm" variant={book.status==="completed"?"secondary":"outline"} onClick={()=>void markFinished()} disabled={book.status==="completed"||completionSaving}><Check className="mr-1 h-3.5 w-3.5"/> {book.status==="completed"?"Terminado":"Marcar terminado"}</Button>
-              {book.status==="completed"&&!rewardClaimed&&!isBible&&<Button size="sm" variant="outline" disabled={completionSaving} onClick={()=>void claimCompletionReward()}>Reclamar +10 XP</Button>}
+              {book.status==="completed"&&!rewardClaimed&&!isBible&&<Button size="sm" variant="outline" disabled={completionSaving} onClick={()=>void claimCompletionReward()}>Reclamar +20 XP</Button>}
               <Button size="sm" variant={panel==="summary"?"default":"outline"} onClick={()=>setPanel(panel==="summary"?null:"summary")}><FileText className="mr-1 h-3.5 w-3.5"/>Resumen</Button>
               <Button size="sm" variant={panel==="notes"?"default":"outline"} onClick={()=>setPanel(panel==="notes"?null:"notes")}><NotebookPen className="mr-1 h-3.5 w-3.5"/>Notas ({mine.length})</Button>
               <Button size="sm" variant={panel==="details"?"default":"outline"} onClick={()=>setPanel(panel==="details"?null:"details")}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar ficha</Button>
@@ -455,29 +455,50 @@ function kindIcon(kind:string){
   return "📚";
 }
 
-function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,minutesPlayed=0,sessionCount=0,recentSessions=[]}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;onRecordSession:(minutes:number,sessionDate?:string,source?:string)=>Promise<unknown>;minutesPlayed?:number;sessionCount?:number;recentSessions?:any[]}){
+function plainTextFromRichValue(value: unknown): string {
+  return String(value ?? "")
+    .replace(/<\\s*br\\s*\\/?\\s*>/gi, " ")
+    .replace(/<\\/(p|div|li|h[1-6])\\s*>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\\s+/g, " ")
+    .trim();
+}
+
+function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onCompleteGame,hasCompletionReward,minutesPlayed=0,sessionCount=0,recentSessions=[]}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;onRecordSession:(minutes:number,sessionDate?:string,source?:string,progress?:number)=>Promise<unknown>;onCompleteGame:()=>Promise<unknown>;hasCompletionReward:boolean;minutesPlayed?:number;sessionCount?:number;recentSessions?:any[]}){
   const[uploading,setUploading]=useState(false);
   const[recording,setRecording]=useState(false);
   const[sessionMinutes,setSessionMinutes]=useState("30");
   const[sessionDate,setSessionDate]=useState(todayISO());
   const[sessionSource,setSessionSource]=useState("chess.com");
+  const[sessionProgress,setSessionProgress]=useState(String(item.progress??0));
   const[savingSession,setSavingSession]=useState(false);
+  const[savingGameCompletion,setSavingGameCompletion]=useState(false);
   const input=useRef<HTMLInputElement>(null);
   const totalPlayedMinutes=Math.round(minutesPlayed);
   const isChess=item.kind==="chess";
+  const isGame=item.kind==="video_game"||item.kind==="game";
   const saveRecordedSession=async()=>{
     const value=Number(sessionMinutes);
     if(!Number.isInteger(value)||value<1||value>1440){toast.error("La duración debe estar entre 1 y 1440 minutos.");return;}
     const selectedDate=isChess?sessionDate:todayISO();
+    const nextProgress=Number(sessionProgress);
     if(isChess&&(!selectedDate||selectedDate>todayISO())){toast.error("Selecciona una fecha válida que no sea futura.");return;}
+    if(isGame&&(!Number.isFinite(nextProgress)||nextProgress<0||nextProgress>100)){toast.error("El avance debe estar entre 0 y 100 %.");return;}
     setSavingSession(true);
     try{
-      await onRecordSession(value,selectedDate,isChess?sessionSource:undefined);
-      toast.success(isChess?"Tiempo de ajedrez registrado.":"Tiempo jugado guardado.");
+      await onRecordSession(value,selectedDate,isChess?sessionSource:undefined,isGame?nextProgress:undefined);
+      toast.success(isChess?"Tiempo de ajedrez registrado.":isGame?"Sesión de videojuego registrada y avance actualizado.":"Tiempo jugado guardado.");
       setRecording(false);
       setSessionMinutes("30");
       setSessionDate(todayISO());
       setSessionSource("chess.com");
+      setSessionProgress(String(item.progress??0));
     }catch{/* El hook informa el error de guardado. */}
     finally{setSavingSession(false);}
   };
@@ -512,7 +533,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,min
     </div>
     <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
       <div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{kindLabel(item.kind)}</p>{(item.kind==="video_game"||item.kind==="game")&&(item.platform||item.genre)&&<p className="mt-1 text-[11px] font-medium text-primary">{[item.platform,item.genre].filter(Boolean).join(" · ")}</p>}{item.goal_description&&<p className="mt-1 text-xs text-primary">Meta: {item.goal_description}{item.goal_date?" · "+item.goal_date:""}</p>}{(item.kind==="video_game"||item.kind==="game"||isChess)&&<div className="mt-2 space-y-2">
-        {Number(item.progress)>0&&<>
+        {(isGame||Number(item.progress)>0)&&<>
           <div className="flex items-center justify-between text-[11px]"><span className="font-medium text-muted-foreground">Progreso de la historia</span><span className="font-semibold tabular-nums">{Math.min(100,Math.max(0,Number(item.progress)||0)).toLocaleString("es-CO",{maximumFractionDigits:1})}%</span></div>
           <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:Math.min(100,Math.max(0,Number(item.progress)||0))+"%"}}/></div><p className="text-[10px] text-muted-foreground">{Number(item.progress)>=100?"Completado":Number(item.progress)>0?"En curso":"Pendiente de iniciar"}</p>
         </>}
@@ -542,13 +563,19 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,min
               <option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option><option value="90">1 h 30 min</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="240">4 horas</option>
             </select>}
           </label>
+          {isGame&&<label className="min-w-[120px] flex-1 text-[11px] text-muted-foreground">Avance actual (%)
+            <Input className="mt-1 h-9" type="number" min="0" max="100" step="1" value={sessionProgress} onChange={event=>setSessionProgress(event.target.value)}/>
+          </label>}
           {isChess&&<label className="min-w-[120px] flex-1 text-[11px] text-muted-foreground">Modalidad
             <select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionSource} onChange={event=>setSessionSource(event.target.value)}><option value="chess.com">chess.com · online</option><option value="duolingo">Duolingo · práctica</option><option value="presencial">Presencial</option></select>
           </label>}
-          <Button size="sm" disabled={savingSession} onClick={()=>void saveRecordedSession()}>{savingSession?"Guardando…":"Guardar"}</Button>
+          <Button size="sm" disabled={savingSession} onClick={()=>void saveRecordedSession()}>{savingSession?"Guardando…":"Guardar sesión"}</Button>
           <Button size="sm" variant="ghost" disabled={savingSession} onClick={()=>setRecording(false)}>Cancelar</Button>
-        </div>:<Button size="sm" variant="outline" className="w-full" onClick={()=>{setSessionDate(todayISO());setSessionSource("chess.com");setRecording(true)}}><Clock className="mr-1 h-3.5 w-3.5"/>{isChess?"Registrar tiempo de ajedrez":"Registrar tiempo jugado"}</Button>}
-      </div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
+        </div>:<Button size="sm" variant="outline" className="w-full" onClick={()=>{setSessionDate(todayISO());setSessionSource("chess.com");setSessionProgress(String(item.progress??0));setRecording(true)}}><Clock className="mr-1 h-3.5 w-3.5"/>{isChess?"Registrar tiempo de ajedrez":isGame?"Registrar sesión y avance":"Registrar tiempo jugado"}</Button>}
+        {isGame&&<div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          {hasCompletionReward?<span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">🏆 Juego terminado · +20 XP registrados</span>:<Button size="sm" variant="outline" disabled={savingGameCompletion} onClick={async()=>{if(!window.confirm("¿Confirmas que terminaste \""+item.title+"\"?"))return;setSavingGameCompletion(true);try{await onCompleteGame();toast.success("¡Videojuego terminado! +20 XP y trofeo desbloqueado.");}catch(error){toast.error(error instanceof Error?error.message:"No se pudo registrar el final del juego.");}finally{setSavingGameCompletion(false);}}}>{savingGameCompletion?"Guardando…":"🏆 Terminé este videojuego · +20 XP"}</Button>}
+        </div>}
+      </div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{plainTextFromRichValue(item.notes)}</p>}</div>
       <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
     </div>
   </article>;
@@ -582,11 +609,12 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     const isGame=kind==="video_game"||kind==="game";
     if(!title.trim()){toast.error("Escribe el nombre del elemento.");return;}
     const progress=Math.min(100,Math.max(0,Number(gameProgress)||0));
+    const cleanNotes=plainTextFromRichValue(notes);
     if(editingId){
-      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null}});
+      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:cleanNotes||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null}});
       toast.success("Elemento actualizado.");
     }else{
-      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:0,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null});
+      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:cleanNotes||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:0,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null});
       toast.success("Elemento agregado.");
     }
     resetForm();
@@ -634,7 +662,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">{isGames?"Todavía no has agregado videojuegos. Pulsa Agregar para registrar el que estás jugando.":"Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno."}</div>}
     <div className={isGames?"grid grid-cols-1 gap-3 md:grid-cols-3":"grid grid-cols-1 gap-3 sm:grid-cols-2"}>
-      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).sort((a:any,b:any)=>String(b.session_date||"").localeCompare(String(a.session_date||""))||String(b.created_at||"").localeCompare(String(a.created_at||"")));const minutesPlayed=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={itemSessions.length} recentSessions={item.kind==="chess"?itemSessions:[]} onEdit={()=>startEdit(item)} onRecordSession={async(minutes:number,sessionDate?:string,source?:string)=>{await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:item.kind==="chess"&&sessionDate?sessionDate:todayISO(),minutes,notes:item.kind==="chess"?"Ajedrez · "+(source==="chess.com"?"chess.com (online)":source==="duolingo"?"Duolingo (práctica)":"Presencial"):"Videojuego: "+item.title});}} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
+      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).sort((a:any,b:any)=>String(b.session_date||"").localeCompare(String(a.session_date||""))||String(b.created_at||"").localeCompare(String(a.created_at||"")));const playedSessions=itemSessions.filter((entry:any)=>Number(entry.minutes)>0);const minutesPlayed=playedSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);const hasCompletionReward=itemSessions.some((entry:any)=>entry.activity_type==="game_completion");return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={playedSessions.length} recentSessions={item.kind==="chess"?playedSessions:[]} hasCompletionReward={hasCompletionReward} onEdit={()=>startEdit(item)} onRecordSession={async(minutes:number,sessionDate?:string,source?:string,progress?:number)=>{await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:item.kind==="chess"&&sessionDate?sessionDate:todayISO(),minutes,activity_type:item.kind==="chess"?"chess":"game",notes:item.kind==="chess"?"Ajedrez · "+(source==="chess.com"?"chess.com (online)":source==="duolingo"?"Duolingo (práctica)":"Presencial"):"Videojuego: "+item.title});if(item.kind!=="chess"&&typeof progress==="number"&&progress!==Number(item.progress??0))await m.update.mutateAsync({id:item.id,patch:{progress}});}} onCompleteGame={async()=>{await m.update.mutateAsync({id:item.id,patch:{progress:100,status:"completed",completed_on:todayISO()}});await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:todayISO(),minutes:0,activity_type:"game_completion",notes:"Videojuego terminado: "+item.title});}} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
     </div>
   </section>;
 }
