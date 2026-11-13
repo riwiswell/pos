@@ -47,6 +47,7 @@ export function applyAccentColor(value: string) {
     return total + linear * [0.2126, 0.7152, 0.0722][index];
   }, 0);
   const foreground = luminance > 0.44 ? "#17202a" : "#ffffff";
+  root.style.setProperty("--workspace-background", value);
   root.style.setProperty("--primary", value);
   root.style.setProperty("--ring", value);
   root.style.setProperty("--sidebar-primary", value);
