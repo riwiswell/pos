@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { HelpTip } from "@/components/common/HelpTip";
 import { PersonalAssistant } from "@/components/assistant/PersonalAssistant";
-import { NAV_GROUPS, NAV_ITEMS } from "@/components/shell/nav-items";
+import { NAV_ITEMS } from "@/components/shell/nav-items";
 import { useAuth } from "@/hooks/use-auth";
 import { profileKeys, useProfile, useProfileMediaUrl } from "@/hooks/use-profile";
 import { profileService } from "@/services/profile.service";
@@ -169,12 +169,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Reordering in the mobile drawer therefore also chooses the bottom-bar shortcuts.
   const mobilePrimaryItems = items.slice(0, 5);
   const mobileMoreItems = items.slice(5);
-  const mobileMoreGroups: { group: string; items: typeof mobileMoreItems }[] = [];
   const mobileUngroupedItems = mobileMoreItems;
   const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
-  const activeGroup = currentNavItem?.group ?? null;
 
   const background = profile?.background_url ?? null;
   const isColor = Boolean(background?.startsWith("#"));
@@ -388,41 +386,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                 onNavigate: () => setMoreOpen(false),
               }))}
             </div>
-          ) : <div className="space-y-3">
-            {mobileMoreGroups.map(({ group, items: groupItems }) => (
-              <details key={group} className="overflow-hidden rounded-xl border border-border bg-card/40" open={group === activeGroup}>
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold marker:hidden">
-                  <span>{group}</span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">{groupItems.length}</span>
-                </summary>
-                <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
-                  {groupItems.map((item) => (
-                    <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
-                      onClick={() => setMoreOpen(false)}
-                      aria-current={pathname.startsWith(item.to) ? "page" : undefined}
-                      className={cn("flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
-                      <item.icon className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              </details>
+          ) : <div className="grid grid-cols-2 gap-2">
+            {mobileUngroupedItems.map((item) => (
+              <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
+                onClick={() => setMoreOpen(false)}
+                aria-current={pathname.startsWith(item.to) ? "page" : undefined}
+                className={cn("flex min-h-12 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
+                <item.icon className="h-5 w-5 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
+              </Link>
             ))}
-            {mobileUngroupedItems.length > 0 && (
-              <section className="space-y-2">
-                <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cuenta</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {mobileUngroupedItems.map((item) => (
-                    <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
-                      onClick={() => setMoreOpen(false)}
-                      aria-current={pathname.startsWith(item.to) ? "page" : undefined}
-                      className={cn("flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
-                      <item.icon className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>}
+          </div>}}
         </SheetContent>
       </Sheet>
       <PersonalAssistant />
