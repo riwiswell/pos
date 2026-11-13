@@ -109,6 +109,7 @@ function HomePage() {
   const gamification = gamificationQuery.data?.[0];
   const eventXpTotal = (gamificationEventsQuery.data ?? []).reduce((sum:number,event:any)=>sum+Math.max(0,Number(event.xp)||0),0);
   const gamificationXp = Math.max(Number(gamification?.xp ?? 0),eventXpTotal);
+  const gamificationUnavailable = gamificationQuery.isError || gamificationEventsQuery.isError;
   const gamificationLevel = Math.floor(gamificationXp / 200) + 1;
   const activityDates = new Set((gamificationEventsQuery.data ?? []).map((event:any)=>{
     const timestamp = new Date(String(event.created_at ?? ""));
@@ -222,8 +223,8 @@ function HomePage() {
             </Link>
             <Link to="/gamificacion" search={(prev: Record<string, unknown>) => prev} className="rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-400/[.13] to-white/[.05] p-3 backdrop-blur transition-colors hover:border-amber-300/40">
               <div className="flex items-center gap-2 text-xs text-slate-300"><Trophy className="h-4 w-4 text-amber-300" /> Nivel personal</div>
-              <p className="mt-2 text-xl font-semibold tabular-nums text-white">{gamificationQuery.isLoading || gamificationEventsQuery.isLoading ? "…" : `Nv. ${gamificationLevel}`}</p>
-              <p className="mt-0.5 text-[11px] text-slate-400">{gamificationXp} XP · {gamificationStreak} días de racha</p>
+              <p className="mt-2 text-xl font-semibold tabular-nums text-white">{gamificationQuery.isLoading || gamificationEventsQuery.isLoading ? "…" : gamificationUnavailable ? "—" : `Nv. ${gamificationLevel}`}</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">{gamificationUnavailable ? "No se pudo cargar XP" : `${gamificationXp.toLocaleString("es-CO")} XP · ${gamificationStreak} días de racha`}</p>
               <Progress value={levelProgress} className="mt-2 h-1.5 bg-white/10"/>
               <p className="mt-1 truncate text-[10px] text-slate-300">{connectionsQuery.isLoading ? "…" : `${connectionsQuery.data?.length ?? 0} conexiones activas`}{activeChallenge ? ` · Reto: ${activeChallenge.title} (${activeChallenge.progress}/${activeChallenge.target})` : ""}</p>
             </Link>
