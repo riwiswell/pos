@@ -295,14 +295,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Button>
           </div>
           {collapsed
-            ? menuItems.map(renderMenuItem)
+            ? menuItems.map((item) => renderMenuItem(item))
             : desktopMenuGroups.map(({ label, items: groupItems }) => (
                 <details key={label} className="overflow-hidden rounded-xl border border-sidebar-border/70 bg-sidebar/40" open={menuEditing || label === activeGroup}>
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-sidebar-foreground/85 marker:hidden hover:bg-sidebar-accent">
                     <span>{label}</span>
                     <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">{groupItems.length}</span>
                   </summary>
-                  <div className="space-y-1 border-t border-sidebar-border/60 p-1.5">{groupItems.map(renderMenuItem)}</div>
+                  <div className="space-y-1 border-t border-sidebar-border/60 p-1.5">{groupItems.map((item) => renderMenuItem(item))}</div>
                 </details>
               ))}
         </nav>
