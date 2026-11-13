@@ -94,8 +94,6 @@ as $xp_score$
   end
 $xp_score$;
 
-revoke all on function public.ensure_default_gamification_challenges(uuid) from public, anon, authenticated;
-
 -- Emisor del Life Graph. El identificador del evento cambia al editar una fila,
 -- pero la clave de XP será estable por registro: editar no duplica sus puntos.
 create or replace function public.emit_life_event()
