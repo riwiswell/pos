@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_authenticated/planeador")({
   component: PlannerPage,
 });
 
-function PlannerPage() {
+export function PlannerPage() {
   const { date, setDate, goToday } = useGlobalDate();
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(date + "T12:00:00"));
   const monthYear = calendarMonth.getFullYear();
