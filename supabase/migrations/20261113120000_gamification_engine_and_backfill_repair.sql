@@ -433,9 +433,6 @@ begin
 end;
 $apply_gamification$;
 
-revoke all on function public.emit_life_event() from public, anon, authenticated;
-revoke all on function public.apply_gamification_for_life_event() from public, anon, authenticated;
-
 drop trigger if exists gamification_from_life_event on public.life_events;
 create trigger gamification_from_life_event
 after insert on public.life_events
