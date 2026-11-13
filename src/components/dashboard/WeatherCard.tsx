@@ -55,6 +55,14 @@ function readLocation(): LocationChoice {
   return CITIES[0];
 }
 
+function currentConditionCode(code:number,precipitation:number):number {
+  // Open-Meteo weather_code can describe modeled precipitation in the grid cell.
+  // If the current 15-minute observation reports effectively no precipitation,
+  // show the cloud condition instead of claiming it is raining at the user's location.
+  if ([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code) && precipitation <= 0.05) return 3;
+  return code;
+}
+
 function weatherDescription(code: number) {
   if (code === 0) return "Despejado";
   if ([1, 2].includes(code)) return "Parcialmente nublado";
@@ -167,7 +175,8 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
 
   const current = weather?.current;
   const rainChance = weather?.daily?.precipitation_probability_max?.[0];
-  const mood = current ? weatherMood(current.weather_code, current.is_day === 1) : "neutral";
+  const displayCode = current ? currentConditionCode(current.weather_code, current.precipitation) : 3;
+  const mood = current ? weatherMood(displayCode, current.is_day === 1) : "neutral";
 
   return (
     <section className={`glass weather-card weather-card--${mood} overflow-hidden rounded-2xl border border-border/70 ${compact || planner ? "p-3" : "p-4 sm:p-5"}`}>
@@ -206,10 +215,10 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
       ) : current ? (compact ? (
           <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4">
             <div className="col-span-2 flex min-w-0 items-center gap-3 rounded-xl bg-background/35 p-2 sm:col-span-2">
-              <WeatherIcon code={current.weather_code} isDay={current.is_day === 1} />
+              <WeatherIcon code={displayCode} isDay={current.is_day === 1} />
               <div className="min-w-0">
                 <p className="text-3xl font-semibold tracking-tight tabular-nums">{Math.round(current.temperature_2m)}°</p>
-                <p className="break-words text-xs text-muted-foreground">{weatherDescription(current.weather_code)} · sensación {Math.round(current.apparent_temperature)}°</p>
+                <p className="break-words text-xs text-muted-foreground">{weatherDescription(displayCode)} · sensación {Math.round(current.apparent_temperature)}°</p>
               </div>
             </div>
             <div className="min-w-0 rounded-xl bg-background/55 px-3 py-2"><p className="text-[10px] text-muted-foreground">Lluvia</p><p className="text-lg font-semibold tabular-nums">{rainChance ?? "—"}{rainChance == null ? "" : "%"}</p></div>
