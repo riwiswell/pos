@@ -1,4 +1,4 @@
-import { BookOpen, BriefcaseBusiness, CalendarCheck, Gamepad2, HeartHandshake, HeartPulse, Home, Trophy, User, Wallet, Church, ListTodo, Languages } from "lucide-react";
+import { BookOpen, BriefcaseBusiness, Gamepad2, HeartHandshake, HeartPulse, Home, Trophy, User, Wallet, Church, ListTodo, Languages } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface NavItem {
