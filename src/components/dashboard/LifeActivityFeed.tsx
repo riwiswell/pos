@@ -118,7 +118,9 @@ function eventTime(value: string) {
 
 export function LifeActivityFeed({ date, connections, connectionsLoading }: { date:string; connections: LifeConnection[]; connectionsLoading: boolean }) {
   const [open, setOpen] = useState(false);
+  const previewQuery = useLGEventsByDate(date, true, 3);
   const query = useLGEventsByDate(date, open);
+  const previewEvents = (previewQuery.data ?? []) as LifeEvent[];
   const events = (query.data ?? []) as LifeEvent[];
   const dayLabel = new Intl.DateTimeFormat("es-CO", {
     weekday: "long",
@@ -153,6 +155,32 @@ export function LifeActivityFeed({ date, connections, connectionsLoading }: { da
             <Activity className="mr-1.5 h-3.5 w-3.5" />
             Ver actividad
           </Button>
+        </div>
+        <div className="mt-3 space-y-2 border-t border-border/70 pt-2.5">
+          {previewQuery.isLoading ? (
+            <p className="text-xs text-muted-foreground">Cargando actividad del día…</p>
+          ) : previewQuery.isError ? (
+            <p className="text-xs text-muted-foreground">La vista previa no está disponible.</p>
+          ) : previewEvents.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Todavía no hay actividad registrada para esta fecha.</p>
+          ) : (
+            previewEvents.map((event) => {
+              const domain = DOMAIN[event.entity_type ?? ""] ?? { label: "Personal", icon: Activity, tone: "text-muted-foreground bg-muted" };
+              const Icon = domain.icon;
+              return (
+                <div key={event.id} className="flex min-w-0 items-center gap-2.5">
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${domain.tone}`}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium">{eventTitle(event)}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{eventDetail(event)}</p>
+                  </div>
+                  <time className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{eventTime(event.event_at)}</time>
+                </div>
+              );
+            })
+          )}
         </div>
       </section>
 

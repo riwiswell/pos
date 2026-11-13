@@ -20,19 +20,25 @@ export const lifeGraphService={
   if(error)throw error;
   return (data??[]) as any[];
  },
- async eventsForDate(date:string):Promise<any[]>{
+ async eventsForDate(date:string,limit?:number):Promise<any[]>{
   const startAt=new Date(`${date}T00:00:00-05:00`);
   const endAt=new Date(`${addDaysISO(date,1)}T00:00:00-05:00`);
   if(Number.isNaN(startAt.getTime())||Number.isNaN(endAt.getTime()))throw new Error("La fecha de actividad no es válida.");
+  let query=db.from("life_events")
+   .select("id,event_type,entity_type,entity_id,event_at,payload")
+   .gte("event_at",startAt.toISOString())
+   .lt("event_at",endAt.toISOString())
+   .order("event_at",{ascending:false});
+  if(limit!==undefined){
+   const safeLimit=Math.max(1,Math.min(100,Math.floor(limit)||1));
+   const{data,error}=await query.limit(safeLimit);
+   if(error)throw error;
+   return (data??[]) as any[];
+  }
   const rows:any[]=[];
   const pageSize=500;
   for(let from=0;;from+=pageSize){
-   const{data,error}=await db.from("life_events")
-    .select("id,event_type,entity_type,entity_id,event_at,payload")
-    .gte("event_at",startAt.toISOString())
-    .lt("event_at",endAt.toISOString())
-    .order("event_at",{ascending:false})
-    .range(from,from+pageSize-1);
+   const{data,error}=await query.range(from,from+pageSize-1);
    if(error)throw error;
    const page=(data??[]) as any[];
    rows.push(...page);

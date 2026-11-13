@@ -5,10 +5,10 @@ import { lifeGraphService,type LGTable } from "@/services/life-graph.service";
 export function useLGRecentEvents(limit=8){
   return useQuery({queryKey:["lg","life_events","recent",limit],queryFn:()=>lifeGraphService.recentEvents(limit),staleTime:30_000});
 }
-export function useLGEventsByDate(date:string,enabled=true){
+export function useLGEventsByDate(date:string,enabled=true,limit?:number){
   return useQuery({
-    queryKey:["lg","life_events","date",date],
-    queryFn:()=>lifeGraphService.eventsForDate(date),
+    queryKey:["lg","life_events","date",date,limit??"all"],
+    queryFn:()=>lifeGraphService.eventsForDate(date,limit),
     enabled:Boolean(date)&&enabled,
     staleTime:30_000
   });
