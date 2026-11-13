@@ -118,7 +118,7 @@ function eventTime(value: string) {
 
 export function LifeActivityFeed({ date, connections, connectionsLoading }: { date:string; connections: LifeConnection[]; connectionsLoading: boolean }) {
   const [open, setOpen] = useState(false);
-  const previewQuery = useLGEventsByDate(date, true, 3);
+  const previewQuery = useLGEventsByDate(date, true, 6);
   const query = useLGEventsByDate(date, open);
   const previewEvents = (previewQuery.data ?? []) as LifeEvent[];
   const events = (query.data ?? []) as LifeEvent[];
