@@ -458,7 +458,7 @@ function kindIcon(kind:string){
 function plainTextFromRichValue(value: unknown): string {
   return String(value ?? "")
     .replace(/<br[^>]*>/gi, " ")
-    .replace(/<\\/(p|div|li|h[1-6])[^>]*>/gi, " ")
+    .replace(/<\/(p|div|li|h[1-6])[^>]*>/gi, " ")
     .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
