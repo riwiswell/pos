@@ -188,21 +188,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
 
   const background = profile?.background_url ?? null;
-  const isColor = Boolean(background?.startsWith("#"));
-  const bgImageUrl = useProfileMediaUrl(background && !isColor ? background : null).data;
-  // A chosen screen color is applied directly to the workspace canvas.
-  // Uploaded backgrounds take precedence; cards and controls keep their own surfaces.
-  const style: CSSProperties = isColor
-    ? { backgroundColor: background! }
-    : {
-        backgroundColor: bgImageUrl ? undefined : "var(--workspace-background, var(--background))",
-        backgroundImage: bgImageUrl
-          ? `linear-gradient(color-mix(in oklab, var(--background) 82%, transparent),color-mix(in oklab, var(--background) 92%, transparent)),url(${bgImageUrl})`
-          : undefined,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-      };
+  // Only uploaded images are custom backgrounds. A legacy hex value in
+  // background_url must never override the color selected in the profile.
+  const bgImageUrl = useProfileMediaUrl(background && !background.startsWith("#") ? background : null).data;
+  const style: CSSProperties = {
+    backgroundColor: "var(--workspace-background, var(--background))",
+    backgroundImage: bgImageUrl
+      ? `linear-gradient(color-mix(in oklab, var(--background) 82%, transparent),color-mix(in oklab, var(--background) 92%, transparent)),url(${bgImageUrl})`
+      : undefined,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundAttachment: "fixed",
+  };
 
 
   const renderMenuItem = (
