@@ -265,7 +265,11 @@ export function remainingQuantity(
 ): number | null {
   if (med.total_quantity == null) return null;
   const consumed = Math.max(0, takenCount) * Number(med.units_per_dose ?? 1);
-  return Math.max(0, Number(med.total_quantity) + Math.max(0, restocked) - consumed);
+  // Stock movements are signed deltas: restocks add units and adjustments may
+  // subtract units. Clamping the movement sum to zero silently ignored
+  // negative physical-count corrections.
+  const stockDelta = Number.isFinite(restocked) ? restocked : 0;
+  return Math.max(0, Number(med.total_quantity) + stockDelta - consumed);
 }
 
 /** Water drunk with doses that are currently marked as taken. */
