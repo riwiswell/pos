@@ -1,5 +1,7 @@
 import { Activity, BookOpen, BriefcaseBusiness, HeartPulse, Link2, NotebookPen, Sparkles, Target, Users } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { Habit } from "@/domain/types";
+import { useHabits } from "@/hooks/use-habits";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLGEventsByDate } from "@/hooks/use-life-graph";
@@ -59,6 +61,11 @@ const RELATED_EVENT_ENTITIES: Record<string, Array<[string, string]>> = {
   ],
 };
 
+function eventHabit(event: LifeEvent, habitsById: Map<string, Habit>) {
+  if (event.entity_type !== "habit_logs") return undefined;
+  const habitId = event.payload?.habit_id;
+  return typeof habitId === "string" ? habitsById.get(habitId) : undefined;
+}
 function hasTypedConnection(event: LifeEvent, connections: LifeConnection[]) {
   if (!event.entity_id || !event.entity_type) return false;
   const type = LINK_ENTITY_TYPE[event.entity_type] ?? event.entity_type;
@@ -81,12 +88,13 @@ function hasTypedConnection(event: LifeEvent, connections: LifeConnection[]) {
   );
 }
 
-function eventTitle(event: LifeEvent) {
+function eventTitle(event: LifeEvent, habit?: Habit) {
   const payload = event.payload ?? {};
+  if (event.entity_type === "habit_logs" && habit?.name?.trim()) return habit.name;
   const title = payload.title ?? payload.name;
   if (typeof title === "string" && title.trim()) return title;
   const domain = DOMAIN[event.entity_type ?? ""];
-  if (event.entity_type === "habit_logs") return payload.completed === true || Number(payload.value ?? 0) > 0 ? "Progreso de hábito registrado" : "Registro de hábito actualizado";
+  if (event.entity_type === "habit_logs") return payload.completed === true || Number(payload.value ?? 0) > 0 ? "Progreso registrado" : "Registro actualizado";
   if (event.entity_type === "health_metrics") return "Actualizaste tus datos de salud";
   if (event.entity_type === "journal_entries") return "Escribiste en tu diario";
   if (event.entity_type === "work_sessions") return payload.status === "completed" ? "Completaste una sesión de trabajo" : "Registraste una sesión de trabajo";
@@ -94,9 +102,21 @@ function eventTitle(event: LifeEvent) {
   if (event.entity_type === "relationship_interactions") return "Registraste una interacción";
   return domain ? "Actividad registrada" : "Nuevo acontecimiento";
 }
-
-function eventDetail(event: LifeEvent) {
+function eventDetail(event: LifeEvent, habit?: Habit) {
   const payload = event.payload ?? {};
+  if (event.entity_type === "habit_logs") {
+    if (habit?.type === "counter") {
+      const rawValue = Number(payload.value ?? 0);
+      const value = Number.isFinite(rawValue) ? rawValue : 0;
+      const rawTarget = Number(habit.target ?? 0);
+      const target = Number.isFinite(rawTarget) ? rawTarget : 0;
+      const unit = typeof habit.unit === "string" ? habit.unit.trim() : "";
+      const unitLabel = unit ? ` ${unit}` : "";
+      const amount = `${value.toLocaleString("es-CO", { maximumFractionDigits: 2 })}${unitLabel}`;
+      return target > 0 ? `${amount} / ${target.toLocaleString("es-CO")}${unitLabel}` : amount;
+    }
+    return payload.completed === true ? "Completado" : "Marcado como pendiente";
+  }
   if (event.entity_type === "health_metrics") {
     const parts: string[] = [];
     if (payload.water_liters != null) parts.push(`Agua: ${Number(payload.water_liters).toLocaleString("es-CO")} L`);
@@ -106,10 +126,8 @@ function eventDetail(event: LifeEvent) {
   }
   if (event.entity_type === "work_sessions" && payload.minutes != null) return `${Number(payload.minutes)} minutos registrados`;
   if (event.entity_type === "learning_sessions" && payload.minutes != null) return `${Number(payload.minutes)} minutos de aprendizaje`;
-  if (event.entity_type === "habit_logs" && payload.habit_kind === "activity") return "Actividad personal";
   return event.event_type === "updated" ? "Registro actualizado" : "Añadido a tu historial";
 }
-
 function eventTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Hora no disponible";
@@ -118,6 +136,11 @@ function eventTime(value: string) {
 
 export function LifeActivityFeed({ date, connections, connectionsLoading }: { date:string; connections: LifeConnection[]; connectionsLoading: boolean }) {
   const [open, setOpen] = useState(false);
+  const habitsQuery = useHabits(true);
+  const habitsById = useMemo(
+    () => new Map<string, Habit>((habitsQuery.data ?? []).map((habit) => [habit.id, habit] as const)),
+    [habitsQuery.data],
+  );
   const previewQuery = useLGEventsByDate(date, true, 6);
   const query = useLGEventsByDate(date, open);
   const previewEvents = (previewQuery.data ?? []) as LifeEvent[];
@@ -167,14 +190,15 @@ export function LifeActivityFeed({ date, connections, connectionsLoading }: { da
             previewEvents.map((event) => {
               const domain = DOMAIN[event.entity_type ?? ""] ?? { label: "Personal", icon: Activity, tone: "text-muted-foreground bg-muted" };
               const Icon = domain.icon;
+              const habit = eventHabit(event, habitsById);
               return (
                 <div key={event.id} className="flex min-w-0 items-center gap-2.5">
                   <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${domain.tone}`}>
-                    <Icon className="h-3.5 w-3.5" />
+                    {habit?.icon ? <span className="text-base leading-none">{habit.icon}</span> : <Icon className="h-3.5 w-3.5" />}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium">{eventTitle(event)}</p>
-                    <p className="truncate text-[10px] text-muted-foreground">{eventDetail(event)}</p>
+                    <p className="truncate text-xs font-medium">{eventTitle(event, habit)}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{eventDetail(event, habit)}</p>
                   </div>
                   <time className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{eventTime(event.event_at)}</time>
                 </div>
@@ -222,18 +246,19 @@ export function LifeActivityFeed({ date, connections, connectionsLoading }: { da
                   {events.map((event) => {
                     const domain = DOMAIN[event.entity_type ?? ""] ?? { label: "Personal", icon: Activity, tone: "text-muted-foreground bg-muted" };
                     const Icon = domain.icon;
+                    const habit = eventHabit(event, habitsById);
                     const connected = hasTypedConnection(event, connections);
                     return (
                       <article key={event.id} className="flex min-w-0 items-start gap-3 py-3">
                         <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${domain.tone}`}>
-                          <Icon className="h-4 w-4" />
+                          {habit?.icon ? <span className="text-lg leading-none">{habit.icon}</span> : <Icon className="h-4 w-4" />}
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            <p className="min-w-0 break-words text-sm font-medium">{eventTitle(event)}</p>
+                            <p className="min-w-0 break-words text-sm font-medium">{eventTitle(event, habit)}</p>
                             <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{domain.label}</span>
                           </div>
-                          <p className="mt-0.5 text-xs text-muted-foreground">{eventDetail(event)}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{eventDetail(event, habit)}</p>
                           <span className={`mt-1 inline-flex items-center gap-1 text-[10px] ${connected ? "text-emerald-500" : "text-muted-foreground"}`}>
                             <Link2 className="h-3 w-3" />
                             {connected ? "Conectado" : "En historial"}
