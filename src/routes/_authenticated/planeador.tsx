@@ -161,7 +161,7 @@ function PlannerPage() {
               const dayNumber = String(day.getDate()).padStart(2, "0");
               setDate(year + "-" + month + "-" + dayNumber);
             }}
-            className="mx-auto block w-full max-w-full [--cell-size:clamp(2.75rem,calc((100vw-3rem)/7),3.5rem)]"
+            className="mx-auto block w-full max-w-full p-1 [--cell-size:clamp(1.35rem,calc((100vw-3rem)/14),1.75rem)]"
           />
         </div>
         <div className="w-full rounded-xl bg-muted/30 p-3">
