@@ -1,6 +1,6 @@
 begin;
 
-select plan(96);
+select plan(101);
 
 select has_table('public','relationships','relationships exists');
 select has_column('public','relationships','contact_frequency_days','relationship frequency exists');
@@ -295,6 +295,26 @@ select has_column('public','learning_items','goal_date','games support a target 
 select has_column('public','medications','stock_unit','medications track physical stock units');
 select has_column('public','medications','units_per_dose','medications track units per dose');
 select has_table('public','medication_stock_movements','medication stock refills are stored as movements');
+
+
+-- Optional private bowel movement tracking in Salud.
+select has_table('public','health_bowel_logs','optional bowel movement log table exists');
+select ok((select relrowsecurity from pg_class where oid='public.health_bowel_logs'::regclass), 'bowel log rows have row-level security');
+select is((
+  select count(*)::integer from pg_policies
+   where schemaname='public' and tablename='health_bowel_logs'
+     and policyname in ('health_bowel_logs_select_own','health_bowel_logs_insert_own','health_bowel_logs_update_own','health_bowel_logs_delete_own')
+), 4, 'bowel log access is restricted to the owning user');
+select ok((
+  select exists(select 1 from pg_trigger
+    where tgrelid='public.health_bowel_logs'::regclass
+      and tgname='health_bowel_logs_validate' and not tgisinternal)
+), 'bowel log dates are validated');
+select ok((
+  select exists(select 1 from pg_trigger
+    where tgrelid='public.health_bowel_logs'::regclass
+      and tgname='health_bowel_logs_updated_at' and not tgisinternal)
+), 'bowel log edits maintain updated_at');
 
 select * from finish();
 rollback;
