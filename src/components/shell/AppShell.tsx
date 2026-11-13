@@ -194,7 +194,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const style: CSSProperties = {
     backgroundColor: "var(--workspace-background, var(--background))",
     backgroundImage: bgImageUrl
-      ? `linear-gradient(color-mix(in oklab, var(--background) 82%, transparent),color-mix(in oklab, var(--background) 92%, transparent)),url(${bgImageUrl})`
+      ? `linear-gradient(color-mix(in oklab, var(--background) 34%, transparent),color-mix(in oklab, var(--background) 50%, transparent)),url(${bgImageUrl})`
       : undefined,
     backgroundSize: "cover",
     backgroundPosition: "center",
