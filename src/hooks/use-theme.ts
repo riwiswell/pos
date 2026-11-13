@@ -31,7 +31,11 @@ function normalizeAccent(value: string | null | undefined): string | null {
 
 export function applyTheme(theme: ThemeName) {
   if (typeof document === "undefined") return;
-  document.documentElement.classList.toggle(LIGHT_CLASS, theme === "light");
+  const root = document.documentElement;
+  root.classList.toggle(LIGHT_CLASS, theme === "light");
+  // The root is rendered with "dark" for the no-JS/default theme. Remove that
+  // marker in light mode so Tailwind dark: utilities do not override light tokens.
+  root.classList.toggle("dark", theme === "dark");
 }
 
 export function applyAccentColor(value: string) {
