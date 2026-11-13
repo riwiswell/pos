@@ -175,7 +175,7 @@ function Books(){
 function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:{book:any;notes:any[];coverPath:string|null;onSave:(p:any)=>Promise<unknown>;onDelete:()=>Promise<unknown>;onAddNote:(p:any)=>Promise<unknown>;onDeleteNote:(id:string)=>Promise<unknown>}){
   const isBible=isBibleBook(String(book.title||""));
   const total=isBible?1189:(Number(book.total_pages)||0);
-  const[page,setPage]=useState(String(book.current_page||0));
+  const[page,setPage]=useState(String(book.status==="completed"&&Number(book.total_pages)>0?book.total_pages:book.current_page||0));
   const[summary,setSummary]=useState(book.summary||"");
   const[note,setNote]=useState("");
   const[section,setSection]=useState("");
@@ -197,7 +197,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
   const pageValue=Math.max(0,Number(page)||0);
   const progress=total?Math.min(100,Math.max(0,pageValue/total*100)):Number(book.progress)||0;
   const remain=Math.max(0,total-pageValue);
-  useEffect(()=>setPage(String(book.current_page||0)),[book.current_page]);
+  useEffect(()=>setPage(String(book.status==="completed"&&total>0?total:book.current_page||0)),[book.current_page,book.status,total]);
   useEffect(()=>setSummary(book.summary||""),[book.summary]);
   useEffect(()=>setNewTitle(String(book.title||"")),[book.title]);
   useEffect(()=>setNewAuthor(String(book.author||"")),[book.author]);
