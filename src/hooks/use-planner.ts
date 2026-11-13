@@ -43,7 +43,10 @@ export function usePlannerItemsRange(startDate: string, endDate: string, enabled
 
 export function usePlannerMutations(date: string) {
   const qc = useQueryClient();
-  const invalidateItems = () => qc.invalidateQueries({ queryKey: ["planner_items"] });
+  const invalidateItems = () => {
+    void qc.invalidateQueries({ queryKey: ["daily-proactive-briefing"] });
+    return qc.invalidateQueries({ queryKey: ["planner_items"] });
+  };
   const invalidateCategories = () => qc.invalidateQueries({ queryKey: plannerKeys.categories });
 
   const createCategory = useMutation({
