@@ -20,7 +20,7 @@ export function useLGMutations(table:LGTable){
       }
     }
   };
-  const onError=(error:unknown)=>toast.error(error instanceof Error?error.message:"No se pudo completar la operación.");
+  const onError=(error:unknown)=>{ const value=error&&typeof error==="object"?error as Record<string,unknown>:{}; const message=typeof value.message==="string"?value.message:error instanceof Error?error.message:"No se pudo completar la operación."; const code=typeof value.code==="string"?" ["+value.code+"]":""; const detail=typeof value.details==="string"&&value.details?" · "+value.details:typeof value.hint==="string"&&value.hint?" · "+value.hint:""; toast.error(message+code+detail,{duration:9000}); };
   return{
     create:useMutation({mutationFn:(x:Record<string,unknown>)=>lifeGraphService.create(table,x),onSuccess:invalidate,onError}),
     update:useMutation({mutationFn:(x:{id:string;patch:Record<string,unknown>})=>lifeGraphService.update(table,x.id,x.patch),onSuccess:invalidate,onError}),
