@@ -44,6 +44,7 @@ function HydrationCard(){
  const metrics=usePersonalDateList<any>("health_metrics","metric_date",date);
  const yesterdayMetrics=usePersonalDateList<any>("health_metrics","metric_date",yesterdayDate);
  const doses=useDoses(date);
+ const medications=useMedications();
  const entries=useHydrationEntries(date);
  const yesterdayEntries=useHydrationEntries(yesterdayDate);
  const hydration=useHydrationMutations(date);
@@ -76,6 +77,19 @@ function HydrationCard(){
  },[profile]);
  const legacyWaterMl=Math.max(0,Math.round((Number(metrics.data?.[0]?.water_liters??0)||0)*1000));
  const dayEntries=entries.data??[];
+ const medicationList=medications.data??[];
+ const medicationById=new Map(medicationList.map(item=>[item.id,item] as const));
+ const historyItems=[
+  ...dayEntries.map(entry=>({kind:"drink" as const,id:"drink:"+entry.id,consumed_at:entry.consumed_at,entry})),
+  ...(doses.data??[]).flatMap(dose=>{
+   if(dose.status!=="taken")return [];
+   const glasses=Number(dose.water_glasses??0);
+   const amount_ml=Math.round(waterGlassesToMl(glasses));
+   if(amount_ml<=0)return [];
+   const medication=medicationById.get(dose.medication_id);
+   return [{kind:"medication" as const,id:"medication:"+dose.id,consumed_at:dose.taken_at??dose.scheduled_at,medicationName:medication?.name??"Medicamento",glasses,amount_ml,entryOrigin:dose.entry_origin}];
+  }),
+ ].sort((a,b)=>new Date(a.consumed_at).getTime()-new Date(b.consumed_at).getTime());
  const recordedWaterMl=dayEntries.filter(x=>x.beverage_type==="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
  const otherFluidMl=dayEntries.filter(x=>x.beverage_type!=="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
  const legacyYesterdayWaterMl=Math.max(0,Math.round((Number(yesterdayMetrics.data?.[0]?.water_liters??0)||0)*1000));
@@ -191,16 +205,25 @@ function HydrationCard(){
   </div>
   <div className="space-y-2 rounded-xl border p-3">
    <button type="button" className="flex w-full items-center justify-between gap-3 text-left" aria-expanded={showTodayDrinks} onClick={()=>setShowTodayDrinks(value=>!value)}>
-    <span className="min-w-0"><b className="block text-sm">{date===todayISO()?"Lo que has tomado hoy":"Bebidas registradas ese día"}</b><span className="text-xs text-muted-foreground">{dayEntries.length} {dayEntries.length===1?"registro":"registros"}</span></span>
+    <span className="min-w-0"><b className="block text-sm">{date===todayISO()?"Lo que has tomado hoy":"Bebidas registradas ese día"}</b><span className="text-xs text-muted-foreground">{historyItems.length} {historyItems.length===1?"registro":"registros"}</span></span>
     {showTodayDrinks?<ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground"/>:<ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground"/>}
    </button>
    {showTodayDrinks&&<div className="space-y-2">
-   {entries.isLoading?<p className="text-xs text-muted-foreground">Cargando registros…</p>:dayEntries.length===0?<p className="text-xs text-muted-foreground">Todavía no hay bebidas individuales registradas para esta fecha.</p>:<div className="space-y-2">
-    {dayEntries.map(entry=>{
+   {entries.isLoading||doses.isLoading||medications.isLoading?<p className="text-xs text-muted-foreground">Cargando registros…</p>:historyItems.length===0?<p className="text-xs text-muted-foreground">Todavía no hay bebidas ni agua asociada a medicamentos registrada para esta fecha.</p>:<div className="space-y-2">
+    {historyItems.map(item=>{
+     if(item.kind==="medication"){
+      const timeLabel=new Date(item.consumed_at).toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"});
+      return <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/[.035] p-2.5">
+       <span className="flex min-w-0 flex-1 items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-300"><Droplets className="h-4 w-4"/></span><span className="min-w-0"><b className="block text-sm">Agua con {item.medicationName}</b><span className="text-xs text-muted-foreground">{timeLabel} · {formatGlasses(item.glasses)} · Se corrige en Medicamentos</span></span></span>
+       <span className="text-sm font-medium tabular-nums">{fmt(item.amount_ml)} ml</span>
+       {item.entryOrigin==="stock_estimate"&&<span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-700 dark:text-amber-300">Estimado</span>}
+      </div>;
+     }
+     const entry=item.entry;
      const label=entry.beverage_type==="other"?(entry.note?.trim()||"Otra bebida"):beverageLabels[entry.beverage_type];
      const Icon=entry.beverage_type==="water"?Droplets:entry.beverage_type==="coffee"?Coffee:entry.beverage_type==="tea"?Leaf:CupSoda;
      const timeLabel=new Date(entry.consumed_at).toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"});
-     return <div key={entry.id} className="rounded-lg border border-border/70 p-2.5">
+     return <div key={item.id} className="rounded-lg border border-border/70 p-2.5">
       {editingEntryId===entry.id?<div className="space-y-2">
        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <select aria-label="Tipo de bebida al editar" className="h-9 min-w-0 rounded-md border border-input bg-background px-2 text-sm" value={editType} onChange={e=>setEditType(e.target.value as BeverageType)}>
@@ -223,7 +246,7 @@ function HydrationCard(){
      </div>;
     })}
    </div>}
-   <p className="text-[11px] text-muted-foreground">Puedes corregir el tipo, nombre, cantidad y hora de cada bebida, o eliminar un registro incorrecto.</p>
+   <p className="text-[11px] text-muted-foreground">Puedes editar o eliminar las bebidas individuales desde aquí. El agua de cada toma se corrige desde Medicamentos; los registros antiguos agregados siguen incluidos en el total, aunque no tienen detalle individual en este historial.</p>
    </div>}
   </div>
   <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-muted-foreground">Ayer ({yesterdayDate}): {yesterdayEntries.isLoading?"cargando…":yesterdayEntries.isError?"sin conexión al historial":fmt(yesterdayWaterMl)+" ml de agua"}</span>{(entries.isError||yesterdayEntries.isError)&&<Button type="button" size="sm" variant="outline" className="h-7" onClick={()=>{void entries.refetch();void yesterdayEntries.refetch()}}>Reintentar carga</Button>}</div>
