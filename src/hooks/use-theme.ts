@@ -64,14 +64,22 @@ function readStoredMode(): ThemeName {
   return window.localStorage.getItem(MODE_STORAGE_KEY) === "light" ? "light" : "dark";
 }
 
-function readStoredWorkspaceColor(mode: ThemeName): string {
+function isPaletteColor(mode: ThemeName, value: string): boolean {
+  const options = mode === "light" ? LIGHT_WORKSPACE_COLORS : DARK_WORKSPACE_COLORS;
+  return options.some((option) => option.value.toUpperCase() === value.toUpperCase());
+}
+
+function readStoredWorkspaceColor(mode: ThemeName, includeLegacy = false): string {
   if (typeof window === "undefined") return DEFAULT_WORKSPACE_COLOR[mode];
   const modeValue = window.localStorage.getItem(WORKSPACE_STORAGE_KEYS[mode]);
   if (validColor(modeValue)) return modeValue;
 
-  // Migrate a previous single-color preference to the active mode only.
+  // Only migrate a legacy color when it already belongs to this mode's palette.
+  // Old saturated accent colors should not become light or dark canvas colors.
   const legacyValue = window.localStorage.getItem(LEGACY_COLOR_STORAGE_KEY);
-  return validColor(legacyValue) ? legacyValue : DEFAULT_WORKSPACE_COLOR[mode];
+  return includeLegacy && validColor(legacyValue) && isPaletteColor(mode, legacyValue)
+    ? legacyValue
+    : DEFAULT_WORKSPACE_COLOR[mode];
 }
 
 function readProfileWorkspaceColors(preferences: Record<string, unknown> | null | undefined): Record<string, unknown> | null {
@@ -104,7 +112,7 @@ export function useTheme() {
 
   useEffect(() => {
     const mode = readStoredMode();
-    const color = readStoredWorkspaceColor(mode);
+    const color = readStoredWorkspaceColor(mode, true);
     setThemeState(mode);
     setWorkspaceColorState(color);
     applyTheme(mode);
@@ -122,9 +130,12 @@ export function useTheme() {
     const legacyColor = savedColors
       ? null
       : normalizeColor(profile.accent_color);
+    const compatibleLegacyColor = legacyColor && isPaletteColor(mode, legacyColor)
+      ? legacyColor
+      : null;
     const color = remoteColor
-      ?? legacyColor
-      ?? (savedColors ? DEFAULT_WORKSPACE_COLOR[mode] : readStoredWorkspaceColor(mode));
+      ?? compatibleLegacyColor
+      ?? (savedColors ? DEFAULT_WORKSPACE_COLOR[mode] : readStoredWorkspaceColor(mode, true));
 
     if (remoteMode) {
       setThemeState(remoteMode);
