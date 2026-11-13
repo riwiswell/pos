@@ -169,10 +169,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Reordering in the mobile drawer therefore also chooses the bottom-bar shortcuts.
   const mobilePrimaryItems = items.slice(0, 5);
   const mobileMoreItems = items.slice(5);
-  const mobileMoreGroups = NAV_GROUPS
-    .map((group) => ({ group, items: mobileMoreItems.filter((item) => item.group === group) }))
-    .filter((entry) => entry.items.length > 0);
-  const mobileUngroupedItems = mobileMoreItems.filter((item) => !item.group);
+  const mobileMoreGroups: { group: string; items: typeof mobileMoreItems }[] = [];
+  const mobileUngroupedItems = mobileMoreItems;
   const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
