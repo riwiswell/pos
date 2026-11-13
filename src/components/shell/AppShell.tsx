@@ -126,7 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: profile } = useProfile();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { theme, accentColor } = useTheme();
+  const { theme } = useTheme();
   useMedicationReminders();
   useHydrationReminders();
   useAppointmentReminders();
@@ -192,10 +192,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const bgImageUrl = useProfileMediaUrl(background && !isColor ? background : null).data;
   // A chosen screen color is applied directly to the workspace canvas.
   // Uploaded backgrounds take precedence; cards and controls keep their own surfaces.
-  const screenColor = isColor ? background! : !bgImageUrl ? accentColor : null;
-  const style: CSSProperties = screenColor
-    ? { backgroundColor: screenColor }
+  const style: CSSProperties = isColor
+    ? { backgroundColor: background! }
     : {
+        backgroundColor: bgImageUrl ? undefined : "var(--workspace-background, var(--background))",
         backgroundImage: bgImageUrl
           ? `linear-gradient(color-mix(in oklab, var(--background) 82%, transparent),color-mix(in oklab, var(--background) 92%, transparent)),url(${bgImageUrl})`
           : undefined,
