@@ -30,7 +30,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   category: HabitCategory | null;
-  onSubmit: (input: HabitCategoryInput) => void;
+  onSubmit: (input: HabitCategoryInput) => Promise<void>;
 }
 
 export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Props) {
