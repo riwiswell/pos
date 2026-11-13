@@ -21,10 +21,12 @@ export function useGlobalDate() {
   const setDate = useCallback(
     (next: string) => {
       const value = isValidISODate(next) ? next : todayISO();
+      if (value === date) return;
       void navigate({
         to: ".",
         search: (prev: Record<string, unknown>) => ({ ...prev, date: value }),
-        replace: false,
+        replace: true,
+        resetScroll: false,
       });
     },
     [navigate],
