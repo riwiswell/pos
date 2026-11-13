@@ -212,7 +212,7 @@ export function LifeActivityFeed({ date, connections, connectionsLoading }: { da
                           </span>
                         </div>
                         <time className="shrink-0 pt-0.5 text-right text-[10px] tabular-nums text-muted-foreground">
-                          {eventDate(event.event_at).replace(/^.*?,?\s*/, "")}
+                          {eventTime(event.event_at)}
                         </time>
                       </article>
                     );
