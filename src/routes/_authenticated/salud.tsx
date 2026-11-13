@@ -172,11 +172,11 @@ function HydrationCard(){
    <span className="rounded-full bg-muted px-2.5 py-1 text-foreground">Líquidos registrados: {fmt(totalFluidMl)} ml</span>
   </div>
   <div className="flex flex-wrap items-center gap-2">
-   {WATER_OPTIONS.filter(glasses=>glasses>0).map(glasses=>{const ml=Math.round(waterGlassesToMl(glasses));return <Button key={glasses} size="sm" variant={glasses===1?"default":"outline"} disabled={disabled} onClick={()=>void addDrink("water",ml)}>+{formatWaterGlassOption(glasses)} agua</Button>})}
-   <Button size="sm" variant="outline" className="gap-1" disabled={disabled} onClick={()=>void addDrink("coffee",100)}><Coffee className="h-3.5 w-3.5"/> +100 ml café</Button>
-   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("tea",325,"Té","🍵")}>+325 ml té</Button>
-   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("other",325,"Frutiño","🧃")}>+325 ml Frutiño</Button>
-   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("other",325,"Agua de panela","🧉")}>+325 ml agua de panela</Button>
+   {WATER_OPTIONS.filter(glasses=>glasses>0).map(glasses=>{const ml=Math.round(waterGlassesToMl(glasses));return <Button key={glasses} size="sm" variant={glasses===1?"default":"outline"} disabled={disabled} onClick={()=>void addDrink("water",ml)}>+{formatGlasses(glasses)} agua</Button>})}
+   <Button size="sm" variant="outline" className="gap-1" disabled={disabled} onClick={()=>void addDrink("coffee",100)}><Coffee className="h-3.5 w-3.5"/> +{formatGlasses(Number((100/WATER_GLASS_ML).toFixed(2)))} café</Button>
+   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("tea",325,"Té","🍵")}>+{formatGlasses(1)} té</Button>
+   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("other",325,"Frutiño","🧃")}>+{formatGlasses(1)} Frutiño</Button>
+   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("other",325,"Agua de panela","🧉")}>+{formatGlasses(1)} agua de panela</Button>
   </div>
   <div className="space-y-2">
    <div className="grid grid-cols-[minmax(0,1fr)_100px_auto] gap-2">
@@ -239,7 +239,7 @@ function HydrationCard(){
       <label className="space-y-1 text-xs text-muted-foreground">Desde<Input type="time" value={schedule.start_time} onChange={e=>setSchedule(current=>({...current,start_time:e.target.value}))}/></label>
       <label className="space-y-1 text-xs text-muted-foreground">Hasta<Input type="time" value={schedule.end_time} onChange={e=>setSchedule(current=>({...current,end_time:e.target.value}))}/></label>
       <label className="space-y-1 text-xs text-muted-foreground">Cada<select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={schedule.interval_minutes} onChange={e=>setSchedule(current=>({...current,interval_minutes:Number(e.target.value)}))}>{[30,45,60,90,120,180].map(value=><option key={value} value={value}>{value} min</option>)}</select></label>
-      <label className="space-y-1 text-xs text-muted-foreground">Cantidad<select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={schedule.amount_ml} onChange={e=>setSchedule(current=>({...current,amount_ml:Number(e.target.value)}))}>{!reminderWaterOptions.some(option=>option.amount_ml===schedule.amount_ml)&&<option value={schedule.amount_ml}>{schedule.amount_ml} ml · valor guardado</option>}{reminderWaterOptions.map(({glasses,amount_ml})=><option key={glasses} value={amount_ml}>{formatWaterGlassOption(glasses)}</option>)}</select></label>
+      <label className="space-y-1 text-xs text-muted-foreground">Cantidad<select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={schedule.amount_ml} onChange={e=>setSchedule(current=>({...current,amount_ml:Number(e.target.value)}))}>{!reminderWaterOptions.some(option=>option.amount_ml===schedule.amount_ml)&&<option value={schedule.amount_ml}>{schedule.amount_ml} ml · valor guardado</option>}{reminderWaterOptions.map(({glasses,amount_ml})=><option key={glasses} value={amount_ml}>{formatGlasses(glasses)}</option>)}</select></label>
      </div>}
      <div className="flex flex-wrap items-center gap-2">
       <Button size="sm" disabled={savingSchedule||profileQuery.isLoading} onClick={()=>void saveSchedule()}>{savingSchedule?"Guardando…":"Guardar avisos"}</Button>
