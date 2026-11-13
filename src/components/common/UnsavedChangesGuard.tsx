@@ -100,10 +100,27 @@ export function UnsavedChangesGuard() {
     const onClick = (event: Event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+
+      // Radix switches and checkboxes are buttons and do not emit native change events.
+      const toggle = target.closest("[role='checkbox'], [role='switch']");
+      if (toggle instanceof HTMLElement) {
+        const existing = dirtyControls.current.get(toggle);
+        if (!existing) {
+          dirtyControls.current.set(toggle, { baseline: controlValue(toggle), scope: formScope(toggle) });
+        }
+        window.setTimeout(() => {
+          const entry = dirtyControls.current.get(toggle);
+          if (!entry) return;
+          if (controlValue(toggle) === entry.baseline) dirtyControls.current.delete(toggle);
+          refreshDirty();
+        }, 0);
+        return;
+      }
+
       const button = target.closest("button, [role='button'], input[type='submit']");
       if (!button) return;
       const label = (button.getAttribute("aria-label") || button.textContent || (button instanceof HTMLInputElement ? button.value : "")).trim();
-      if (/^(guardar|save|registrar|actualizar|crear|terminar|completar|confirmar|enviar|done|listo)\b/i.test(label)) {
+      if (/^(guardar|save|registrar|actualizar|crear|agregar|añadir|aplicar|terminar|completar|confirmar|enviar|done|listo)\b/i.test(label)) {
         const scope = formScope(button);
         window.setTimeout(() => clearScope(scope), 1200);
       } else if (/^(cancelar|cerrar|descartar)\b/i.test(label)) {
