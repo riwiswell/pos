@@ -656,6 +656,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const[goalDescription,setGoalDescription]=useState("");
   const[goalDate,setGoalDate]=useState("");
   const[gameProgress,setGameProgress]=useState("0");
+  const[gameMinutes,setGameMinutes]=useState("0");
   const[platform,setPlatform]=useState("");
   const[genre,setGenre]=useState("");
   const[filter,setFilter]=useState("all");
@@ -663,17 +664,19 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const allItems=(q.data||[]).filter((item:any)=>item.kind!=="book"&&item.kind!=="language");
   const items=allItems.filter((item:any)=>isGames?isGameItem(item):!isGameItem(item));
   const visibleItems=sortLearningItems(isGames?items:items.filter((item:any)=>filter==="all"||item.kind===filter),sessions.data||[],sort);
-  const resetForm=()=>{setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setPlatform("");setGenre("");setEditingId(null);setAdding(false);};
-  const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setPlatform(item.platform||"");setGenre(item.genre||"");setEditingId(item.id);setAdding(true);};
+  const resetForm=()=>{setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setGameMinutes("0");setPlatform("");setGenre("");setEditingId(null);setAdding(false);};
+  const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setGameMinutes(String(Math.max(0,Number(item.minutes_total)||0)));setPlatform(item.platform||"");setGenre(item.genre||"");setEditingId(item.id);setAdding(true);};
   const saveItem=async()=>{
     const isGame=kind==="video_game"||kind==="game";
     if(!title.trim()){toast.error("Escribe el nombre del elemento.");return;}
     const progress=Math.min(100,Math.max(0,Number(gameProgress)||0));
+    const parsedMinutes=Number(gameMinutes);
+    if(isGame&&(!Number.isInteger(parsedMinutes)||parsedMinutes<0||parsedMinutes>1000000)){toast.error("El tiempo acumulado debe ser un número entero entre 0 y 1.000.000 de minutos.");return;}
     if(editingId){
-      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null}});
+      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined,minutes_total:isGame?parsedMinutes:undefined,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null}});
       toast.success("Elemento actualizado.");
     }else{
-      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:0,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null});
+      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:0,minutes_total:isGame?parsedMinutes:0,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null});
       toast.success("Elemento agregado.");
     }
     resetForm();
@@ -682,7 +685,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, tiempo jugado y progreso de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div><div className="flex flex-wrap items-center gap-2">
       <LearningSortControl value={sort} onChange={setSort} includeGenre={isGames}/>
-      <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setPlatform("");setGenre("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
+      <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setGameMinutes("0");setPlatform("");setGenre("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
     </div>
     </div>
     {adding&&<div className="glass max-w-2xl space-y-2 rounded-2xl p-3">
@@ -712,8 +715,9 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
         <label className="text-xs text-muted-foreground">Objetivo<Input className="mt-1" placeholder="Ej. Terminar la historia" value={goalDescription} onChange={e=>setGoalDescription(e.target.value)}/></label>
         <label className="text-xs text-muted-foreground">Fecha objetivo<Input className="mt-1" type="date" value={goalDate} onChange={e=>setGoalDate(e.target.value)}/></label>
         <label className="text-xs text-muted-foreground">Avance (%)<Input className="mt-1" type="number" min="0" max="100" value={gameProgress} onChange={e=>setGameProgress(e.target.value)}/></label>
+        <label className="text-xs text-muted-foreground">Tiempo acumulado (minutos)<Input className="mt-1" type="number" min="0" max="1000000" step="1" placeholder="Ej. 45" value={gameMinutes} onChange={e=>setGameMinutes(e.target.value)}/></label>
       </div>}
-      {editingId&&<p className="text-xs text-muted-foreground">Puedes actualizar el nombre, la categoría y la descripción.</p>}
+      {editingId&&<p className="text-xs text-muted-foreground">{isGames?"Puedes actualizar la ficha y el tiempo acumulado. Las sesiones detalladas se corrigen desde la tarjeta del videojuego.":"Puedes actualizar el nombre, la categoría y la descripción."}</p>}
     </div>}
     {!isGames&&<div className="flex flex-wrap gap-1.5">
       {[["all","Todos"],["course","Cursos"],["podcast","Podcasts"],["video","Videos"],["chess","Ajedrez"],["certification","Certificaciones"]].map(([value,label])=><button key={value} type="button" onClick={()=>setFilter(value)} className={"rounded-full border px-3 py-1.5 text-xs "+(filter===value?"border-primary bg-primary/10 font-semibold text-primary":"text-muted-foreground hover:bg-accent")}>{label}</button>)}
