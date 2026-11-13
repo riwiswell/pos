@@ -225,7 +225,7 @@ function HomePage() {
               <div className="flex items-center gap-2 text-xs text-slate-300"><Trophy className="h-4 w-4 text-amber-300" /> Nivel personal</div>
               <p className="mt-2 text-xl font-semibold tabular-nums text-white">{gamificationQuery.isLoading || gamificationEventsQuery.isLoading ? "…" : gamificationUnavailable ? "—" : `Nv. ${gamificationLevel}`}</p>
               <p className="mt-0.5 text-[11px] text-slate-400">{gamificationUnavailable ? "No se pudo cargar XP" : `${gamificationXp.toLocaleString("es-CO")} XP · ${gamificationStreak} días de racha`}</p>
-              <Progress value={levelProgress} className="mt-2 h-1.5 bg-white/10"/>
+              <Progress value={levelProgress/2} className="mt-2 h-1.5 bg-white/10"/>
               <p className="mt-1 truncate text-[10px] text-slate-300">{connectionsQuery.isLoading ? "…" : `${connectionsQuery.data?.length ?? 0} conexiones activas`}{activeChallenge ? ` · Reto: ${activeChallenge.title} (${activeChallenge.progress}/${activeChallenge.target})` : ""}</p>
             </Link>
           </div>

@@ -124,7 +124,7 @@ set search_path to 'public', 'pg_temp'
 as $function$
 declare
   activity text := coalesce(new.payload->>'activity_type', '');
-  source_id text := coalesce(new.entity_id::text, new.id::text);
+  source_id text := coalesce(nullif(new.payload->>'learning_item_id', ''), new.entity_id::text, new.id::text);
 begin
   if new.entity_type <> 'learning_sessions' then
     return new;
@@ -170,7 +170,7 @@ declare
   completion record;
 begin
   for completion in
-    select ls.user_id, ls.id as session_id
+    select distinct ls.user_id, coalesce(ls.learning_item_id, ls.id) as learning_item_id
       from public.learning_sessions ls
       join public.life_events le
         on le.user_id = ls.user_id
@@ -179,19 +179,18 @@ begin
       join public.gamification_xp_events base_xp
         on base_xp.user_id = ls.user_id
        and base_xp.life_event_id = le.id
-       and base_xp.event_key = 'record:learning_sessions:' || ls.id::text
        and base_xp.xp > 0
      where ls.activity_type = 'book_completion'
        and not exists (
          select 1
            from public.gamification_xp_events bonus
           where bonus.user_id = ls.user_id
-            and bonus.event_key = 'milestone_bonus:book:' || ls.id::text
+            and bonus.event_key = 'milestone_bonus:book:' || coalesce(ls.learning_item_id, ls.id)::text
        )
   loop
     perform public.award_personal_gamification_bonus(
       completion.user_id,
-      'milestone_bonus:book:' || completion.session_id::text,
+      'milestone_bonus:book:' || completion.learning_item_id::text,
       10,
       'Bono de hito: libro terminado (+10 adicionales)',
       'first_book_finished',
@@ -375,6 +374,24 @@ after insert or update on public.medication_doses
 for each row execute function public.award_daily_plain_water_goal();
 
 revoke all on function public.award_daily_plain_water_goal() from public, anon, authenticated;
+
+
+-- 8) Seed the new locked trophies for existing POS users, so the cabinet
+--    shows future goals as well as the trophies that have already been earned.
+insert into public.gamification_achievements(user_id, code, title, description, xp_reward)
+select u.id, trophy.code, trophy.title, trophy.description, 0
+  from auth.users u
+ cross join (values
+   ('first_book_finished', 'Primer libro terminado', 'Terminaste un libro y registraste tu primer gran hito de lectura.'),
+   ('first_game_finished', 'Primer videojuego terminado', 'Llevaste un videojuego hasta el final.'),
+   ('first_language_levelup', 'Primer nivel de idioma alcanzado', 'Subiste de nivel en uno de los idiomas que estás aprendiendo.'),
+   ('first_bible_day', 'Primer día bíblico completo', 'Completaste las tres lecturas del Plan Bíblico en un mismo día.'),
+   ('first_water_goal', 'Meta de agua alcanzada', 'Registraste al menos 2 litros de agua simple en un día.')
+ ) as trophy(code, title, description)
+on conflict (user_id, code) do update
+   set title = excluded.title,
+       description = excluded.description,
+       xp_reward = 0;
 
 commit;
 

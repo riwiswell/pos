@@ -106,7 +106,7 @@ function GamificationPage() {
           <p className="text-xs font-semibold uppercase tracking-[.18em] text-violet-400">Tu evolución</p>
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1"><span className="text-5xl font-bold tracking-tight">{xp.toLocaleString("es-CO")}</span><span className="text-sm text-muted-foreground">XP acumulados</span></div>
           <p className="mt-2 text-sm text-muted-foreground">Nivel {level} · Te faltan {xpToNext} XP para el nivel {level+1}</p>
-          <div className="mt-4 h-3 max-w-xl overflow-hidden rounded-full bg-muted/80"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all" style={{width:levelProgress+"%"}}/></div>
+          <div className="mt-4 h-3 max-w-xl overflow-hidden rounded-full bg-muted/80"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all" style={{width:(levelProgress/2)+"%"}}/></div>
           <div className="mt-1 flex max-w-xl justify-between text-[11px] text-muted-foreground"><span>{levelProgress} / 200 XP</span><span>Nivel {level+1}</span></div>
         </div>
         <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full border-[6px] border-violet-400/30 bg-background/70 shadow-inner sm:h-32 sm:w-32">
