@@ -20,6 +20,30 @@ alter table public.gamification_challenges
   add column if not exists code text,
   add column if not exists kind text not null default 'events';
 
+-- Mantener el nivel sincronizado sin sobrescribir la progresión moderna si ya existe.
+create or replace function public.sync_gamification_level_200()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $sync_gamification_level$
+begin
+  if to_regprocedure('public.gamification_level_for_xp(bigint)') is not null then
+    execute 'select public.gamification_level_for_xp($1)'
+      into new.level
+      using greatest(0, coalesce(new.xp, 0))::bigint;
+  else
+    new.level := greatest(1, floor(greatest(0, coalesce(new.xp, 0)) / 200.0)::integer + 1);
+  end if;
+  return new;
+end;
+$sync_gamification_level$;
+
+drop trigger if exists gamification_profiles_level_200 on public.gamification_profiles;
+create trigger gamification_profiles_level_200
+before insert or update on public.gamification_profiles
+for each row execute function public.sync_gamification_level_200();
+
+
 create unique index if not exists gamification_challenges_user_code_uidx
   on public.gamification_challenges(user_id, code)
   where code is not null;
