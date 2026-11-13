@@ -228,13 +228,13 @@ function ProfilePage() {
   }
 
   return (
-    <div className="space-y-5 pb-24">
+    <div className="space-y-5 pb-24 text-foreground">
       <header>
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-semibold text-foreground">Perfil y configuración</h1>
           <HelpTip helpKey="profile" />
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-foreground/80">
           Identidad, apariencia, preferencias, notificaciones, privacidad y respaldo.
         </p>
       </header>
