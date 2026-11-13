@@ -201,6 +201,8 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
   const[readingMinutes,setReadingMinutes]=useState("20");
   const[readingSaving,setReadingSaving]=useState(false);
   const[completionSaving,setCompletionSaving]=useState(false);
+  const[rewardClaimed,setRewardClaimed]=useState(hasCompletionReward);
+  useEffect(()=>{if(hasCompletionReward)setRewardClaimed(true)},[hasCompletionReward]);
   const[editingSummary,setEditingSummary]=useState(false);
   const[addingNote,setAddingNote]=useState(false);
   const[uploadingCover,setUploadingCover]=useState(false);
@@ -245,10 +247,11 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
   };
 
   const claimCompletionReward=async()=>{
-    if(isBible||hasCompletionReward||completionSaving)return;
+    if(isBible||rewardClaimed||hasCompletionReward||completionSaving)return;
     setCompletionSaving(true);
     try{
       await onCompleteReward();
+      setRewardClaimed(true);
       toast.success("Bono por terminar el libro: +10 XP.");
     }catch(error){
       toast.error(error instanceof Error?error.message:"No se pudo registrar el bono del libro.");
@@ -361,7 +364,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
               <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>
               <Button size="sm" variant={panel==="reading"?"default":"outline"} onClick={()=>setPanel(panel==="reading"?null:"reading")}><Clock className="mr-1 h-3.5 w-3.5"/>Registrar lectura</Button>
               <Button size="sm" variant={book.status==="completed"?"secondary":"outline"} onClick={()=>void markFinished()} disabled={book.status==="completed"||completionSaving}><Check className="mr-1 h-3.5 w-3.5"/> {book.status==="completed"?"Terminado":"Marcar terminado"}</Button>
-              {book.status==="completed"&&!hasCompletionReward&&!isBible&&<Button size="sm" variant="outline" disabled={completionSaving} onClick={()=>void claimCompletionReward()}>Reclamar +10 XP</Button>}
+              {book.status==="completed"&&!rewardClaimed&&!isBible&&<Button size="sm" variant="outline" disabled={completionSaving} onClick={()=>void claimCompletionReward()}>Reclamar +10 XP</Button>}
               <Button size="sm" variant={panel==="summary"?"default":"outline"} onClick={()=>setPanel(panel==="summary"?null:"summary")}><FileText className="mr-1 h-3.5 w-3.5"/>Resumen</Button>
               <Button size="sm" variant={panel==="notes"?"default":"outline"} onClick={()=>setPanel(panel==="notes"?null:"notes")}><NotebookPen className="mr-1 h-3.5 w-3.5"/>Notas ({mine.length})</Button>
               <Button size="sm" variant={panel==="details"?"default":"outline"} onClick={()=>setPanel(panel==="details"?null:"details")}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar ficha</Button>
