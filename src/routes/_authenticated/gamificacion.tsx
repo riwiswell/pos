@@ -44,6 +44,31 @@ const XP_ACHIEVEMENTS = [
   ["Primer bloque de trabajo", 15],
 ] as const;
 
+const FIRST_LEVEL_XP = 1200;
+const LEVEL_XP_INCREMENT = 300;
+
+/** Each level takes more XP than the previous one. XP is lifetime cumulative. */
+function getLevelProgress(totalXp: number) {
+  const safeXp = Math.max(0, Math.floor(Number(totalXp) || 0));
+  let level = 1;
+  let xpAtLevelStart = 0;
+  let xpRequiredForLevel = FIRST_LEVEL_XP;
+
+  while (safeXp >= xpAtLevelStart + xpRequiredForLevel) {
+    xpAtLevelStart += xpRequiredForLevel;
+    level += 1;
+    xpRequiredForLevel += LEVEL_XP_INCREMENT;
+  }
+
+  const xpIntoLevel = safeXp - xpAtLevelStart;
+  return {
+    level,
+    xpIntoLevel,
+    xpRequiredForLevel,
+    xpToNext: xpRequiredForLevel - xpIntoLevel,
+  };
+}
+
 function GamificationPage() {
   const xpEvents=useLGList("gamification_xp_events");
   const profile=useLGList("gamification_profiles");
@@ -54,7 +79,8 @@ function GamificationPage() {
   const [ct,setCt]=useState(""),[reward,setReward]=useState("50"),[target,setTarget]=useState("10"),[kind,setKind]=useState("events");
   const eventXp=(xpEvents.data||[]).reduce((sum:number,event:any)=>sum+Math.max(0,Number(event.xp)||0),0);
   const xp=Math.max(Number(profile.data?.[0]?.xp||0),eventXp);
-  const level=Math.floor(xp/200)+1;
+  const levelProgression = getLevelProgress(xp);
+  const { level, xpIntoLevel: levelProgress, xpRequiredForLevel, xpToNext } = levelProgression;
   const unlocked=(ach.data||[]).filter((x:any)=>x.unlocked_at);
   const actionCount=(xpEvents.data||[]).filter((event:any)=>Boolean(event.life_event_id)&&!String(event.event_key||"").startsWith("achievement:")).length;
   const xpDateInBogota=(value:string)=>{
@@ -72,9 +98,7 @@ function GamificationPage() {
   const todayXp=(xpEvents.data||[]).filter((event:any)=>xpDateInBogota(String(event.created_at||""))===todayKey).reduce((sum:number,event:any)=>sum+Math.max(0,Number(event.xp)||0),0);
   const dailyXpGoal=30;
   const dailyXpProgress=Math.min(100,Math.round(todayXp/dailyXpGoal*100));
-  const levelProgress=xp%200;
-  const xpToNext=200-levelProgress;
-  const weeklyXp=useMemo(()=>{
+    const weeklyXp=useMemo(()=>{
     const now=new Date();
     const days=Array.from({length:7},(_,index)=>{
       const date=new Date(now.getFullYear(),now.getMonth(),now.getDate()-6+index,12);
@@ -98,7 +122,7 @@ function GamificationPage() {
   return <div className="space-y-5 pb-24">
     <GlobalDateHeader/>
     <div className="flex items-center gap-2"><Trophy className="h-5 w-5"/><h1 className="text-xl font-semibold">Gamificación</h1><HelpTip helpKey="gamification"/></div>
-    <p className="text-sm text-muted-foreground">Subes de nivel cada 200 XP. Cada nivel representa una etapa de constancia; los trofeos y desafíos reconocen hitos concretos. Por ahora, el nivel mide tu avance; no desbloquea funciones adicionales. Los bonos se obtienen mediante logros y desafíos. Los registros históricos anteriores a la activación de XP no se convierten automáticamente en puntos.</p>
+    <p className="text-sm text-muted-foreground">Los niveles exigen cada vez más esfuerzo: 1.200 XP para pasar del nivel 1 al 2; después, cada tramo aumenta 300 XP (1.500, 1.800, 2.100, 2.400…). Todo el XP válido del historial se acumula y cuenta. Los nuevos usuarios comienzan en nivel 1 y deben ganarse cada avance. El nivel mide tu constancia; no desbloquea funciones adicionales.</p>
     <section className="relative overflow-hidden rounded-[28px] border border-violet-400/20 bg-gradient-to-br from-violet-500/15 via-card to-cyan-500/10 p-5 shadow-sm sm:p-7">
       <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl"/>
       <div className="relative grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -106,8 +130,8 @@ function GamificationPage() {
           <p className="text-xs font-semibold uppercase tracking-[.18em] text-violet-400">Tu evolución</p>
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1"><span className="text-5xl font-bold tracking-tight">{xp.toLocaleString("es-CO")}</span><span className="text-sm text-muted-foreground">XP acumulados</span></div>
           <p className="mt-2 text-sm text-muted-foreground">Nivel {level} · Te faltan {xpToNext} XP para el nivel {level+1}</p>
-          <div className="mt-4 h-3 max-w-xl overflow-hidden rounded-full bg-muted/80"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all" style={{width:(levelProgress/2)+"%"}}/></div>
-          <div className="mt-1 flex max-w-xl justify-between text-[11px] text-muted-foreground"><span>{levelProgress} / 200 XP</span><span>Nivel {level+1}</span></div>
+          <div className="mt-4 h-3 max-w-xl overflow-hidden rounded-full bg-muted/80"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all" style={{width:(levelProgress/xpRequiredForLevel*100)+"%"}}/></div>
+          <div className="mt-1 flex max-w-xl justify-between text-[11px] text-muted-foreground"><span>{levelProgress.toLocaleString("es-CO")} / {xpRequiredForLevel.toLocaleString("es-CO")} XP</span><span>Nivel {level+1}</span></div>
         </div>
         <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full border-[6px] border-violet-400/30 bg-background/70 shadow-inner sm:h-32 sm:w-32">
           <Trophy className="mb-1 h-5 w-5 text-violet-400"/><span className="text-3xl font-bold">{level}</span><span className="text-[10px] uppercase tracking-wider text-muted-foreground">Nivel</span>
