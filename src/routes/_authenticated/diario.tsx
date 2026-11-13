@@ -1,5 +1,5 @@
-import { useMemo,useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect,useMemo,useState } from "react";
+import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { BookOpenText,Brain,ChevronRight,Clock3,Filter,FolderKanban,Lightbulb,ListChecks,Plus,Search,Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { HelpTip } from "@/components/common/HelpTip";
@@ -30,9 +30,17 @@ const TYPE_INTENT:Record<JournalType,string>={
 };
 function dateLabel(e:JournalEntry){const off=offsetFromToday(e.entry_date);const day=off===0?"Hoy":off===-1?"Ayer":formatDayLabel(e.entry_date);return e.entry_time?day+" · "+e.entry_time.slice(0,5):day}
 function DiarioPage(){
- const{date}=useGlobalDate();const entriesQ=useJournalEntries();const{remove}=useJournalMutations();const[filter,setFilter]=useState<Filter>("all"),[query,setQuery]=useState(""),[onlyDate,setOnlyDate]=useState(false),[dialogOpen,setDialogOpen]=useState(false),[editing,setEditing]=useState<JournalEntry|null>(null),[initialType,setInitialType]=useState<JournalType|null>(null),[toDelete,setToDelete]=useState<JournalEntry|null>(null),[promoting,setPromoting]=useState<string|null>(null);
+ const{date}=useGlobalDate();
+ const navigate=useNavigate();
+ const search=useRouterState({select:(state)=>state.location.search as Record<string,unknown>});
+ const entriesQ=useJournalEntries();const{remove}=useJournalMutations();const[filter,setFilter]=useState<Filter>("all"),[query,setQuery]=useState(""),[onlyDate,setOnlyDate]=useState(false),[dialogOpen,setDialogOpen]=useState(false),[editing,setEditing]=useState<JournalEntry|null>(null),[initialType,setInitialType]=useState<JournalType|null>(null),[toDelete,setToDelete]=useState<JournalEntry|null>(null),[promoting,setPromoting]=useState<string|null>(null);
  const entries=useMemo(()=>{const all=(entriesQ.data??[]).filter(e=>filter==="all"||e.type===filter).filter(e=>!onlyDate||e.entry_date===date).filter(e=>entryMatches(e,query)).sort(compareEntries);return all},[entriesQ.data,filter,onlyDate,date,query]);
  const openNew=(type:JournalType|null=null)=>{setEditing(null);setInitialType(type);setDialogOpen(true)};
+ useEffect(()=>{
+  if(search["capture"]!=="dream")return;
+  openNew("dream");
+  void navigate({to:"/diario",search:{},replace:true});
+ },[search["capture"]]);
  const openLists=()=>{setQuery("");setFilter("shopping")};
  const promote=async(entry:JournalEntry)=>{if(entry.type!=="idea"||entry.linked_work_item_id)return;setPromoting(entry.id);try{const project=await lifeGraphService.promoteJournalIdeaToProject(entry.id);toast.success("Idea convertida en proyecto de Trabajo");setEditing(null);setDialogOpen(false);window.location.assign("/trabajo?project="+project.id)}catch(error){toast.error(error instanceof Error?error.message:"No se pudo crear el proyecto")}finally{setPromoting(null)}};
  const chips=[{key:"all" as Filter,label:"Todo" },...JOURNAL_TYPES.map(t=>({key:t as Filter,label:JOURNAL_META[t].emoji+" "+JOURNAL_META[t].plural})),{key:"shopping" as Filter,label:"📝 Listas y compras"}];
