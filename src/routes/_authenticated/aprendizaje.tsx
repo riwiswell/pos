@@ -238,7 +238,8 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
     setPanel(null);
     toast.success(isBible?"Avance de capítulos guardado.":"Avance de lectura guardado.");
   };
-  const markFinished=async()=>{ if(!total){toast.error("Indica primero el total de páginas en Editar ficha.");setPanel("details");return;} const today=new Date().toISOString().slice(0,10); await onSave({current_page:total,progress:100,status:"completed",completed_on:today}); setPage(String(total)); setPanel(null); toast.success("Libro marcado como terminado."); };\n  const saveDetails=async()=>{
+  const markFinished=async()=>{ if(!total){toast.error("Indica primero el total de páginas en Editar ficha.");setPanel("details");return;} const today=new Date().toISOString().slice(0,10); await onSave({current_page:total,progress:100,status:"completed",completed_on:today}); setPage(String(total)); setPanel(null); toast.success("Libro marcado como terminado."); };
+  const saveDetails=async()=>{
     if(!newTitle.trim()){toast.error("El título no puede quedar vacío.");return;}
     const parsedTotal=Number(newTotal);
     if(newTotal.trim()&&(!Number.isInteger(parsedTotal)||parsedTotal<1)){toast.error("El total de páginas debe ser un número entero mayor que cero.");return;}
