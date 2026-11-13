@@ -57,6 +57,10 @@ function GamificationPage() {
   const level=Math.floor(xp/200)+1;
   const unlocked=(ach.data||[]).filter((x:any)=>x.unlocked_at);
   const actionCount=(xpEvents.data||[]).filter((event:any)=>Boolean(event.life_event_id)&&!String(event.event_key||"").startsWith("achievement:")).length;
+  const xpDateInBogota=(value:string)=>{
+    const date=new Date(value);
+    return Number.isNaN(date.getTime())?"":new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).format(date);
+  };
   const lastActivityOn=profile.data?.[0]?.last_activity_on as string|undefined;
   const xpActivityDates=new Set((xpEvents.data||[]).map((event:any)=>xpDateInBogota(String(event.created_at||""))).filter(Boolean));
   let derivedStreakDate=xpActivityDates.has(todayISO())?todayISO():addDaysISO(todayISO(),-1);
@@ -65,10 +69,6 @@ function GamificationPage() {
   const currentStreak=lastActivityOn&&(lastActivityOn===todayISO()||lastActivityOn===addDaysISO(todayISO(),-1))?Math.max(Number(profile.data?.[0]?.current_streak||0),derivedStreak):derivedStreak;
   const recentXp=useMemo(()=>[...(xpEvents.data||[])].slice(0,8),[xpEvents.data]);
   const todayKey=todayISO();
-  const xpDateInBogota=(value:string)=>{
-    const date=new Date(value);
-    return Number.isNaN(date.getTime())?"":new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).format(date);
-  };
   const todayXp=(xpEvents.data||[]).filter((event:any)=>xpDateInBogota(String(event.created_at||""))===todayKey).reduce((sum:number,event:any)=>sum+Math.max(0,Number(event.xp)||0),0);
   const dailyXpGoal=30;
   const dailyXpProgress=Math.min(100,Math.round(todayXp/dailyXpGoal*100));
