@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { HelpTip } from "@/components/common/HelpTip";
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, Clock, MapPin, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock, MapPin, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader";
-import { Calendar } from "@/components/ui/calendar";
 import { WeatherCard } from "@/components/dashboard/WeatherCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState, LoadingState } from "@/components/common/States";
@@ -22,7 +21,7 @@ import { PlannerCategoryDialog } from "@/components/planner/PlannerCategoryDialo
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { usePlannerCategories, usePlannerItems, usePlannerItemsRange, usePlannerMutations } from "@/hooks/use-planner";
 import { cn } from "@/lib/utils";
-import { formatDayLabel } from "@/lib/date";
+import { formatDayLabel, todayISO } from "@/lib/date";
 import {
   PRIORITY_LABEL,
   TYPE_LABEL,
@@ -56,6 +55,14 @@ function PlannerPage() {
   const monthIndex = calendarMonth.getMonth();
   const monthStart = `${monthYear}-${String(monthIndex + 1).padStart(2, "0")}-01`;
   const monthEnd = `${monthYear}-${String(monthIndex + 1).padStart(2, "0")}-${String(new Date(monthYear, monthIndex + 1, 0).getDate()).padStart(2, "0")}`;
+  const today = todayISO();
+  const calendarCells = useMemo(() => {
+    const firstWeekday = new Date(monthYear, monthIndex, 1).getDay();
+    const offset = (firstWeekday + 6) % 7;
+    const daysInMonth = new Date(monthYear, monthIndex + 1, 0).getDate();
+    return [...Array.from({ length: offset }, () => null), ...Array.from({ length: daysInMonth }, (_, index) => index + 1)];
+  }, [monthYear, monthIndex]);
+  const shiftCalendarMonth = (amount: number) => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1, 12));
   const categoriesQuery = usePlannerCategories();
   const itemsQuery = usePlannerItems(date);
   const monthItemsQuery = usePlannerItemsRange(monthStart, monthEnd);
@@ -141,29 +148,51 @@ function PlannerPage() {
       </div>
 
       <section className="glass flex flex-col gap-3 rounded-2xl p-3">
-        <div className="mx-auto block w-full md:w-1/2">
-          <div className="mb-1 flex items-center justify-between gap-2 px-2">
-            <div><h2 className="text-sm font-semibold">Calendario</h2><p className="text-xs text-muted-foreground">Selecciona un día para ver o programar tus tareas y eventos.</p></div>
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2 px-1">
+            <div>
+              <h2 className="text-sm font-semibold">Calendario</h2>
+              <p className="text-xs text-muted-foreground">Selecciona un día para ver o programar tus tareas y eventos.</p>
+            </div>
             <Button type="button" size="sm" variant="outline" onClick={goToday}>Hoy</Button>
           </div>
-          <Calendar
-            mode="single"
-            classNames={{ root: "w-full", months: "w-full gap-2", month: "w-full gap-2", table: "w-full", weekdays: "flex", weekday: "text-[0.65rem] leading-none", week: "mt-1 flex w-full" }}
-            month={calendarMonth}
-            onMonthChange={setCalendarMonth}
-            selected={new Date(date + "T12:00:00")}
-            modifiers={{ hasItems: markedDates }}
-            modifiersClassNames={{ hasItems: "after:absolute after:bottom-1 after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-primary" }}
-            onSelect={(day) => {
-              if (!day) return;
-              const year = day.getFullYear();
-              const month = String(day.getMonth() + 1).padStart(2, "0");
-              const dayNumber = String(day.getDate()).padStart(2, "0");
-              setDate(year + "-" + month + "-" + dayNumber);
-            }}
-            className="mx-auto block w-full max-w-full p-0 [--cell-size:clamp(0.7rem,calc((100vw-3rem)/28),0.85rem)]"
-          />
-        </div>
+          <div className="mx-auto w-full rounded-xl border border-border/70 p-3 md:w-1/2">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <Button type="button" size="icon" variant="outline" aria-label="Mes anterior" onClick={() => shiftCalendarMonth(-1)}><ChevronLeft className="h-4 w-4"/></Button>
+              <p className="text-center text-sm font-semibold capitalize">{calendarMonth.toLocaleDateString("es-CO", { month: "long", year: "numeric" })}</p>
+              <Button type="button" size="icon" variant="outline" aria-label="Mes siguiente" onClick={() => shiftCalendarMonth(1)}><ChevronRight className="h-4 w-4"/></Button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground">
+              {["L", "M", "M", "J", "V", "S", "D"].map((label, index) => <span key={label + index}>{label}</span>)}
+            </div>
+            <div className="mt-2 grid grid-cols-7 gap-1">
+              {calendarCells.map((day, index) => {
+                if (day === null) return <span key={"blank-" + index} className="aspect-square"/>;
+                const dayDate = monthYear + "-" + String(monthIndex + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+                const isSelected = date === dayDate;
+                const isToday = today === dayDate;
+                const hasItems = monthItems.some((item) => item.scheduled_on === dayDate);
+                return (
+                  <button
+                    key={dayDate}
+                    type="button"
+                    onClick={() => setDate(dayDate)}
+                    aria-pressed={isSelected}
+                    aria-label={dayDate + (hasItems ? ", con tareas o eventos" : "")}
+                    className={[
+                      "relative aspect-square rounded-lg text-xs font-medium transition",
+                      isSelected ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted",
+                      isToday ? "outline outline-1 outline-offset-1 outline-primary" : "",
+                    ].join(" ")}
+                  >
+                    {day}
+                    {hasItems && <span className={"absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full " + (isSelected ? "bg-primary-foreground" : "bg-primary")}/>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
         <div className="w-full rounded-xl bg-muted/30 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Día seleccionado</p>
           <p className="mt-1 text-base font-semibold capitalize">{formatDayLabel(date)}</p>
