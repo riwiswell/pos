@@ -1,6 +1,6 @@
 import { useEffect,useMemo,useRef,useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { CalendarHeart,ChevronDown,ChevronLeft,ChevronRight,ChevronUp,ClipboardList,Coffee,CupSoda,Droplets,HeartPulse,Leaf,Pencil,Pill,Plus,Toilet,Trash2 } from "lucide-react";
+import { CalendarHeart,ChevronLeft,ChevronRight,ClipboardList,Coffee,CupSoda,Droplets,HeartPulse,Leaf,Pencil,Pill,Plus,Toilet,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label"; import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { BowelLogPanel } from "@/components/health/BowelLogPanel"; import { SleepPanel } from "@/components/health/SleepPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
@@ -61,7 +61,6 @@ function HydrationCard(){
  const [editIcon,setEditIcon]=useState("🍵");
  const [editTime,setEditTime]=useState("08:00");
  const [confirmDeleteId,setConfirmDeleteId]=useState<string|null>(null);
- const [showTodayDrinks,setShowTodayDrinks]=useState(false);
  const [schedule,setSchedule]=useState<HydrationConfig>(DEFAULT_HYDRATION);
  const [showHydrationSettings,setShowHydrationSettings]=useState(false);
  const [savingSchedule,setSavingSchedule]=useState(false);
@@ -204,11 +203,10 @@ function HydrationCard(){
    {otherType==="other"&&<Input aria-label="Nombre de la bebida" className="h-9" placeholder="Nombre (aguapanela, Frutiño, jugo…)" value={otherName} onChange={e=>setOtherName(e.target.value)} maxLength={80}/>}
   </div>
   <div className="space-y-2 rounded-xl border p-3">
-   <button type="button" className="flex w-full items-center justify-between gap-3 text-left" aria-expanded={showTodayDrinks} onClick={()=>setShowTodayDrinks(value=>!value)}>
+   <div className="flex min-w-0 items-center justify-between gap-3">
     <span className="min-w-0"><b className="block text-sm">{date===todayISO()?"Lo que has tomado hoy":"Bebidas registradas ese día"}</b><span className="text-xs text-muted-foreground">{historyItems.length} {historyItems.length===1?"registro":"registros"}</span></span>
-    {showTodayDrinks?<ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground"/>:<ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground"/>}
-   </button>
-   {showTodayDrinks&&<div className="space-y-2">
+   </div>
+   <div className="space-y-2">
    {entries.isLoading||doses.isLoading||medications.isLoading?<p className="text-xs text-muted-foreground">Cargando registros…</p>:historyItems.length===0?<p className="text-xs text-muted-foreground">Todavía no hay bebidas ni agua asociada a medicamentos registrada para esta fecha.</p>:<div className="space-y-2">
     {historyItems.map(item=>{
      if(item.kind==="medication"){
@@ -247,7 +245,7 @@ function HydrationCard(){
     })}
    </div>}
    <p className="text-[11px] text-muted-foreground">Puedes editar o eliminar las bebidas individuales desde aquí. El agua de cada toma se corrige desde Medicamentos; los registros antiguos agregados siguen incluidos en el total, aunque no tienen detalle individual en este historial.</p>
-   </div>}
+   </div>
   </div>
   <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-muted-foreground">Ayer ({yesterdayDate}): {yesterdayEntries.isLoading?"cargando…":yesterdayEntries.isError?"sin conexión al historial":fmt(yesterdayWaterMl)+" ml de agua"}</span>{(entries.isError||yesterdayEntries.isError)&&<Button type="button" size="sm" variant="outline" className="h-7" onClick={()=>{void entries.refetch();void yesterdayEntries.refetch()}}>Reintentar carga</Button>}</div>
   {entries.isError&&<p className="text-xs text-destructive">No se pudo cargar el registro de bebidas. Puedes intentar registrar de todas formas; el error no bloquea el formulario. Detalle: {entries.error instanceof Error?entries.error.message:"error desconocido"}</p>}
