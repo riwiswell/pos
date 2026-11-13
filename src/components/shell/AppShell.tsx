@@ -21,7 +21,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "personal-os:sidebar-collapsed";
-const MOBILE_PRIMARY_KEYS = new Set(["inicio", "habitos", "planeador", "salud", "finanzas"]);
 
 function useCollapsed() {
   const [collapsed, setCollapsed] = useState(false);
@@ -159,8 +158,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     void persistMenu(allItems.map((item) => item.key), hidden);
   };
 
-  const mobilePrimaryItems = items.filter((item) => MOBILE_PRIMARY_KEYS.has(item.key));
-  const mobileMoreItems = items.filter((item) => !MOBILE_PRIMARY_KEYS.has(item.key));
+  // The first five visible modules follow the user's saved order on mobile.
+  // Reordering in the mobile drawer therefore also chooses the bottom-bar shortcuts.
+  const mobilePrimaryItems = items.slice(0, 5);
+  const mobileMoreItems = items.slice(5);
   const mobileMoreGroups = NAV_GROUPS
     .map((group) => ({ group, items: mobileMoreItems.filter((item) => item.group === group) }))
     .filter((entry) => entry.items.length > 0);
@@ -195,12 +196,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       };
 
 
-  const renderMenuItem = (item: typeof menuItems[number]) => {
+  const renderMenuItem = (
+    item: typeof menuItems[number],
+    options: { forceExpanded?: boolean; onNavigate?: () => void; hideHelp?: boolean } = {},
+  ) => {
     const visible = !hiddenModules.includes(item.key);
+    const expanded = options.forceExpanded ?? !collapsed;
     return (
       <div key={item.key} data-sidebar-item-key={item.key}
         className={cn("flex min-w-0 items-center gap-1 rounded-xl transition-colors", !visible && "opacity-55", draggingKey === item.key && "opacity-45", dragTarget === item.key && "bg-sidebar-accent ring-2 ring-sidebar-primary/60")}>
-        {!collapsed && <button type="button" aria-label={"Arrastrar para reordenar " + item.label} title="Arrastra para cambiar de posición"
+        {expanded && <button type="button" aria-label={"Arrastrar para reordenar " + item.label} title="Arrastra para cambiar de posición"
           className="flex h-10 w-5 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-primary active:cursor-grabbing"
           onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
             if (event.button !== 0) return;
@@ -239,15 +244,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           <GripVertical className="h-4 w-4" />
         </button>}
         <Link to={item.to} search={(p: Record<string, unknown>) => p} title={item.label}
-          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", collapsed && "flex-none justify-center px-0", pathname.startsWith(item.to) && "bg-sidebar-accent")}>
+          onClick={options.onNavigate}
+          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", !expanded && "flex-none justify-center px-0", pathname.startsWith(item.to) && "bg-sidebar-accent")}>
           <item.icon className="h-4 w-4 shrink-0" />
-          {!collapsed && <span className="truncate">{item.label}</span>}
+          {expanded && <span className="truncate">{item.label}</span>}
         </Link>
         {menuEditing ? <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" disabled={menuSaving}
           title={(visible ? "Ocultar " : "Mostrar ") + item.label} aria-label={(visible ? "Ocultar " : "Mostrar ") + item.label}
           onClick={() => toggleMenuItem(item.key, !visible)}>
           {visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-        </Button> : (!collapsed && <HelpTip helpKey={item.helpKey} />)}
+        </Button> : (expanded && !options.hideHelp && <HelpTip helpKey={item.helpKey} />)}
       </div>
     );
   };
@@ -289,14 +295,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Button>
           </div>
           {collapsed
-            ? menuItems.map(renderMenuItem)
+            ? menuItems.map((item) => renderMenuItem(item))
             : desktopMenuGroups.map(({ label, items: groupItems }) => (
                 <details key={label} className="overflow-hidden rounded-xl border border-sidebar-border/70 bg-sidebar/40" open={menuEditing || label === activeGroup}>
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-sidebar-foreground/85 marker:hidden hover:bg-sidebar-accent">
                     <span>{label}</span>
                     <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">{groupItems.length}</span>
                   </summary>
-                  <div className="space-y-1 border-t border-sidebar-border/60 p-1.5">{groupItems.map(renderMenuItem)}</div>
+                  <div className="space-y-1 border-t border-sidebar-border/60 p-1.5">{groupItems.map((item) => renderMenuItem(item))}</div>
                 </details>
               ))}
         </nav>
@@ -376,10 +382,28 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent side="bottom" className="max-h-[82vh] overflow-y-auto rounded-t-2xl px-4 pb-8">
           <SheetHeader className="mb-4 pr-8 text-left">
-            <SheetTitle>Más módulos</SheetTitle>
-            <SheetDescription>Accede al resto de Personal OS sin desplazar una barra interminable.</SheetDescription>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <SheetTitle>{menuEditing ? "Ordenar módulos" : "Más módulos"}</SheetTitle>
+                <SheetDescription>{menuEditing ? "Arrastra los módulos para cambiar su orden. Los cinco primeros quedarán en la barra inferior." : "Accede al resto de Personal OS sin desplazar una barra interminable."}</SheetDescription>
+              </div>
+              <Button type="button" size="sm" variant={menuEditing ? "secondary" : "outline"} className="shrink-0"
+                disabled={menuSaving}
+                onClick={() => setMenuEditing((value) => !value)}
+                aria-pressed={menuEditing}>
+                <SlidersHorizontal className="mr-1.5 h-4 w-4" />{menuEditing ? "Listo" : "Ordenar"}
+              </Button>
+            </div>
           </SheetHeader>
-          <div className="space-y-3">
+          {menuEditing ? (
+            <div className="space-y-1.5 pb-2">
+              {menuItems.map((item) => renderMenuItem(item, {
+                forceExpanded: true,
+                hideHelp: true,
+                onNavigate: () => setMoreOpen(false),
+              }))}
+            </div>
+          ) : <div className="space-y-3">
             {mobileMoreGroups.map(({ group, items: groupItems }) => (
               <details key={group} className="overflow-hidden rounded-xl border border-border bg-card/40" open={group === activeGroup}>
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold marker:hidden">
@@ -413,7 +437,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
               </section>
             )}
-          </div>
+          </div>}
         </SheetContent>
       </Sheet>
       <PersonalAssistant />
