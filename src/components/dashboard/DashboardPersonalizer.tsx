@@ -98,9 +98,9 @@ export function DashboardPersonalizer() {
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" className="shrink-0 gap-2 rounded-xl" onClick={openEditor}>
-        <SlidersHorizontal className="h-4 w-4" />
-        Personalizar Inicio
+      <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs" onClick={openEditor} aria-label="Personalizar Inicio" title="Personalizar Inicio">
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+        Personalizar
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
