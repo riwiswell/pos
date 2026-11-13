@@ -29,7 +29,7 @@ create or replace function public.gamification_xp_for_event(
 returns integer
 language sql
 immutable
-as $
+as $xp_score$
   select case
     when p_entity_type = 'work_sessions'
       and coalesce(p_payload->>'status','') = 'completed'
@@ -65,7 +65,7 @@ as $
     when p_entity_type = 'life_goals' then 5
     else 0
   end
-$;
+$xp_score$;
 
 create or replace function public.backfill_historical_gamification_xp()
 returns integer
