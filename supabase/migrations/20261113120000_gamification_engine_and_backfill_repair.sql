@@ -20,6 +20,27 @@ alter table public.gamification_challenges
   add column if not exists code text,
   add column if not exists kind text not null default 'events';
 
+-- Escala progresiva vigente: cada nivel exige 300 XP más que el anterior.
+create or replace function public.gamification_level_for_xp(p_xp bigint)
+returns integer
+language sql
+immutable
+set search_path = public, pg_temp
+as $level_progression$
+  with recursive progression(level_number, xp_at_level_start, xp_required) as (
+    select 1::integer, 0::bigint, 1200::bigint
+    union all
+    select
+      level_number + 1,
+      xp_at_level_start + xp_required,
+      xp_required + 300
+    from progression
+    where xp_at_level_start + xp_required <= greatest(0, coalesce(p_xp, 0))
+  )
+  select coalesce(max(level_number), 1)::integer
+  from progression;
+$level_progression$;
+
 -- Mantener el nivel sincronizado sin sobrescribir la progresión moderna si ya existe.
 create or replace function public.sync_gamification_level_200()
 returns trigger
