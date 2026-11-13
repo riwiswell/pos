@@ -21,6 +21,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "personal-os:sidebar-collapsed";
+const LEGACY_ORGANIZATION_KEYS = ["habitos", "planeador", "trabajo"];
+function isMenuModuleHidden(key: string, hidden: string[]) {
+  return hidden.includes(key) || (
+    key === "organizacion" &&
+    LEGACY_ORGANIZATION_KEYS.every((legacyKey) => hidden.includes(legacyKey))
+  );
+}
 
 function useCollapsed() {
   const [collapsed, setCollapsed] = useState(false);
@@ -127,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const allItems = useMemo(() => orderedAllItems(profile?.module_order), [profile?.module_order]);
   const orderedItems = allItems;
   const hiddenModules = profile?.hidden_modules ?? [];
-  const items = useMemo(() => orderedItems.filter((item) => !hiddenModules.includes(item.key)), [orderedItems, profile?.hidden_modules]);
+  const items = useMemo(() => orderedItems.filter((item) => !isMenuModuleHidden(item.key, hiddenModules)), [orderedItems, profile?.hidden_modules]);
   const menuItems = menuEditing ? orderedItems : items;
 
   const persistMenu = (order: string[], hidden: string[]) => {
@@ -161,7 +168,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   const toggleMenuItem = (key: string, visible: boolean) => {
-    const hidden = visible ? hiddenModules.filter((item) => item !== key) : Array.from(new Set([...hiddenModules, key]));
+    const hidden = key === "organizacion"
+      ? visible
+        ? hiddenModules.filter((item) => item !== "organizacion" && !LEGACY_ORGANIZATION_KEYS.includes(item))
+        : Array.from(new Set([...hiddenModules, "organizacion"]))
+      : visible
+        ? hiddenModules.filter((item) => item !== key)
+        : Array.from(new Set([...hiddenModules, key]));
     void persistMenu(allItems.map((item) => item.key), hidden);
   };
 
@@ -193,7 +206,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     item: typeof menuItems[number],
     options: { forceExpanded?: boolean; onNavigate?: () => void; hideHelp?: boolean } = {},
   ) => {
-    const visible = !hiddenModules.includes(item.key);
+    const visible = !isMenuModuleHidden(item.key, hiddenModules);
     const expanded = options.forceExpanded ?? !collapsed;
     return (
       <div key={item.key} data-sidebar-item-key={item.key}
