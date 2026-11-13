@@ -260,10 +260,16 @@ begin
   if exists (
     select 1
       from public.gamification_xp_events ge
+      left join public.life_events previous_event
+        on previous_event.id = ge.life_event_id
      where ge.user_id = new.user_id
        and (
          ge.event_key = base_event_key
          or ge.life_event_id = new.id
+         or (
+           previous_event.entity_type = new.entity_type
+           and previous_event.entity_id = new.entity_id
+         )
        )
   ) then
     return new;
