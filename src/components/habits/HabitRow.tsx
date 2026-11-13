@@ -123,7 +123,7 @@ export function HabitRow({
             />
           </div>
         )}
-        {log?.note && <p className="mt-0.5 truncate text-xs text-muted-foreground">{String(log.note).replace(/<br[^>]*>/gi," ").replace(/<\\/(p|div|li|h[1-6])[^>]*>/gi," ").replace(/<[^>]*>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/ {2,}/g," ").trim()}</p>}
+        {log?.note && <p className="mt-0.5 truncate text-xs text-muted-foreground">{String(log.note).replace(/<br[^>]*>/gi," ").replace(/<\/(p|div|li|h[1-6])[^>]*>/gi," ").replace(/<[^>]*>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/ {2,}/g," ").trim()}</p>}
       </div>
 
       {habit.type === "check" ? (
