@@ -264,7 +264,7 @@ function ProfilePage() {
               <button key={option.value} type="button" title={option.label} aria-label={"Usar color "+option.label} aria-pressed={accentColor===option.value} onClick={() => setAccentColor(option.value)} className={cn("h-9 w-9 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",accentColor===option.value?"scale-110 border-foreground ring-2 ring-primary ring-offset-2 ring-offset-background":"border-border hover:scale-105")} style={{backgroundColor:option.value}} />
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">Tiñe el sidebar y, de forma suave, las tarjetas y superficies donde registras datos. También cambia los botones y los indicadores de selección. Se guarda en tu perfil.</p>
+          <p className="text-xs text-muted-foreground">Aplica el color elegido directamente al fondo del espacio de trabajo. Las tarjetas, formularios y controles conservan sus propios colores para mantener la lectura. Se guarda en tu perfil.</p>
         </div>
         <div className="flex items-center justify-between rounded-xl border p-3">
           <span className="flex items-center gap-1 text-sm font-medium">Ayudas contextuales <HelpTip helpKey="settings.help" /></span>
