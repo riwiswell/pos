@@ -179,7 +179,7 @@ function GamificationPage() {
         <p className="font-semibold">Ejemplos para llegar a 30 XP en un día</p>
         <p className="mt-1 text-muted-foreground">6 hábitos registrados (6 × 5 XP), 3 sesiones de lectura o idiomas (3 × 10 XP), o 4 interacciones en Relaciones (4 × 8 XP = 32 XP). Terminar un libro suma 20 XP una sola vez por libro; también puedes ganar 20 XP al terminar un videojuego o subir de nivel en un idioma.</p>
       </div>
-      <p className="text-xs text-muted-foreground">La meta diaria de 30 XP es una referencia de progreso: completarla no entrega otros 30 XP adicionales. Los bonos de logros sí se suman aparte, pero solo la primera vez. Las tomas de medicamentos, registro menstrual y citas todavía no generan XP automático. El agua simple sí otorga +10 XP una vez al día al llegar a 2.000 ml.</p>
+      <p className="text-xs text-muted-foreground">La meta diaria de 30 XP es una referencia de progreso: completarla no entrega otros 30 XP adicionales. Los bonos de logros sí se suman aparte, pero solo la primera vez. Las tomas de medicamentos, registro menstrual y citas todavía no generan XP automático. El agua simple sí otorga +10 XP una vez al día al llegar a 2.000 ml. Los registros históricos que cumplen estas reglas también se reconocen; cada registro y cada hito se acredita una sola vez.</p>
     </section>
     <section className="glass space-y-3 rounded-2xl border border-amber-400/20 p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
