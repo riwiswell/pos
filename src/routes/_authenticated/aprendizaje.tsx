@@ -665,7 +665,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const items=allItems.filter((item:any)=>isGames?isGameItem(item):!isGameItem(item));
   const visibleItems=sortLearningItems(isGames?items:items.filter((item:any)=>filter==="all"||item.kind===filter),sessions.data||[],sort);
   const resetForm=()=>{setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setGameMinutes("0");setPlatform("");setGenre("");setEditingId(null);setAdding(false);};
-  const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setGameMinutes(String(Math.max(0,Number(item.minutes_total)||0)));setPlatform(item.platform||"");setGenre(item.genre||"");setEditingId(item.id);setAdding(true);};
+  const startEdit=(item:any)=>{const sessionTotal=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setGameMinutes(String(Math.max(sessionTotal,Math.max(0,Number(item.minutes_total)||0))));setPlatform(item.platform||"");setGenre(item.genre||"");setEditingId(item.id);setAdding(true);};
   const saveItem=async()=>{
     const isGame=kind==="video_game"||kind==="game";
     if(!title.trim()){toast.error("Escribe el nombre del elemento.");return;}
