@@ -387,6 +387,7 @@ begin
     from public.gamification_xp_events ge
    where ge.user_id = new.user_id
      and ge.xp > 0
+     and ge.life_event_id is not null
      and ge.event_key not like 'achievement:%';
 
   for achievement in
@@ -1546,7 +1547,7 @@ begin
   select user_id, xp from inserted;
 
   -- 6) Reconciliar el total sin reducir XP previo. El trigger de perfiles
-  --    calcula automáticamente los niveles de 200 XP.
+  --    conserva la progresión de niveles vigente del perfil.
   insert into public.gamification_profiles(user_id, xp, level)
   select ge.user_id, least(sum(greatest(ge.xp, 0)::bigint), 2147483647)::integer, 1
   from public.gamification_xp_events ge
