@@ -110,8 +110,8 @@ export function BowelLogPanel() {
   const mutations = usePersonalMutations("health_bowel_logs");
 
   useEffect(() => {
-    setLogDate(date);
-  }, [date]);
+    if (!editing) setLogDate(date);
+  }, [date, editing]);
 
   const dayEntries = useMemo(
     () => [...(dayQuery.data ?? [])].sort((a, b) => String(b.log_time).localeCompare(String(a.log_time)) || b.created_at.localeCompare(a.created_at)),
