@@ -37,21 +37,29 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Props
   const [name, setName] = useState("");
   const [color, setColor] = useState(PALETTE[0]!);
   const [icon, setIcon] = useState("✨");
-  const [layoutColumns, setLayoutColumns] = useState<1 | 2>(1);
+  const [layoutColumns, setLayoutColumns] = useState<1 | 2 | 3>(1);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setName(category?.name ?? "");
     setColor(category?.color ?? PALETTE[0]!);
     setIcon(category?.icon ?? "✨");
-    setLayoutColumns(category?.layout_columns === 2 ? 2 : 1);
+    setLayoutColumns(category?.layout_columns === 3 ? 3 : category?.layout_columns === 2 ? 2 : 1);
   }, [open, category]);
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!name.trim()) return;
-    onSubmit({ name: name.trim(), color, icon, layout_columns: layoutColumns });
-    onOpenChange(false);
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    try {
+      await onSubmit({ name: name.trim(), color, icon, layout_columns: layoutColumns });
+      onOpenChange(false);
+    } catch {
+      // The mutation hook shows the backend error. Keep the dialog and input open.
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -93,7 +101,7 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Props
           </div>
           <div className="space-y-2">
             <Label>Distribución de hábitos</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 aria-pressed={layoutColumns === 1}
@@ -118,10 +126,22 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Props
                 2 columnas
                 <span className="mt-1 block text-[11px] font-normal text-muted-foreground">Más compacto en pantallas amplias</span>
               </button>
+              <button
+                type="button"
+                aria-pressed={layoutColumns === 3}
+                onClick={() => setLayoutColumns(3)}
+                className={cn(
+                  "rounded-xl border px-3 py-3 text-sm transition",
+                  layoutColumns === 3 ? "border-primary bg-primary/10 font-semibold text-primary" : "bg-background hover:bg-accent",
+                )}
+              >
+                3 columnas
+                <span className="mt-1 block text-[11px] font-normal text-muted-foreground">Categoría a todo el ancho</span>
+              </button>
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit">{category ? "Guardar" : "Crear"}</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Guardando…" : category ? "Guardar" : "Crear"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
