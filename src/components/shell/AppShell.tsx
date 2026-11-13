@@ -168,7 +168,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
-  const activeGroup = currentNavItem?.group ?? null;
+  const activeGroup = currentNavItem?.group ?? "Principal";
+  const desktopMenuGroups = useMemo(() => {
+    const groups: { label: string; items: typeof menuItems }[] = [];
+    for (const item of menuItems) {
+      const label = item.group ?? "Principal";
+      let group = groups.find((entry) => entry.label === label);
+      if (!group) { group = { label, items: [] }; groups.push(group); }
+      group.items.push(item);
+    }
+    return groups;
+  }, [menuItems]);
 
   const background = profile?.background_url ?? null;
   const isColor = Boolean(background?.startsWith("#"));
@@ -183,6 +193,64 @@ export function AppShell({ children }: { children: ReactNode }) {
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
       };
+
+
+  const renderMenuItem = (item: typeof menuItems[number]) => {
+    const visible = !hiddenModules.includes(item.key);
+    return (
+      <div key={item.key} data-sidebar-item-key={item.key}
+        className={cn("flex min-w-0 items-center gap-1 rounded-xl transition-colors", !visible && "opacity-55", draggingKey === item.key && "opacity-45", dragTarget === item.key && "bg-sidebar-accent ring-2 ring-sidebar-primary/60")}>
+        {!collapsed && <button type="button" aria-label={"Arrastrar para reordenar " + item.label} title="Arrastra para cambiar de posición"
+          className="flex h-10 w-5 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-primary active:cursor-grabbing"
+          onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
+            if (event.button !== 0) return;
+            event.currentTarget.setPointerCapture(event.pointerId);
+            dragState.current = { key: item.key, pointerId: event.pointerId, startY: event.clientY, active: false, targetKey: null, order: orderedItems.map((entry) => entry.key) };
+          }}
+          onPointerMove={(event: PointerEvent<HTMLButtonElement>) => {
+            const current = dragState.current;
+            if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
+            if (!current.active && Math.abs(event.clientY - current.startY) < 5) return;
+            if (!current.active) { current.active = true; setDraggingKey(current.key); }
+            event.preventDefault();
+            const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-sidebar-item-key]");
+            const targetKey = target?.dataset.sidebarItemKey;
+            current.targetKey = targetKey && targetKey !== current.key ? targetKey : null;
+            setDragTarget(current.targetKey);
+          }}
+          onPointerUp={(event: PointerEvent<HTMLButtonElement>) => {
+            const current = dragState.current;
+            if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
+            dragState.current = null; setDraggingKey(null); setDragTarget(null);
+            const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-sidebar-item-key]");
+            const targetKey = hit?.dataset.sidebarItemKey ?? current.targetKey;
+            if (!current.active || !targetKey) return;
+            const nextOrder = [...current.order];
+            const from = nextOrder.indexOf(current.key); const to = nextOrder.indexOf(targetKey);
+            if (from < 0 || to < 0 || from === to) return;
+            nextOrder.splice(from, 1); nextOrder.splice(to, 0, current.key);
+            void persistMenu(nextOrder, hiddenModules);
+          }}
+          onPointerCancel={(event: PointerEvent<HTMLButtonElement>) => {
+            const current = dragState.current;
+            if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
+            dragState.current = null; setDraggingKey(null); setDragTarget(null);
+          }}>
+          <GripVertical className="h-4 w-4" />
+        </button>}
+        <Link to={item.to} search={(p: Record<string, unknown>) => p} title={item.label}
+          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", collapsed && "flex-none justify-center px-0", pathname.startsWith(item.to) && "bg-sidebar-accent")}>
+          <item.icon className="h-4 w-4 shrink-0" />
+          {!collapsed && <span className="truncate">{item.label}</span>}
+        </Link>
+        {menuEditing ? <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" disabled={menuSaving}
+          title={(visible ? "Ocultar " : "Mostrar ") + item.label} aria-label={(visible ? "Ocultar " : "Mostrar ") + item.label}
+          onClick={() => toggleMenuItem(item.key, !visible)}>
+          {visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+        </Button> : (!collapsed && <HelpTip helpKey={item.helpKey} />)}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground" style={style}>
@@ -213,129 +281,24 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3">
+        <nav className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
           <div className="mb-1 flex justify-end">
-            <Button
-              type="button"
-              size="icon"
-              variant={menuEditing ? "secondary" : "ghost"}
-              className="h-8 w-8"
-              onClick={() => setMenuEditing((current) => !current)}
-              aria-label="Opciones del menú"
-              title="Opciones del menú"
-              aria-pressed={menuEditing}
-            >
+            <Button type="button" size="icon" variant={menuEditing ? "secondary" : "ghost"} className="h-8 w-8"
+              onClick={() => setMenuEditing((current) => !current)} aria-label="Opciones del menú" title="Opciones del menú" aria-pressed={menuEditing}>
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </div>
-
-          {menuItems.map((item) => {
-            const visible = !hiddenModules.includes(item.key);
-            return (
-              <div
-                key={item.key}
-                data-sidebar-item-key={item.key}
-                className={cn(
-                  "flex min-w-0 items-center gap-1 rounded-xl transition-colors",
-                  !visible && "opacity-55",
-                  draggingKey === item.key && "opacity-45",
-                  dragTarget === item.key && "bg-sidebar-accent ring-2 ring-sidebar-primary/60",
-                )}
-              >
-                {!collapsed && (
-                  <button
-                    type="button"
-                    aria-label={"Arrastrar para reordenar " + item.label}
-                    title="Arrastra para cambiar de posición"
-                    className="flex h-10 w-5 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-primary active:cursor-grabbing"
-                    onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
-                      if (event.button !== 0) return;
-                      event.currentTarget.setPointerCapture(event.pointerId);
-                      dragState.current = {
-                        key: item.key,
-                        pointerId: event.pointerId,
-                        startY: event.clientY,
-                        active: false,
-                        targetKey: null,
-                        order: orderedItems.map((entry) => entry.key),
-                      };
-                    }}
-                    onPointerMove={(event: PointerEvent<HTMLButtonElement>) => {
-                      const current = dragState.current;
-                      if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
-                      if (!current.active && Math.abs(event.clientY - current.startY) < 5) return;
-                      if (!current.active) {
-                        current.active = true;
-                        setDraggingKey(current.key);
-                      }
-                      event.preventDefault();
-                      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-sidebar-item-key]");
-                      const targetKey = target?.dataset.sidebarItemKey;
-                      current.targetKey = targetKey && targetKey !== current.key ? targetKey : null;
-                      setDragTarget(current.targetKey);
-                    }}
-                    onPointerUp={(event: PointerEvent<HTMLButtonElement>) => {
-                      const current = dragState.current;
-                      if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
-                      dragState.current = null;
-                      setDraggingKey(null);
-                      setDragTarget(null);
-                      const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-sidebar-item-key]");
-                      const targetKey = hit?.dataset.sidebarItemKey ?? current.targetKey;
-                      if (!current.active || !targetKey) return;
-                      const nextOrder = [...current.order];
-                      const from = nextOrder.indexOf(current.key);
-                      const to = nextOrder.indexOf(targetKey);
-                      if (from < 0 || to < 0 || from === to) return;
-                      nextOrder.splice(from, 1);
-                      nextOrder.splice(to, 0, current.key);
-                      void persistMenu(nextOrder, hiddenModules);
-                    }}
-                    onPointerCancel={(event: PointerEvent<HTMLButtonElement>) => {
-                      const current = dragState.current;
-                      if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
-                      dragState.current = null;
-                      setDraggingKey(null);
-                      setDragTarget(null);
-                    }}
-                  >
-                    <GripVertical className="h-4 w-4" />
-                  </button>
-                )}
-
-                <Link
-                  to={item.to}
-                  search={(p: Record<string, unknown>) => p}
-                  title={item.label}
-                  className={cn(
-                    "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
-                    collapsed && "flex-none justify-center px-0",
-                    pathname.startsWith(item.to) && "bg-sidebar-accent",
-                  )}
-                >
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && <span className="truncate">{item.label}</span>}
-                </Link>
-
-                {menuEditing ? (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 shrink-0"
-                    disabled={menuSaving}
-                    title={(visible ? "Ocultar " : "Mostrar ") + item.label}
-                    aria-label={(visible ? "Ocultar " : "Mostrar ") + item.label}
-                    onClick={() => toggleMenuItem(item.key, !visible)}
-                  >
-                    {visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                  </Button>
-                ) : (
-                  !collapsed && <HelpTip helpKey={item.helpKey} />
-                )}
-              </div>
-            );
-          })}
+          {collapsed
+            ? menuItems.map(renderMenuItem)
+            : desktopMenuGroups.map(({ label, items: groupItems }) => (
+                <details key={label} className="overflow-hidden rounded-xl border border-sidebar-border/70 bg-sidebar/40" open={menuEditing || label === activeGroup}>
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-sidebar-foreground/85 marker:hidden hover:bg-sidebar-accent">
+                    <span>{label}</span>
+                    <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">{groupItems.length}</span>
+                  </summary>
+                  <div className="space-y-1 border-t border-sidebar-border/60 p-1.5">{groupItems.map(renderMenuItem)}</div>
+                </details>
+              ))}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
