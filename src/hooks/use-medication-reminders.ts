@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { todayISO } from "@/lib/date";
@@ -63,7 +63,36 @@ export function useMedicationReminders() {
   const [tick, setTick] = useState(0);
   const regRef = useRef<ServiceWorkerRegistration | null>(null);
   const actRef = useRef(setStatus.mutate);
+  const activeToasts = useRef(new Map<string, string | number>());
+  const activeNotifications = useRef(new Map<string, Notification>());
+  const seenStatuses = useRef(new Map<string, string>());
   actRef.current = setStatus.mutate;
+
+  const dismissReminder = useCallback((doseId: string) => {
+    const toastId = activeToasts.current.get(doseId);
+    if (toastId !== undefined) {
+      toast.dismiss(toastId);
+      activeToasts.current.delete(doseId);
+    }
+
+    activeNotifications.current.get(doseId)?.close();
+    activeNotifications.current.delete(doseId);
+
+    const closeSystemNotifications = (reg: ServiceWorkerRegistration | null) => {
+      if (!reg) return;
+      void reg.getNotifications({ tag: `pos:medication:${doseId}` })
+        .then((notifications) => notifications.forEach((notification) => notification.close()))
+        .catch(() => undefined);
+    };
+
+    if (regRef.current) closeSystemNotifications(regRef.current);
+    else {
+      void registration().then((reg) => {
+        regRef.current = reg;
+        closeSystemNotifications(reg);
+      });
+    }
+  }, []);
 
   useEffect(() => {
     void registration().then((r) => (regRef.current = r));
@@ -91,6 +120,23 @@ export function useMedicationReminders() {
     [today, meds.data],
   );
   const preparedSignature = useRef("");
+
+  // Close an already-visible reminder as soon as its dose is confirmed,
+  // skipped, or snoozed. This also clears notifications left by a previous visit.
+  useEffect(() => {
+    if (!doses.data) return;
+    for (const dose of doses.data) {
+      const statusKey = dose.status === "taken" && dose.entry_origin === "stock_estimate"
+        ? "stock_estimate"
+        : dose.status;
+      const previous = seenStatuses.current.get(dose.id);
+      const completed = dose.status === "skipped" ||
+        dose.status === "snoozed" ||
+        (dose.status === "taken" && dose.entry_origin !== "stock_estimate");
+      if (completed && previous !== statusKey) dismissReminder(dose.id);
+      seenStatuses.current.set(dose.id, statusKey);
+    }
+  }, [doses.data, dismissReminder]);
 
   useEffect(() => {
     if (!meds.isSuccess || !scheduleSignature || preparedSignature.current === scheduleSignature) return;
@@ -135,15 +181,16 @@ export function useMedicationReminders() {
         if (regRef.current) void regRef.current.showNotification(title, opts);
         else {
           delete opts.actions;
-          new Notification(title, opts);
+          activeNotifications.current.set(dose.id, new Notification(title, opts));
         }
       }
-      toast(title, {
+      const toastId = toast(title, {
         description: body,
         duration: 60_000,
         action: { label: "Tomada", onClick: () => actRef.current({ id: dose.id, status: "taken" }) },
         cancel: { label: "Posponer", onClick: () => actRef.current({ id: dose.id, status: "snoozed" }) },
       });
+      activeToasts.current.set(dose.id, toastId);
     }
     if (changed) { try { localStorage.setItem(FIRED_KEY, JSON.stringify(fired)); } catch { /* Reminders should still show when Storage is unavailable. */ } }
   }, [doses.data, byId, tick]);

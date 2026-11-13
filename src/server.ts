@@ -462,6 +462,31 @@ async function dispatchDueNotifications(env:Env){
  const due=await supabaseFetch(env,"notification_jobs?status=eq.pending&fire_at=lte."+encodeURIComponent(new Date().toISOString())+"&user_id="+userFilter+"&order=fire_at.asc&limit=100");
  if(!due.ok)return;const jobs=await due.json() as any[];
  for(const job of jobs){
+   // Re-read the dose immediately before delivery. A job may already have been
+   // loaded by the cron when the user marks the dose as taken in another tab.
+   if(job.source_type==="medication_dose"){
+    const doseRead=await supabaseFetch(env,"medication_doses?id=eq."+encodeURIComponent(job.source_id)+"&user_id=eq."+encodeURIComponent(job.user_id)+"&select=id,status,entry_origin,snoozed_until&limit=1");
+    if(!doseRead.ok){
+     await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({fire_at:new Date(Date.now()+5*60_000).toISOString()})});
+     console.error("[push] Could not verify medication dose; deferred notification",job.id,doseRead.status);
+     continue;
+    }
+    const doseRows=await doseRead.json() as any[];
+    const dose=doseRows[0];
+    const complete=!dose||dose.status==="skipped"||(dose.status==="taken"&&dose.entry_origin!=="stock_estimate");
+    if(complete){
+     await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
+     continue;
+    }
+    if(dose.status==="snoozed"&&dose.snoozed_until&&new Date(dose.snoozed_until).getTime()>Date.now()){
+     // The snooze trigger created a replacement job for the later time.
+     continue;
+    }
+    if(dose.status!=="pending"&&dose.status!=="snoozed"&&!(dose.status==="taken"&&dose.entry_origin==="stock_estimate")){
+     await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
+     continue;
+    }
+   }
    if(job.source_type==="relationship"){
     const prefRead=await supabaseFetch(env,"profiles?id=eq."+encodeURIComponent(job.user_id)+"&select=notification_preferences&limit=1");
     if(!prefRead.ok){await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({fire_at:new Date(Date.now()+5*60_000).toISOString()})});console.error("[push] Could not verify relationship notification preference; deferred",job.id);continue;}
