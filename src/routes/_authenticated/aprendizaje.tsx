@@ -50,7 +50,7 @@ function sortLearningItems(items:any[],sessions:any[],sort:LearningSort){
   if(sort==="title_asc")return names;
   if(sort==="title_desc")return -names;
   if(sort==="genre_asc")return String(a.genre||"Sin género").localeCompare(String(b.genre||"Sin género"),"es",{sensitivity:"base"})||names;
-  if(sort==="used_asc")return aCount-bCount||aMinutes-bMinutes||aProgress-bProgress||names;
+  if(sort==="used_asc")return aMinutes-bMinutes||aCount-bCount||aProgress-bProgress||names;
   if(sort==="recent")return bLast.localeCompare(aLast)||createdB.localeCompare(createdA)||names;
   if(sort==="oldest"){
    const aPinned=INITIAL_READING_ORDER.indexOf(String(a.title||"").trim().toLocaleLowerCase("es"));
@@ -62,7 +62,7 @@ function sortLearningItems(items:any[],sessions:any[],sort:LearningSort){
    }
    return createdA.localeCompare(createdB)||names;
   }
-  return bCount-aCount||bMinutes-aMinutes||bProgress-aProgress||bLast.localeCompare(aLast)||names;
+  return bMinutes-aMinutes||bCount-aCount||bProgress-aProgress||bLast.localeCompare(aLast)||names;
  });
 }
 function LearningSortControl({value,onChange,includeGenre=false}:{value:LearningSort;onChange:(value:LearningSort)=>void;includeGenre?:boolean}){return <select aria-label="Ordenar elementos" title="Ordenar elementos" className="h-9 max-w-[148px] rounded-lg border border-input bg-background px-2 text-xs text-foreground" value={value} onChange={event=>onChange(event.target.value as LearningSort)}><option value="used_desc">Más usado</option><option value="used_asc">Menos usado</option>{includeGenre&&<option value="genre_asc">Género A–Z</option>}<option value="title_asc">A–Z</option><option value="title_desc">Z–A</option><option value="recent">Más reciente</option><option value="oldest">Más antiguo</option></select>;}
@@ -441,7 +441,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,min
               <option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option><option value="90">1 h 30 min</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="240">4 horas</option>
             </select>
           </label>
-          <Button size="sm" disabled={savingSession} onClick={async()=>{setSavingSession(true);try{await onRecordSession(Number(sessionMinutes));toast.success("Tiempo jugado guardado.");setRecording(false);}finally{setSavingSession(false);}}}>{savingSession?"Guardando…":"Guardar"}</Button>
+          <Button size="sm" disabled={savingSession} onClick={async()=>{setSavingSession(true);try{await onRecordSession(Number(sessionMinutes));toast.success("Tiempo jugado guardado.");setRecording(false);}catch{/* El hook ya informa el error de guardado. */}finally{setSavingSession(false);}}}>{savingSession?"Guardando…":"Guardar"}</Button>
           <Button size="sm" variant="ghost" disabled={savingSession} onClick={()=>setRecording(false)}>Cancelar</Button>
         </div>:<Button size="sm" variant="outline" className="w-full" onClick={()=>setRecording(true)}><Clock className="mr-1 h-3.5 w-3.5"/>Registrar tiempo jugado</Button>}
       </div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.notes}</p>}</div>
