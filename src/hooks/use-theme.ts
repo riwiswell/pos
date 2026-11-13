@@ -41,27 +41,25 @@ export function applyTheme(theme: ThemeName) {
 export function applyAccentColor(value: string) {
   if (typeof document === "undefined" || !validAccent(value)) return;
   const root = document.documentElement;
-  const channels = [1, 3, 5].map((offset) => parseInt(value.slice(offset, offset + 2), 16) / 255);
-  const luminance = channels.reduce((total, channel, index) => {
-    const linear = channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-    return total + linear * [0.2126, 0.7152, 0.0722][index];
-  }, 0);
-  const foreground = luminance > 0.44 ? "#17202a" : "#ffffff";
+  // The selected color belongs only to the workspace canvas.
   root.style.setProperty("--workspace-background", value);
-  root.style.setProperty("--primary", value);
-  root.style.setProperty("--ring", value);
-  root.style.setProperty("--sidebar-primary", value);
-  root.style.setProperty("--sidebar-ring", value);
-  // The selected color is used as the workspace background by AppShell.
-  // Keep cards, fields, borders and sidebar surfaces independent from it.
-  root.style.removeProperty("--sidebar");
-  root.style.removeProperty("--sidebar-accent");
-  root.style.removeProperty("--sidebar-border");
-  root.style.removeProperty("--surface");
-  root.style.removeProperty("--card");
-  root.style.removeProperty("--input");
-  root.style.setProperty("--primary-foreground", foreground);
-  root.style.setProperty("--sidebar-primary-foreground", foreground);
+
+  // Clear legacy accent overrides so buttons, focus rings, sidebar and cards
+  // continue using the selected light/dark theme palette.
+  [
+    "--primary",
+    "--primary-foreground",
+    "--ring",
+    "--sidebar-primary",
+    "--sidebar-primary-foreground",
+    "--sidebar-ring",
+    "--sidebar",
+    "--sidebar-accent",
+    "--sidebar-border",
+    "--surface",
+    "--card",
+    "--input",
+  ].forEach((property) => root.style.removeProperty(property));
 }
 
 function readStoredMode(): ThemeName {
