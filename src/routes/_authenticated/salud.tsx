@@ -161,9 +161,9 @@ function HydrationCard(){
  return <section className="glass space-y-4 rounded-2xl p-4">
   <div className="flex flex-wrap items-center justify-between gap-3">
    <div><h2 className="flex items-center gap-1 font-semibold">💧 Hidratación <HelpTip helpKey="hydration.daily" /></h2><p className="text-xs text-muted-foreground">Agua simple y otras bebidas se registran por separado.</p></div>
-   <div className="text-right"><p className="text-sm font-semibold tabular-nums">{(waterMl/1000).toLocaleString("es-CO",{maximumFractionDigits:2})} / 2,25 L</p><p className="text-[11px] text-muted-foreground">agua simple</p></div>
+   <div className="text-right"><p className="text-sm font-semibold tabular-nums">{(waterMl/1000).toLocaleString("es-CO",{maximumFractionDigits:2})} / 2,00 L</p><p className="text-[11px] text-muted-foreground">agua simple</p></div>
   </div>
-  <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-sky-500 transition-all" style={{width:Math.min(100,Math.max(0,waterMl/2250*100))+"%"}}/></div>
+  <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-sky-500 transition-all" style={{width:Math.min(100,Math.max(0,waterMl/2000*100))+"%"}}/></div>
   <div className="flex flex-wrap gap-2 text-xs">
    <span className="rounded-full bg-sky-500/10 px-2.5 py-1 text-sky-700 dark:text-sky-300">Agua: {fmt(waterMl)} ml</span>
    <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-amber-800 dark:text-amber-300">Café y otras bebidas: {fmt(otherFluidMl)} ml</span>
@@ -172,6 +172,9 @@ function HydrationCard(){
   <div className="flex flex-wrap items-center gap-2">
    {WATER_OPTIONS.filter(glasses=>glasses>0).map(glasses=>{const ml=Math.round(waterGlassesToMl(glasses));return <Button key={glasses} size="sm" variant={glasses===1?"default":"outline"} disabled={disabled} onClick={()=>void addDrink("water",ml)}>+{formatWaterGlassOption(glasses)} agua</Button>})}
    <Button size="sm" variant="outline" className="gap-1" disabled={disabled} onClick={()=>void addDrink("coffee",100)}><Coffee className="h-3.5 w-3.5"/> +100 ml café</Button>
+   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("tea",325,"Té","🍵")}>+325 ml té</Button>
+   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("other",325,"Frutiño","🧃")}>+325 ml Frutiño</Button>
+   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("other",325,"Agua de panela","🧉")}>+325 ml agua de panela</Button>
   </div>
   <div className="space-y-2">
    <div className="grid grid-cols-[minmax(0,1fr)_100px_auto] gap-2">

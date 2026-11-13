@@ -201,14 +201,18 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
         [field]: checked,
       };
       const completed = values.first_done && values.second_done && values.third_done;
+      const wasCompleted = Boolean(existing?.completed_at) || Boolean(existing?.first_done && existing?.second_done && existing?.third_done);
       const { error } = await db.from("bible_reading_day_progress").upsert({
         cycle_id: activeCycle.id, user_id: user.id, day_number: day,
-        ...values, completed_at: completed ? new Date().toISOString() : null,
+        ...values, completed_at: completed ? existing?.completed_at ?? new Date().toISOString() : existing?.completed_at ?? null,
       }, { onConflict: "cycle_id,day_number" });
       if (error) throw error;
-      return { completed };
+      return { completed, newlyCompleted: completed && !wasCompleted };
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["bible-reading-progress", activeCycle?.id] }),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["bible-reading-progress", activeCycle?.id] });
+      if (result.newlyCompleted) toast.success("¡Completaste las tres lecturas del día! +15 XP.");
+    },
     onError: (error) => toast.error(message(error)),
   });
 

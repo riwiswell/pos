@@ -2,12 +2,22 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/shell/AppShell";
+import { UnsavedChangesGuard } from "@/components/common/UnsavedChangesGuard";
 import { isValidISODate, todayISO } from "@/lib/date";
 
 interface GlobalSearch {
   date?: string;
   dose?: string;
   action?: "take" | "snooze";
+}
+
+function AuthenticatedLayout() {
+  return (
+    <AppShell>
+      <UnsavedChangesGuard />
+      <Outlet />
+    </AppShell>
+  );
 }
 
 export const Route = createFileRoute("/_authenticated")({
@@ -22,9 +32,5 @@ export const Route = createFileRoute("/_authenticated")({
     if (error || !data.user) throw redirect({ to: "/auth" });
     return { user: data.user };
   },
-  component: () => (
-    <AppShell>
-      <Outlet />
-    </AppShell>
-  ),
+  component: AuthenticatedLayout,
 });
