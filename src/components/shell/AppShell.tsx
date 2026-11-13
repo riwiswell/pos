@@ -21,7 +21,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "personal-os:sidebar-collapsed";
-const MOBILE_PRIMARY_KEYS = new Set(["inicio", "habitos", "planeador", "salud", "finanzas"]);
 
 function useCollapsed() {
   const [collapsed, setCollapsed] = useState(false);
