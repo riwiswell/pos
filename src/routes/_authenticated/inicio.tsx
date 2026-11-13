@@ -158,6 +158,11 @@ function HomePage() {
       .map(({ habit }) => habit),
     [habits, usageCounts],
   );
+  // Keep this compact home preview one row shorter for dashboard card alignment.
+  // The habit itself remains active and is still counted in the full habits module.
+  const homeCardHabits = rankedHabits
+    .filter((habit) => habit.name.trim().toLowerCase() !== "tiempo de calidad")
+    .slice(0, 4);
   const name =
     profileQuery.data?.display_name ??
     profileQuery.data?.full_name ??
@@ -286,7 +291,7 @@ function HomePage() {
                                 </div>
                                 <Progress value={percent} className="h-2.5" />
                                 <div className="mt-3 grid grid-cols-1 gap-1.5">
-                                  {rankedHabits.slice(0, 5).map((habit) => {
+                                  {homeCardHabits.map((habit) => {
                                     const habitLog = logByHabit.get(habit.id);
                                     const complete = isDone(habit, habitLog);
                                     const value = habitLog?.value ?? 0;
