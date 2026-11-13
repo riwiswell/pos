@@ -408,7 +408,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <item.icon className="h-5 w-5 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
               </Link>
             ))}
-          </div>}}
+          </div>}
         </SheetContent>
       </Sheet>
       <PersonalAssistant />
