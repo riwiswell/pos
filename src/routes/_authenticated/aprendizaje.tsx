@@ -540,8 +540,20 @@ function Languages(){
   const sortedLanguages=[...(q.data||[])].sort((a:any,b:any)=>{const aCount=(s.data||[]).filter((entry:any)=>entry.resource_url===a.locale_code).length,bCount=(s.data||[]).filter((entry:any)=>entry.resource_url===b.locale_code).length;const names=String(a.language_name||"").localeCompare(String(b.language_name||""),"es",{sensitivity:"base"});if(sort==="title_asc")return names;if(sort==="title_desc")return -names;if(sort==="used_asc")return aCount-bCount||names;if(sort==="recent")return String(b.updated_at||b.created_at||"").localeCompare(String(a.updated_at||a.created_at||""))||names;if(sort==="oldest")return String(a.created_at||"").localeCompare(String(b.created_at||""))||names;return bCount-aCount||names;});
   return <section className="space-y-4">
     {(q.isError||s.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:s.error instanceof Error?s.error.message:"No se pudieron cargar idiomas o sesiones."}/>}
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-start">
-      <div className="glass space-y-3 rounded-2xl p-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-stretch">
+      <div className="glass flex h-full flex-col space-y-3 rounded-2xl p-4">
+        <div><h2 className="font-semibold">Agregar o configurar un idioma</h2><p className="text-xs text-muted-foreground">Elige el idioma y su variante regional, define tu nivel actual y tu meta.</p></div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="space-y-1 text-xs text-muted-foreground">Idioma<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]);}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">País / variante<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={locale} onChange={e=>setLocale(e.target.value)}>{(LANGS.find((x:any)=>x.code===code)||LANGS[0]).variants.map((x:any)=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">Nivel actual<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={level} onChange={e=>setLevel(e.target.value)}>{["A1","A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select></label>
+          <label className="space-y-1 text-xs text-muted-foreground">Meta<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={target} onChange={e=>setTarget(e.target.value)}>{["A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select></label>
+        </div>
+        <Input placeholder="Enfoques: hablar, escuchar, vocabulario…" value={focus} onChange={e=>setFocus(e.target.value)}/>
+        <Button className="w-full sm:w-auto" onClick={()=>void saveLanguage()} disabled={m.create.isPending||m.update.isPending}><Plus className="mr-1 h-4 w-4"/>{selectedProfile?"Guardar cambios":"Agregar idioma"}</Button>
+      </div>
+
+      <div className="glass flex h-full flex-col space-y-3 rounded-2xl p-4">
         <div><h2 className="font-semibold">Registrar práctica</h2><p className="text-xs text-muted-foreground">Guarda cada sesión para medir tu constancia y tiempo de estudio.</p></div>
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1 text-xs text-muted-foreground">Idioma<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]);}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select></label>
@@ -553,17 +565,7 @@ function Languages(){
         {!selectedProfile&&<p className="text-xs text-amber-600">Agrega primero el idioma y la variante para habilitar el registro.</p>}
       </div>
     </div>
-      <div className="glass space-y-3 rounded-2xl p-4">
-        <div><h2 className="font-semibold">Agregar o configurar un idioma</h2><p className="text-xs text-muted-foreground">Elige el idioma y su variante regional, define tu nivel actual y tu meta.</p></div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="space-y-1 text-xs text-muted-foreground">Idioma<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={code} onChange={e=>{const v=e.target.value;setCode(v);setLocale((LANGS.find((x:any)=>x.code===v)||LANGS[0]).variants[0][0]);}}>{LANGS.map((x:any)=><option key={x.code} value={x.code}>{x.name}</option>)}</select></label>
-          <label className="space-y-1 text-xs text-muted-foreground">País / variante<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={locale} onChange={e=>setLocale(e.target.value)}>{(LANGS.find((x:any)=>x.code===code)||LANGS[0]).variants.map((x:any)=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
-          <label className="space-y-1 text-xs text-muted-foreground">Nivel actual<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={level} onChange={e=>setLevel(e.target.value)}>{["A1","A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select></label>
-          <label className="space-y-1 text-xs text-muted-foreground">Meta<select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={target} onChange={e=>setTarget(e.target.value)}>{["A2","B1","B2","C1","C2"].map(x=><option key={x}>{x}</option>)}</select></label>
-        </div>
-        <Input placeholder="Enfoques: hablar, escuchar, vocabulario…" value={focus} onChange={e=>setFocus(e.target.value)}/>
-        <Button className="w-full sm:w-auto" onClick={()=>void saveLanguage()} disabled={m.create.isPending||m.update.isPending}><Plus className="mr-1 h-4 w-4"/>{selectedProfile?"Guardar cambios":"Agregar idioma"}</Button>
-      </div>
+
     <div className="glass space-y-3 rounded-2xl p-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Mis idiomas</h2><p className="text-xs text-muted-foreground">Selecciona una tarjeta para editar el nivel y la meta.</p></div><LearningSortControl value={sort} onChange={setSort}/></div>
       {(q.data||[]).length===0?<p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">Todavía no has agregado idiomas. Usa el formulario de arriba para comenzar.</p>:<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{sortedLanguages.map((x:any)=><button type="button" key={x.id} onClick={()=>{setCode(x.language_code);setLocale(x.locale_code||((LANGS.find((l:any)=>l.code===x.language_code)||LANGS[0]).variants[0][0]));}} className={"flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition hover:border-primary "+(selectedProfile?.id===x.id?"border-primary bg-primary/5":"bg-background/50")}>
