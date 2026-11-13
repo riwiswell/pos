@@ -105,7 +105,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [menuSaving, setMenuSaving] = useState(false);
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
   const [dragTarget, setDragTarget] = useState<string | null>(null);
-  const dragState = useRef<{ key: string; pointerId: number; startY: number; active: boolean; targetKey: string | null; order: string[] } | null>(null);\n  const menuSaveSequence = useRef(0);\n  const menuSaveQueue = useRef<Promise<void>>(Promise.resolve());
+  const dragState = useRef<{ key: string; pointerId: number; startY: number; active: boolean; targetKey: string | null; order: string[] } | null>(null);
+  const menuSaveSequence = useRef(0);
+  const menuSaveQueue = useRef<Promise<void>>(Promise.resolve());
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const signOut = useSignOut();
   const { data: profile } = useProfile();
