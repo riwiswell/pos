@@ -23,7 +23,11 @@ const XP_ACTIONS = [
   ["Registrar una sesión de lectura de un libro", 10],
   ["Registrar una sesión de estudio de idioma", 10],
   ["Registrar una sesión de videojuego", 10],
-  ["Terminar un libro (bono único por libro)", 10],
+  ["Terminar un libro (una sola vez)", 20],
+  ["Terminar un videojuego (una sola vez)", 20],
+  ["Subir un nivel en un idioma (una sola vez por nivel)", 20],
+  ["Completar las tres lecturas del Plan Bíblico", 15],
+  ["Alcanzar 2.000 ml de agua simple en el día", 10],
   ["Registrar una interacción en Relaciones", 8],
   ["Registrar una práctica o reflexión espiritual", 5],
   ["Registrar una acción en una meta de Vida", 5],
@@ -48,12 +52,17 @@ function GamificationPage() {
   const cm=useLGMutations("gamification_challenges");
   const {user}=useAuth();
   const [ct,setCt]=useState(""),[reward,setReward]=useState("50"),[target,setTarget]=useState("10"),[kind,setKind]=useState("events");
-  const xp=Number(profile.data?.[0]?.xp||0);
-  const level=Number(profile.data?.[0]?.level||Math.floor(xp/100)+1);
+  const eventXp=(xpEvents.data||[]).reduce((sum:number,event:any)=>sum+Math.max(0,Number(event.xp)||0),0);
+  const xp=Math.max(Number(profile.data?.[0]?.xp||0),eventXp);
+  const level=Math.floor(xp/200)+1;
   const unlocked=(ach.data||[]).filter((x:any)=>x.unlocked_at);
   const actionCount=(xpEvents.data||[]).filter((event:any)=>Boolean(event.life_event_id)&&!String(event.event_key||"").startsWith("achievement:")).length;
   const lastActivityOn=profile.data?.[0]?.last_activity_on as string|undefined;
-  const currentStreak=lastActivityOn&&(lastActivityOn===todayISO()||lastActivityOn===addDaysISO(todayISO(),-1))?Number(profile.data?.[0]?.current_streak||0):0;
+  const xpActivityDates=new Set((xpEvents.data||[]).map((event:any)=>xpDateInBogota(String(event.created_at||""))).filter(Boolean));
+  let derivedStreakDate=xpActivityDates.has(todayISO())?todayISO():addDaysISO(todayISO(),-1);
+  let derivedStreak=0;
+  while(xpActivityDates.has(derivedStreakDate)&&derivedStreak<366){derivedStreak+=1;derivedStreakDate=addDaysISO(derivedStreakDate,-1);}
+  const currentStreak=lastActivityOn&&(lastActivityOn===todayISO()||lastActivityOn===addDaysISO(todayISO(),-1))?Math.max(Number(profile.data?.[0]?.current_streak||0),derivedStreak):derivedStreak;
   const recentXp=useMemo(()=>[...(xpEvents.data||[])].slice(0,8),[xpEvents.data]);
   const todayKey=todayISO();
   const xpDateInBogota=(value:string)=>{
@@ -63,8 +72,8 @@ function GamificationPage() {
   const todayXp=(xpEvents.data||[]).filter((event:any)=>xpDateInBogota(String(event.created_at||""))===todayKey).reduce((sum:number,event:any)=>sum+Math.max(0,Number(event.xp)||0),0);
   const dailyXpGoal=30;
   const dailyXpProgress=Math.min(100,Math.round(todayXp/dailyXpGoal*100));
-  const levelProgress=xp%100;
-  const xpToNext=100-levelProgress;
+  const levelProgress=xp%200;
+  const xpToNext=200-levelProgress;
   const weeklyXp=useMemo(()=>{
     const now=new Date();
     const days=Array.from({length:7},(_,index)=>{
@@ -89,7 +98,7 @@ function GamificationPage() {
   return <div className="space-y-5 pb-24">
     <GlobalDateHeader/>
     <div className="flex items-center gap-2"><Trophy className="h-5 w-5"/><h1 className="text-xl font-semibold">Gamificación</h1><HelpTip helpKey="gamification"/></div>
-    <p className="text-sm text-muted-foreground">Cada 100 XP subes un nivel. Por ahora, el nivel mide tu avance; no desbloquea funciones adicionales. Los bonos se obtienen mediante logros y desafíos. Los registros históricos anteriores a la activación de XP no se convierten automáticamente en puntos.</p>
+    <p className="text-sm text-muted-foreground">Subes de nivel cada 200 XP. Cada nivel representa una etapa de constancia; los trofeos y desafíos reconocen hitos concretos. Por ahora, el nivel mide tu avance; no desbloquea funciones adicionales. Los bonos se obtienen mediante logros y desafíos. Los registros históricos anteriores a la activación de XP no se convierten automáticamente en puntos.</p>
     <section className="relative overflow-hidden rounded-[28px] border border-violet-400/20 bg-gradient-to-br from-violet-500/15 via-card to-cyan-500/10 p-5 shadow-sm sm:p-7">
       <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl"/>
       <div className="relative grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -98,7 +107,7 @@ function GamificationPage() {
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1"><span className="text-5xl font-bold tracking-tight">{xp.toLocaleString("es-CO")}</span><span className="text-sm text-muted-foreground">XP acumulados</span></div>
           <p className="mt-2 text-sm text-muted-foreground">Nivel {level} · Te faltan {xpToNext} XP para el nivel {level+1}</p>
           <div className="mt-4 h-3 max-w-xl overflow-hidden rounded-full bg-muted/80"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all" style={{width:levelProgress+"%"}}/></div>
-          <div className="mt-1 flex max-w-xl justify-between text-[11px] text-muted-foreground"><span>{levelProgress} / 100 XP</span><span>Nivel {level+1}</span></div>
+          <div className="mt-1 flex max-w-xl justify-between text-[11px] text-muted-foreground"><span>{levelProgress} / 200 XP</span><span>Nivel {level+1}</span></div>
         </div>
         <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full border-[6px] border-violet-400/30 bg-background/70 shadow-inner sm:h-32 sm:w-32">
           <Trophy className="mb-1 h-5 w-5 text-violet-400"/><span className="text-3xl font-bold">{level}</span><span className="text-[10px] uppercase tracking-wider text-muted-foreground">Nivel</span>
@@ -121,18 +130,30 @@ function GamificationPage() {
           </div>
         </div>
         <div className="min-w-0">
-          <h3 className="mb-2 text-sm font-semibold">Logros especiales (una sola vez)</h3>
-          <div className="overflow-hidden rounded-xl border">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-muted/60"><tr><th className="px-3 py-2 font-semibold">Logro</th><th className="w-20 px-3 py-2 text-right font-semibold">Bono</th></tr></thead>
-              <tbody>{XP_ACHIEVEMENTS.map(([label,points])=><tr key={label} className="border-t border-border/70"><td className="px-3 py-2">{label}</td><td className="px-3 py-2 text-right font-semibold tabular-nums">+{points}</td></tr>)}</tbody>
-            </table>
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Trophy className="h-4 w-4 text-amber-500"/>Vitrina de trofeos</h3>
+          <p className="mb-3 text-xs text-muted-foreground">Los trofeos celebran hitos permanentes. Los que aún no has desbloqueado permanecen aquí como objetivos.</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[...(ach.data||[])].sort((a:any,b:any)=>Number(Boolean(b.unlocked_at))-Number(Boolean(a.unlocked_at))||String(a.title||"").localeCompare(String(b.title||""),"es")).map((item:any)=>{
+              const trophyIcons:Record<string,string>={first_action:"🌱",ten_actions:"🎯",seven_day_streak:"🔥",first_relationship:"💛",first_spiritual_entry:"🕊️",first_learning_session:"📚",first_work_session:"⏱️",first_book_finished:"📖",first_game_finished:"🎮",first_language_levelup:"🌎",first_bible_day:"✨",first_water_goal:"💧"};
+              const earned=Boolean(item.unlocked_at);
+              return <div key={item.id} className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 ${earned?"border-amber-400/30 bg-amber-400/[.06]":"border-border bg-muted/20 opacity-70"}`}>
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-background text-2xl shadow-sm">{trophyIcons[item.code]||"🏆"}</span>
+                <span className="min-w-0 flex-1"><b className="block truncate text-xs">{item.title}</b><span className="mt-0.5 block text-[11px] text-muted-foreground">{item.description}</span><span className="mt-1 block text-[10px] font-medium">{earned?"🏆 Desbloqueado":"🔒 Por desbloquear"}</span></span>
+              </div>;
+            })}
+            {(ach.data||[]).length===0&&<p className="text-xs text-muted-foreground">Tus primeros trofeos aparecerán después de registrar tus próximas acciones con XP.</p>}
+          </div>
+          <div className="mt-3 border-t pt-3">
+            <p className="text-xs font-semibold">Hitos que puedes perseguir</p>
+            <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+              {XP_ACHIEVEMENTS.map(([label,points])=><div key={label} className="flex justify-between gap-2 text-xs"><span>{label}</span><b className="shrink-0 tabular-nums">+{points}</b></div>)}
+            </div>
           </div>
         </div>
       </div>
       <div className="rounded-xl bg-muted/45 p-3 text-xs">
         <p className="font-semibold">Ejemplos para llegar a 30 XP en un día</p>
-        <p className="mt-1 text-muted-foreground">6 hábitos registrados (6 × 5 XP), 3 sesiones de lectura o idiomas (3 × 10 XP), o 4 interacciones en Relaciones (4 × 8 XP = 32 XP). Terminar un libro suma otros 10 XP una sola vez por libro.</p>
+        <p className="mt-1 text-muted-foreground">6 hábitos registrados (6 × 5 XP), 3 sesiones de lectura o idiomas (3 × 10 XP), o 4 interacciones en Relaciones (4 × 8 XP = 32 XP). Terminar un libro suma 20 XP una sola vez por libro; también puedes ganar 20 XP al terminar un videojuego o subir de nivel en un idioma.</p>
       </div>
       <p className="text-xs text-muted-foreground">La meta diaria de 30 XP es una referencia de progreso: completarla no entrega otros 30 XP adicionales. Los bonos de logros sí se suman aparte, pero solo la primera vez. Las tomas de medicamentos, hidratación, registro menstrual y citas todavía no generan XP automático.</p>
     </section>
