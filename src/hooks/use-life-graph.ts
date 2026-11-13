@@ -5,6 +5,14 @@ import { lifeGraphService,type LGTable } from "@/services/life-graph.service";
 export function useLGRecentEvents(limit=8){
   return useQuery({queryKey:["lg","life_events","recent",limit],queryFn:()=>lifeGraphService.recentEvents(limit),staleTime:30_000});
 }
+export function useLGEventsByDate(date:string,enabled=true){
+  return useQuery({
+    queryKey:["lg","life_events","date",date],
+    queryFn:()=>lifeGraphService.eventsForDate(date),
+    enabled:Boolean(date)&&enabled,
+    staleTime:30_000
+  });
+}
 export function useLGList(table:LGTable,order="created_at"){
   return useQuery({queryKey:["lg",table,order],queryFn:()=>lifeGraphService.list(table,order)});
 }

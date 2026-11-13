@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { todayISO } from "@/lib/date";
+import { addDaysISO, todayISO } from "@/lib/date";
 const db=supabase as any;
 export type LGTable =
  "life_goals"|"routines"|"routine_logs"|"checklists"|"checklist_items"|"bucket_list"|
@@ -19,6 +19,26 @@ export const lifeGraphService={
    .limit(safeLimit);
   if(error)throw error;
   return (data??[]) as any[];
+ },
+ async eventsForDate(date:string):Promise<any[]>{
+  const startAt=new Date(`${date}T00:00:00-05:00`);
+  const endAt=new Date(`${addDaysISO(date,1)}T00:00:00-05:00`);
+  if(Number.isNaN(startAt.getTime())||Number.isNaN(endAt.getTime()))throw new Error("La fecha de actividad no es válida.");
+  const rows:any[]=[];
+  const pageSize=500;
+  for(let from=0;;from+=pageSize){
+   const{data,error}=await db.from("life_events")
+    .select("id,event_type,entity_type,entity_id,event_at,payload")
+    .gte("event_at",startAt.toISOString())
+    .lt("event_at",endAt.toISOString())
+    .order("event_at",{ascending:false})
+    .range(from,from+pageSize-1);
+   if(error)throw error;
+   const page=(data??[]) as any[];
+   rows.push(...page);
+   if(page.length<pageSize)break;
+  }
+  return rows;
  },
  async list(table:LGTable,order="created_at",ascending=false):Promise<any[]>{
   // PostgREST caps response size; paginate so searches, histories and backups don't silently omit rows.
