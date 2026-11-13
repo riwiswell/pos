@@ -358,8 +358,6 @@ function HomePage() {
                     <ArrowUpRight className="h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"/>
                   </Link>
           )}
-          {homeLayout.visible.includes("reading") && <div className="inicio-widget inicio-widget--reading" style={{ order: homeLayout.order.indexOf("reading") }}><CurrentBookCard /></div>}
-          {homeLayout.visible.includes("games") && <div className="inicio-widget inicio-widget--games" style={{ order: homeLayout.order.indexOf("games") }}><CurrentGameCard /></div>}
         </div>
 
         <div className="inicio-dashboard-column inicio-dashboard-column--wellbeing">
@@ -410,6 +408,13 @@ function HomePage() {
                       }}
                     /></div>}
         </div>
+
+        {(homeLayout.visible.includes("reading") || homeLayout.visible.includes("games")) && (
+          <div className={`inicio-dashboard-extras ${homeLayout.visible.includes("reading") !== homeLayout.visible.includes("games") ? "inicio-dashboard-extras--single" : ""}`}>
+            {homeLayout.visible.includes("reading") && <div className="inicio-widget inicio-widget--reading" style={{ order: homeLayout.order.indexOf("reading") }}><CurrentBookCard /></div>}
+            {homeLayout.visible.includes("games") && <div className="inicio-widget inicio-widget--games" style={{ order: homeLayout.order.indexOf("games") }}><CurrentGameCard /></div>}
+          </div>
+        )}
 
         <div className="inicio-dashboard-activity">
           {homeLayout.visible.includes("activity") && <div className="inicio-widget inicio-widget--activity" style={{ order: homeLayout.order.indexOf("activity") }}><LifeActivityFeed connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} /></div>}
