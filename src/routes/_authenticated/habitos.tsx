@@ -188,7 +188,7 @@ function HabitsPage() {
         />
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:[grid-template-columns:repeat(auto-fill,minmax(24rem,1fr))]">
+      <div className="grid grid-cols-1 gap-4 lg:[grid-template-columns:repeat(auto-fit,minmax(24rem,1fr))]">
       {!loading &&
         groups.map((group, groupIndex) => {
           const total = group.habits.length;

@@ -26,9 +26,10 @@ export const getRouter = () => {
     queryCache,
     defaultOptions: {
       queries: {
-        // Screens already invalidate affected keys after writes. Reuse fresh data
-        // briefly to avoid redundant Supabase round-trips during navigation.
-        staleTime: 30_000,
+        // Reuse cached module data across navigation; writes invalidate their own keys.
+        // Background refetches keep rendered content visible instead of flashing loaders.
+        staleTime: 5 * 60 * 1000,
+        gcTime: 60 * 60 * 1000,
         retry: 1,
         refetchOnWindowFocus: false,
       },
