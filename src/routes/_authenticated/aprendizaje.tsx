@@ -455,16 +455,35 @@ function kindIcon(kind:string){
   return "📚";
 }
 
-function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,minutesPlayed=0,sessionCount=0,recentSessions=[]}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;onRecordSession:(minutes:number,sessionDate?:string,source?:string)=>Promise<unknown>;minutesPlayed?:number;sessionCount?:number;recentSessions?:any[]}){
+function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onUpdateSession,minutesPlayed=0,sessionCount=0,recentSessions=[],sessionHistory=[]}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;onRecordSession:(minutes:number,sessionDate?:string,source?:string)=>Promise<unknown>;onUpdateSession:(id:string,patch:Record<string,unknown>)=>Promise<unknown>;minutesPlayed?:number;sessionCount?:number;recentSessions?:any[];sessionHistory?:any[]}){
   const[uploading,setUploading]=useState(false);
   const[recording,setRecording]=useState(false);
   const[sessionMinutes,setSessionMinutes]=useState("30");
   const[sessionDate,setSessionDate]=useState(todayISO());
   const[sessionSource,setSessionSource]=useState("chess.com");
   const[savingSession,setSavingSession]=useState(false);
+  const[historyOpen,setHistoryOpen]=useState(false);
+  const[editingSessionId,setEditingSessionId]=useState<string|null>(null);
+  const[editSessionMinutes,setEditSessionMinutes]=useState("30");
+  const[editSessionDate,setEditSessionDate]=useState(todayISO());
+  const[savingEditId,setSavingEditId]=useState<string|null>(null);
   const input=useRef<HTMLInputElement>(null);
   const totalPlayedMinutes=Math.round(minutesPlayed);
   const isChess=item.kind==="chess";
+  const isGame=item.kind==="video_game"||item.kind==="game";
+  const saveEditedSession=async(entry:any)=>{
+    const value=Number(editSessionMinutes);
+    if(!Number.isInteger(value)||value<1||value>1440){toast.error("La duración debe estar entre 1 y 1440 minutos.");return;}
+    if(!editSessionDate||editSessionDate>todayISO()){toast.error("Selecciona una fecha válida que no sea futura.");return;}
+    setSavingEditId(entry.id);
+    try{
+      await onUpdateSession(entry.id,{minutes:value,session_date:editSessionDate});
+      setEditingSessionId(null);
+      toast.success("Sesión actualizada; el tiempo acumulado se recalculó.");
+    }catch(error){
+      toast.error(error instanceof Error?error.message:"No se pudo actualizar la sesión.");
+    }finally{setSavingEditId(null);}
+  };
   const saveRecordedSession=async()=>{
     const value=Number(sessionMinutes);
     if(!Number.isInteger(value)||value<1||value>1440){toast.error("La duración debe estar entre 1 y 1440 minutos.");return;}
@@ -518,7 +537,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,min
         </>}
         <div className="rounded-xl border border-border/60 bg-muted/25 px-2.5 py-2">
           <div className="flex items-center justify-between gap-2 text-[11px]">
-            <span className="font-medium text-muted-foreground">{isChess?"Tiempo de ajedrez":"Tiempo jugado"}</span>
+            <span className="font-medium text-muted-foreground">{isChess?"Tiempo de ajedrez":isGame?"Tiempo acumulado":"Tiempo jugado"}</span>
             <span className="font-semibold tabular-nums">{totalPlayedMinutes>0?(totalPlayedMinutes>=60?Math.floor(totalPlayedMinutes/60)+" h"+(totalPlayedMinutes%60?" "+(totalPlayedMinutes%60)+" min":""):totalPlayedMinutes+" min"):"Sin sesiones"}</span>
           </div>
           {minutesPlayed>0&&Number(item.progress)<=0&&<>
@@ -529,6 +548,42 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,min
           </>}
           {Number(item.progress)>0&&minutesPlayed===0&&<p className="mt-1 text-[10px] text-muted-foreground">Porcentaje de historia registrado; todavía no hay tiempo de juego anotado.</p>}
         </div>
+        {isGame&&<div className="space-y-2 rounded-lg border border-border/50 p-2">
+          <Button size="sm" type="button" variant="ghost" className="h-8 w-full justify-between px-1" onClick={()=>setHistoryOpen(value=>!value)}>
+            <span>{historyOpen?"Ocultar sesiones":"Ver / editar sesiones"} · {sessionCount}</span>
+            {historyOpen?<ChevronUp className="h-3.5 w-3.5"/>:<ChevronDown className="h-3.5 w-3.5"/>}
+          </Button>
+          {historyOpen&&(sessionHistory.length===0
+            ? <p className="text-xs text-muted-foreground">Todavía no hay sesiones individuales de este videojuego. Registra una sesión para que aparezca aquí.</p>
+            : <div className="space-y-2">
+              {sessionHistory.map((entry:any)=><div key={entry.id} className="rounded-lg bg-muted/30 p-2">
+                {editingSessionId===entry.id
+                  ? <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="text-[11px] text-muted-foreground">Fecha
+                          <Input className="mt-1 h-9" type="date" max={todayISO()} value={editSessionDate} onChange={event=>setEditSessionDate(event.target.value)}/>
+                        </label>
+                        <label className="text-[11px] text-muted-foreground">Duración (min)
+                          <Input className="mt-1 h-9" type="number" min="1" max="1440" step="1" value={editSessionMinutes} onChange={event=>setEditSessionMinutes(event.target.value)}/>
+                        </label>
+                      </div>
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={()=>setEditingSessionId(null)}>Cancelar</Button>
+                        <Button size="sm" disabled={savingEditId===entry.id} onClick={()=>void saveEditedSession(entry)}>{savingEditId===entry.id?"Guardando…":"Guardar"}</Button>
+                      </div>
+                    </div>
+                  : <div className="flex items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium">{entry.session_date}</p>
+                        <p className="text-[11px] text-muted-foreground">{Number(entry.minutes)>0?entry.minutes+" min":"Duración sin registrar"}</p>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={()=>{setEditingSessionId(entry.id);setEditSessionMinutes(String(entry.minutes||30));setEditSessionDate(String(entry.session_date||todayISO()));}}>
+                        <Pencil className="mr-1 h-3 w-3"/>Editar
+                      </Button>
+                    </div>}
+              </div>)}
+            </div>)}
+        </div>}
         {isChess&&recentSessions.length>0&&<div className="space-y-1.5 rounded-lg border border-border/50 p-2">
           <p className="text-[11px] font-medium text-muted-foreground">Últimos registros</p>
           {recentSessions.slice(0,4).map((entry:any)=><div key={entry.id} className="flex items-center justify-between gap-2 text-[11px]"><span className="text-muted-foreground">{entry.session_date} · {String(entry.notes||"").includes("Duolingo")?"Duolingo · práctica":String(entry.notes||"").includes("chess.com")?"chess.com · online":"Presencial"}</span><span className="font-medium tabular-nums">{entry.minutes} min</span></div>)}
@@ -634,7 +689,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">{isGames?"Todavía no has agregado videojuegos. Pulsa Agregar para registrar el que estás jugando.":"Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno."}</div>}
     <div className={isGames?"grid grid-cols-1 gap-3 md:grid-cols-3":"grid grid-cols-1 gap-3 sm:grid-cols-2"}>
-      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).sort((a:any,b:any)=>String(b.session_date||"").localeCompare(String(a.session_date||""))||String(b.created_at||"").localeCompare(String(a.created_at||"")));const minutesPlayed=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={itemSessions.length} recentSessions={item.kind==="chess"?itemSessions:[]} onEdit={()=>startEdit(item)} onRecordSession={async(minutes:number,sessionDate?:string,source?:string)=>{await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:item.kind==="chess"&&sessionDate?sessionDate:todayISO(),minutes,notes:item.kind==="chess"?"Ajedrez · "+(source==="chess.com"?"chess.com (online)":source==="duolingo"?"Duolingo (práctica)":"Presencial"):"Videojuego: "+item.title});}} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
+      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).sort((a:any,b:any)=>String(b.session_date||"").localeCompare(String(a.session_date||""))||String(b.created_at||"").localeCompare(String(a.created_at||"")));const minutesPlayed=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={itemSessions.length} recentSessions={item.kind==="chess"?itemSessions:[]} sessionHistory={isGameItem(item)?itemSessions:[]} onUpdateSession={(id:string,patch:Record<string,unknown>)=>sessionMutation.update.mutateAsync({id,patch})} onEdit={()=>startEdit(item)} onRecordSession={async(minutes:number,sessionDate?:string,source?:string)=>{await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:item.kind==="chess"&&sessionDate?sessionDate:todayISO(),minutes,notes:item.kind==="chess"?"Ajedrez · "+(source==="chess.com"?"chess.com (online)":source==="duolingo"?"Duolingo (práctica)":"Presencial"):"Videojuego: "+item.title});}} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
     </div>
   </section>;
 }
