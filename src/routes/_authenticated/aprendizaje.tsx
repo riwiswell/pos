@@ -295,14 +295,14 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
               <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>
               <Button size="sm" variant={panel==="summary"?"default":"outline"} onClick={()=>setPanel(panel==="summary"?null:"summary")}><FileText className="mr-1 h-3.5 w-3.5"/>Resumen</Button>
               <Button size="sm" variant={panel==="notes"?"default":"outline"} onClick={()=>setPanel(panel==="notes"?null:"notes")}><NotebookPen className="mr-1 h-3.5 w-3.5"/>Notas ({mine.length})</Button>
-              <Button size="sm" variant={panel==="details"?"default":"outline"} onClick={()=>setPanel(panel==="details"?null:"details")}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button>
+              <Button size="sm" variant={panel==="details"?"default":"outline"} onClick={()=>setPanel(panel==="details"?null:"details")}><Pencil className="mr-1 h-3.5 w-3.5"/>Datos del libro</Button>
             </>}
         </div>
       </div>
     </div>
 
     {panel==="details"&&!isBible&&<div className="space-y-2 border-t p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-medium">Editar libro</p><Button size="sm" type="button" variant="outline" onClick={()=>coverInput.current?.click()} disabled={uploadingCover}><ImagePlus className="mr-1 h-3.5 w-3.5"/>{uploadingCover?"Subiendo…":coverPath?"Cambiar portada":"Agregar portada"}</Button></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-semibold">Datos del libro</p><p className="text-xs text-muted-foreground">Aquí puedes cambiar el título, autor, año, número de páginas, meta y portada.</p></div><Button size="sm" type="button" variant="outline" onClick={()=>coverInput.current?.click()} disabled={uploadingCover}><ImagePlus className="mr-1 h-3.5 w-3.5"/>{uploadingCover?"Subiendo…":coverPath?"Cambiar portada":"Agregar portada"}</Button></div>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.3fr_1fr_110px_130px_130px_auto]">
         <Input aria-label="Título" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/>
         <Input aria-label="Autor" placeholder="Autor" value={newAuthor} onChange={e=>setNewAuthor(e.target.value)}/>
