@@ -166,7 +166,7 @@ export function HabitDialog({
                     <SelectItem value={NO_CATEGORY}>Sin categoría</SelectItem>
                     {categories.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.icon ? c.icon + " " : "📁 "}{c.name}
+                        {"📁 "}{c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
