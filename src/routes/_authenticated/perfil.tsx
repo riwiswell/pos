@@ -291,15 +291,14 @@ function ProfilePage() {
                 style={{ backgroundColor: option.value }}
               />
             ))}
-            <label className="flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-border text-lg font-semibold text-foreground hover:scale-105" title="Elegir otro color">
-              <input
-                aria-label="Elegir color personalizado para el fondo"
-                type="color"
-                value={workspaceColor}
-                onChange={(event) => setWorkspaceColor(event.target.value)}
-                className="h-12 w-12 cursor-pointer border-0 bg-transparent p-0"
-              />
-            </label>
+            <input
+              aria-label="Elegir color personalizado para el fondo"
+              title="Elegir otro color"
+              type="color"
+              value={workspaceColor}
+              onChange={(event) => setWorkspaceColor(event.target.value)}
+              className="h-9 w-9 cursor-pointer rounded-full border border-border bg-transparent p-0"
+            />
           </div>
           <p className="text-xs text-muted-foreground">
             La paleta cambia según el modo. El color solo se aplica al fondo del espacio de trabajo; tarjetas, formularios y controles conservan sus propios colores.
