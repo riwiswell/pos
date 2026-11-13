@@ -293,7 +293,8 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
         <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:progress+"%"}}/></div>{total>0&&progress>=100&&<p className="text-[11px] font-medium text-emerald-600">{isBible?"Capítulos registrados completos":"Lectura completada"}</p>}
         <div className="flex flex-wrap gap-1.5">
           {isBible?<><a href="/biblia" target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"><BookOpen className="mr-1 h-3.5 w-3.5"/>Abrir Plan Bíblico <span className="ml-1">↗</span></a></>:<>
-              <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>\n               <Button size="sm" variant={book.status==="completed"?"secondary":"outline"} onClick={()=>void markFinished()} disabled={book.status==="completed"}><Check className="mr-1 h-3.5 w-3.5"/> {book.status==="completed"?"Terminado":"Marcar terminado"}</Button>
+              <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>
+              <Button size="sm" variant={book.status==="completed"?"secondary":"outline"} onClick={()=>void markFinished()} disabled={book.status==="completed"}><Check className="mr-1 h-3.5 w-3.5"/> {book.status==="completed"?"Terminado":"Marcar terminado"}</Button>
               <Button size="sm" variant={panel==="summary"?"default":"outline"} onClick={()=>setPanel(panel==="summary"?null:"summary")}><FileText className="mr-1 h-3.5 w-3.5"/>Resumen</Button>
               <Button size="sm" variant={panel==="notes"?"default":"outline"} onClick={()=>setPanel(panel==="notes"?null:"notes")}><NotebookPen className="mr-1 h-3.5 w-3.5"/>Notas ({mine.length})</Button>
               <Button size="sm" variant={panel==="details"?"default":"outline"} onClick={()=>setPanel(panel==="details"?null:"details")}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar ficha</Button>
@@ -302,8 +303,8 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
       </div>
     </div>
 
-    {panel==="details"&&!isBible&&<div className="space-y-2 border-t p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-semibold">Datos del libro</p><p className="text-xs text-muted-foreground">Aquí puedes cambiar el título, autor, año, número de páginas, meta y portada.</p></div><Button size="sm" type="button" variant="outline" onClick={()=>coverInput.current?.click()} disabled={uploadingCover}><ImagePlus className="mr-1 h-3.5 w-3.5"/>{uploadingCover?"Subiendo…":coverPath?"Cambiar portada":"Agregar portada"}</Button></div>
+    {panel==="details"&&!isBible&&<div className="space-y-2 border-t bg-muted/20 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-semibold">Editando la ficha de este libro</p><p className="text-xs text-muted-foreground">Modificas su título, autor, año, páginas, meta de lectura y portada. Esto no cambia las páginas que llevas leídas.</p></div><Button size="sm" type="button" variant="outline" onClick={()=>coverInput.current?.click()} disabled={uploadingCover}><ImagePlus className="mr-1 h-3.5 w-3.5"/>{uploadingCover?"Subiendo…":coverPath?"Cambiar portada":"Agregar portada"}</Button></div>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.3fr_1fr_110px_130px_130px_auto]">
         <Input aria-label="Título" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/>
         <Input aria-label="Autor" placeholder="Autor" value={newAuthor} onChange={e=>setNewAuthor(e.target.value)}/>
