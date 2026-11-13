@@ -132,7 +132,7 @@ export function EmojiPicker({ value, onChange, label = "Icono" }: Props) {
                     aria-label={"Elegir " + emoji}
                     aria-pressed={value === emoji}
                     onClick={() => onChange(emoji)}
-                    className={"grid h-12 w-12 place-items-center rounded-xl border text-2xl transition-all hover:scale-105 sm:h-14 sm:w-14 sm:text-3xl " + (
+                    className={"grid aspect-square w-full min-w-0 place-items-center rounded-xl border text-2xl transition-all hover:scale-105 sm:text-3xl " + (
                       value === emoji ? "border-primary bg-primary/10 ring-2 ring-primary/20" : "border-border/60 bg-muted/40 hover:bg-accent"
                     )}
                   >
