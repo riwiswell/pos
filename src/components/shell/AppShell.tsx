@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { HelpTip } from "@/components/common/HelpTip";
 import { PersonalAssistant } from "@/components/assistant/PersonalAssistant";
-import { NAV_GROUPS, NAV_ITEMS } from "@/components/shell/nav-items";
+import { NAV_ITEMS } from "@/components/shell/nav-items";
 import { useAuth } from "@/hooks/use-auth";
 import { profileKeys, useProfile, useProfileMediaUrl } from "@/hooks/use-profile";
 import { profileService } from "@/services/profile.service";
@@ -21,6 +21,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "personal-os:sidebar-collapsed";
+const LEGACY_ORGANIZATION_KEYS = ["habitos", "planeador", "trabajo"];
+function isMenuModuleHidden(key: string, hidden: string[]) {
+  return hidden.includes(key) || (
+    key === "organizacion" &&
+    LEGACY_ORGANIZATION_KEYS.every((legacyKey) => hidden.includes(legacyKey))
+  );
+}
 
 function useCollapsed() {
   const [collapsed, setCollapsed] = useState(false);
@@ -42,9 +49,16 @@ function useCollapsed() {
 }
 
 function orderedAllItems(order: string[] | undefined) {
-  const keys = [...(order ?? []), ...NAV_ITEMS.map((item) => item.key)];
+  const savedOrder = order ?? [];
+  const keys = [...savedOrder, ...NAV_ITEMS.map((item) => item.key)];
   const rank = new Map<string, number>();
   keys.forEach((key, index) => { if (!rank.has(key)) rank.set(key, index); });
+  const legacyOrganizationPositions = ["habitos", "planeador", "trabajo"]
+    .map((key) => savedOrder.indexOf(key))
+    .filter((index) => index >= 0);
+  if (legacyOrganizationPositions.length && !savedOrder.includes("organizacion")) {
+    rank.set("organizacion", Math.min(...legacyOrganizationPositions));
+  }
   return NAV_ITEMS.filter((item) => item.key !== "perfil")
     .sort((a, b) => (rank.get(a.key) ?? 999) - (rank.get(b.key) ?? 999));
 }
@@ -120,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const allItems = useMemo(() => orderedAllItems(profile?.module_order), [profile?.module_order]);
   const orderedItems = allItems;
   const hiddenModules = profile?.hidden_modules ?? [];
-  const items = useMemo(() => orderedItems.filter((item) => !hiddenModules.includes(item.key)), [orderedItems, profile?.hidden_modules]);
+  const items = useMemo(() => orderedItems.filter((item) => !isMenuModuleHidden(item.key, hiddenModules)), [orderedItems, profile?.hidden_modules]);
   const menuItems = menuEditing ? orderedItems : items;
 
   const persistMenu = (order: string[], hidden: string[]) => {
@@ -154,7 +168,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   const toggleMenuItem = (key: string, visible: boolean) => {
-    const hidden = visible ? hiddenModules.filter((item) => item !== key) : Array.from(new Set([...hiddenModules, key]));
+    const hidden = key === "organizacion"
+      ? visible
+        ? hiddenModules.filter((item) => item !== "organizacion" && !LEGACY_ORGANIZATION_KEYS.includes(item))
+        : Array.from(new Set([...hiddenModules, "organizacion"]))
+      : visible
+        ? hiddenModules.filter((item) => item !== key)
+        : Array.from(new Set([...hiddenModules, key]));
     void persistMenu(allItems.map((item) => item.key), hidden);
   };
 
@@ -162,24 +182,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Reordering in the mobile drawer therefore also chooses the bottom-bar shortcuts.
   const mobilePrimaryItems = items.slice(0, 5);
   const mobileMoreItems = items.slice(5);
-  const mobileMoreGroups = NAV_GROUPS
-    .map((group) => ({ group, items: mobileMoreItems.filter((item) => item.group === group) }))
-    .filter((entry) => entry.items.length > 0);
-  const mobileUngroupedItems = mobileMoreItems.filter((item) => !item.group);
+  const mobileUngroupedItems = mobileMoreItems;
   const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
-  const activeGroup = currentNavItem?.group ?? "Principal";
-  const desktopMenuGroups = useMemo(() => {
-    const groups: { label: string; items: typeof menuItems }[] = [];
-    for (const item of menuItems) {
-      const label = item.group ?? "Principal";
-      let group = groups.find((entry) => entry.label === label);
-      if (!group) { group = { label, items: [] }; groups.push(group); }
-      group.items.push(item);
-    }
-    return groups;
-  }, [menuItems]);
 
   const background = profile?.background_url ?? null;
   const isColor = Boolean(background?.startsWith("#"));
@@ -200,7 +206,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     item: typeof menuItems[number],
     options: { forceExpanded?: boolean; onNavigate?: () => void; hideHelp?: boolean } = {},
   ) => {
-    const visible = !hiddenModules.includes(item.key);
+    const visible = !isMenuModuleHidden(item.key, hiddenModules);
     const expanded = options.forceExpanded ?? !collapsed;
     return (
       <div key={item.key} data-sidebar-item-key={item.key}
@@ -294,17 +300,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </div>
-          {collapsed
-            ? menuItems.map((item) => renderMenuItem(item))
-            : desktopMenuGroups.map(({ label, items: groupItems }) => (
-                <details key={label} className="overflow-hidden rounded-xl border border-sidebar-border/70 bg-sidebar/40" open={menuEditing || label === activeGroup}>
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-sidebar-foreground/85 marker:hidden hover:bg-sidebar-accent">
-                    <span>{label}</span>
-                    <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">{groupItems.length}</span>
-                  </summary>
-                  <div className="space-y-1 border-t border-sidebar-border/60 p-1.5">{groupItems.map((item) => renderMenuItem(item))}</div>
-                </details>
-              ))}
+          {menuItems.map((item) => renderMenuItem(item))}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
@@ -403,40 +399,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 onNavigate: () => setMoreOpen(false),
               }))}
             </div>
-          ) : <div className="space-y-3">
-            {mobileMoreGroups.map(({ group, items: groupItems }) => (
-              <details key={group} className="overflow-hidden rounded-xl border border-border bg-card/40" open={group === activeGroup}>
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold marker:hidden">
-                  <span>{group}</span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">{groupItems.length}</span>
-                </summary>
-                <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
-                  {groupItems.map((item) => (
-                    <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
-                      onClick={() => setMoreOpen(false)}
-                      aria-current={pathname.startsWith(item.to) ? "page" : undefined}
-                      className={cn("flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
-                      <item.icon className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              </details>
+          ) : <div className="grid grid-cols-2 gap-2">
+            {mobileUngroupedItems.map((item) => (
+              <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
+                onClick={() => setMoreOpen(false)}
+                aria-current={pathname.startsWith(item.to) ? "page" : undefined}
+                className={cn("flex min-h-12 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
+                <item.icon className="h-5 w-5 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
+              </Link>
             ))}
-            {mobileUngroupedItems.length > 0 && (
-              <section className="space-y-2">
-                <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cuenta</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {mobileUngroupedItems.map((item) => (
-                    <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
-                      onClick={() => setMoreOpen(false)}
-                      aria-current={pathname.startsWith(item.to) ? "page" : undefined}
-                      className={cn("flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
-                      <item.icon className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
           </div>}
         </SheetContent>
       </Sheet>

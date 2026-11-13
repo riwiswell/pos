@@ -11,14 +11,14 @@ import { useHydrationEntries,useHydrationMutations } from "@/hooks/use-hydration
 import { useMedicationStockTotals } from "@/hooks/use-medications";
 export const Route=createFileRoute("/_authenticated/salud")({component:HealthPage});
 function HealthPage(){
- const[tab,setTab]=useState("meds");
+ const[tab,setTab]=useState("hydration");
  const search=useRouterState({select:(state)=>state.location.search as Record<string,unknown>});
  // Push-action links must mount the medication panel; the panel owns the single
  // authenticated mutation and clears the search state through the router.
  useEffect(()=>{
   if(typeof search["dose"]==="string"&&(search["action"]==="take"||search["action"]==="snooze"))setTab("meds");
  },[search["dose"],search["action"]]);
- const{data:profile}=useProfile();const hidden=profile?.hidden_features||{};const tabs=[["meds","Medicamentos",false],["sleep","Sueño",false],["metrics","Medidas del cuerpo",false],["hydration","Hidratación",false],["bowel","Idas al baño",false],["cycle","Ciclo",hidden["health.cycle"]===true],["appointments","Citas",hidden["health.appointments"]===true],["nutrition","Nutrición",hidden["health.nutrition"]===true]].filter((x:any)=>!x[2]);const current=tabs.some((x:any)=>x[0]===tab)?tab:tabs[0]?.[0]||"meds";const tabIcons:Record<string,any>={meds:Pill,sleep:CalendarHeart,metrics:HeartPulse,hydration:Droplets,bowel:Toilet,cycle:CalendarHeart,appointments:ClipboardList,nutrition:Leaf};return <div className="space-y-5 pb-24"><GlobalDateHeader/><div><h1 className="flex items-center gap-2 text-xl font-semibold">Salud <HelpTip helpKey="health" /></h1><p className="text-sm text-muted-foreground">Medicamentos, sueño, medidas, signos vitales y seguimiento diario.</p></div><div className="grid grid-cols-3 gap-1.5">{tabs.map(([k,v])=>{const Icon=tabIcons[k as string]||HeartPulse;return <button key={k as string} onClick={()=>setTab(k as string)} aria-pressed={current===k} className={"flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-center text-xs font-semibold shadow-sm transition-colors "+(current===k?"border-primary bg-primary text-primary-foreground shadow":"border-border bg-card text-foreground hover:border-primary/50 hover:bg-accent")}><span className={"grid h-6 w-6 shrink-0 place-items-center rounded-md "+(current===k?"bg-primary-foreground/15":"bg-primary/10 text-primary")}><Icon className="h-3.5 w-3.5"/></span><span className="min-w-0 leading-tight">{v as string}</span></button>})}</div>{current==="hydration"?<HydrationCard/>:current==="bowel"?<BowelLogPanel/>:current==="meds"?<Medications/>:current==="sleep"?<SleepPanel/>:current==="metrics"?<HealthMetricsPanel/>:current==="cycle"?<Cycle/>:current==="appointments"?<Appointments/>:<Nutrition/>}</div>}
+ const{data:profile}=useProfile();const hidden=profile?.hidden_features||{};const tabs=[["hydration","Hidratación",false],["meds","Medicamentos",false],["sleep","Sueño",false],["metrics","Medidas del cuerpo",false],["cycle","Ciclo",hidden["health.cycle"]===true],["appointments","Citas",hidden["health.appointments"]===true],["nutrition","Nutrición",hidden["health.nutrition"]===true],["bowel","Idas al baño",false]].filter((x:any)=>!x[2]);const current=tabs.some((x:any)=>x[0]===tab)?tab:tabs[0]?.[0]||"meds";const tabIcons:Record<string,any>={meds:Pill,sleep:CalendarHeart,metrics:HeartPulse,hydration:Droplets,bowel:Toilet,cycle:CalendarHeart,appointments:ClipboardList,nutrition:Leaf};return <div className="space-y-5 pb-24"><GlobalDateHeader/><div><h1 className="flex items-center gap-2 text-xl font-semibold">Salud <HelpTip helpKey="health" /></h1><p className="text-sm text-muted-foreground">Medicamentos, sueño, medidas, signos vitales y seguimiento diario.</p></div><div className="grid grid-cols-4 gap-1.5">{tabs.map(([k,v])=>{const Icon=tabIcons[k as string]||HeartPulse;return <button key={k as string} onClick={()=>setTab(k as string)} aria-pressed={current===k} className={"flex min-h-11 items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[10px] font-semibold shadow-sm transition-colors "+(current===k?"border-primary bg-primary text-primary-foreground shadow":"border-border bg-card text-foreground hover:border-primary/50 hover:bg-accent")}><span className={"grid h-5 w-5 shrink-0 place-items-center rounded-md "+(current===k?"bg-primary-foreground/15":"bg-primary/10 text-primary")}><Icon className="h-3.5 w-3.5"/></span><span className="min-w-0 leading-tight">{v as string}</span></button>})}</div>{current==="hydration"?<HydrationCard/>:current==="bowel"?<BowelLogPanel/>:current==="meds"?<Medications/>:current==="sleep"?<SleepPanel/>:current==="metrics"?<HealthMetricsPanel/>:current==="cycle"?<Cycle/>:current==="appointments"?<Appointments/>:<Nutrition/>}</div>}
 type HydrationConfig = { enabled: boolean; start_time: string; end_time: string; interval_minutes: number; amount_ml: number; background_push?: boolean };
 const DEFAULT_HYDRATION: HydrationConfig = { enabled: true, start_time: "08:00", end_time: "21:30", interval_minutes: 90, amount_ml: WATER_GLASS_ML };
 
@@ -266,7 +266,7 @@ function Medications(){const{date}=useGlobalDate();const meds=useMedications();c
     <Button size="sm" variant="outline" disabled={historyDays>=3650||history.isFetching} onClick={()=>{setHistoryPage(0);setHistoryDays(days=>Math.min(3650,days+90))}}>{historyDays>=3650?"Máximo cargado":"Ver 90 días más"}</Button>
   </div>
 </div>
-</div></section><div className="grid gap-3 md:grid-cols-2">{displayedMeds.map((x:any)=>{const remaining=remainingQuantity(x,Number(taken.data?.[x.id]??0),Number(stock.data?.[x.id]??0));const days=remaining===null?null:durationDays({...x,total_quantity:remaining});return <article key={x.id} className={"glass rounded-2xl border p-4 "+(x.active?"border-border":"border-dashed border-muted-foreground/40 opacity-90")}><div className="flex items-start gap-3"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{x.name}</h2><span className={"rounded-full px-2 py-0.5 text-[10px] font-semibold "+(x.active?"bg-primary/10 text-primary":"bg-muted text-muted-foreground")}>{x.active?"Activo":"Pausado"}</span></div><p className="text-xs text-muted-foreground">{medicationScheduleLabel(x)}</p>{remaining!==null&&<p className="mt-2 text-sm">Restantes: <b>{formatStockQuantity(remaining,x.stock_unit||"unidades")}</b> <HelpTip helpKey="medication.remaining"/></p>}{days!==null&&<p className="text-xs text-muted-foreground">Duración estimada: {days} días aproximados </p>}</div></div>{remaining!==null&&remaining<=0&&<p className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300">Sin existencias. El registro y los recordatorios siguen activos; repón el inventario cuando compres más.</p>}<div className="mt-3 grid grid-cols-[1fr_auto] gap-2 border-t border-border pt-3"><Input aria-label={"Cantidad para reponer "+x.name} type="number" min="0.001" step="0.001" className="h-9" placeholder={"Reponer ("+(x.stock_unit||"unidades")+")"} value={restockInputs[x.id]??""} onChange={e=>setRestockInputs(current=>({...current,[x.id]:e.target.value}))}/><Button size="sm" variant="outline" disabled={!Number.isFinite(Number(restockInputs[x.id]))||Number(restockInputs[x.id])<=0||m.addStock.isPending} onClick={()=>void m.addStock.mutateAsync({medicationId:x.id,quantity:Number(restockInputs[x.id])}).then(()=>setRestockInputs(current=>({...current,[x.id]:""})))}><Plus className="mr-1 h-3.5 w-3.5"/>Reponer</Button></div><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>{setEditing(x);setOpen(true)}}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="sm" variant={x.active?"ghost":"default"} onClick={()=>{if(x.active){void m.remove.mutateAsync(x.id).catch(()=>undefined)}else{setEditing({...x,active:true,start_date:x.start_date<todayISO()?todayISO():x.start_date,end_date:null});setOpen(true)}}}>{x.active?"Pausar medicamento":"Reactivar medicamento"}</Button></div></article>})}</div>{displayedMeds.length===0&&<p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{showPaused?"No hay medicamentos registrados todavía.":"No tienes medicamentos activos. Puedes mostrar los pausados o registrar uno nuevo."}</p>}<MedicationDialog open={open} onOpenChange={o=>{setOpen(o);if(!o)setEditing(null)}} medication={editing} pending={m.create.isPending||m.update.isPending} onSubmit={async input=>{if(editing)await m.update.mutateAsync({id:editing.id,patch:input});else await m.create.mutateAsync(input);}}/></section>}
+</div></section><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{displayedMeds.map((x:any)=>{const remaining=remainingQuantity(x,Number(taken.data?.[x.id]??0),Number(stock.data?.[x.id]??0));const days=remaining===null?null:durationDays({...x,total_quantity:remaining});return <article key={x.id} className={"glass rounded-2xl border p-4 "+(x.active?"border-border":"border-dashed border-muted-foreground/40 opacity-90")}><div className="flex items-start gap-3"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{x.name}</h2><span className={"rounded-full px-2 py-0.5 text-[10px] font-semibold "+(x.active?"bg-primary/10 text-primary":"bg-muted text-muted-foreground")}>{x.active?"Activo":"Pausado"}</span></div><p className="text-xs text-muted-foreground">{medicationScheduleLabel(x)}</p>{remaining!==null&&<p className="mt-2 text-sm">Restantes: <b>{formatStockQuantity(remaining,x.stock_unit||"unidades")}</b> <HelpTip helpKey="medication.remaining"/></p>}{days!==null&&<p className="text-xs text-muted-foreground">Duración estimada: {days} días aproximados </p>}</div></div>{remaining!==null&&remaining<=0&&<p className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300">Sin existencias. El registro y los recordatorios siguen activos; repón el inventario cuando compres más.</p>}<div className="mt-3 grid grid-cols-[1fr_auto] gap-2 border-t border-border pt-3"><Input aria-label={"Cantidad para reponer "+x.name} type="number" min="0.001" step="0.001" className="h-9" placeholder={"Reponer ("+(x.stock_unit||"unidades")+")"} value={restockInputs[x.id]??""} onChange={e=>setRestockInputs(current=>({...current,[x.id]:e.target.value}))}/><Button size="sm" variant="outline" disabled={!Number.isFinite(Number(restockInputs[x.id]))||Number(restockInputs[x.id])<=0||m.addStock.isPending} onClick={()=>void m.addStock.mutateAsync({medicationId:x.id,quantity:Number(restockInputs[x.id])}).then(()=>setRestockInputs(current=>({...current,[x.id]:""})))}><Plus className="mr-1 h-3.5 w-3.5"/>Reponer</Button></div><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>{setEditing(x);setOpen(true)}}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="sm" variant={x.active?"ghost":"default"} onClick={()=>{if(x.active){void m.remove.mutateAsync(x.id).catch(()=>undefined)}else{setEditing({...x,active:true,start_date:x.start_date<todayISO()?todayISO():x.start_date,end_date:null});setOpen(true)}}}>{x.active?"Pausar medicamento":"Reactivar medicamento"}</Button></div></article>})}</div>{displayedMeds.length===0&&<p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{showPaused?"No hay medicamentos registrados todavía.":"No tienes medicamentos activos. Puedes mostrar los pausados o registrar uno nuevo."}</p>}<MedicationDialog open={open} onOpenChange={o=>{setOpen(o);if(!o)setEditing(null)}} medication={editing} pending={m.create.isPending||m.update.isPending} onSubmit={async input=>{if(editing)await m.update.mutateAsync({id:editing.id,patch:input});else await m.create.mutateAsync(input);}}/></section>}
 function cycleShiftDate(value: string, offset: number) {
   const date = new Date(value + "T12:00:00");
   date.setDate(date.getDate() + offset);
@@ -280,9 +280,25 @@ function cycleMonthShift(value: string, offset: number) {
 }
 
 const CYCLE_SYMPTOMS = [
-  "Cólicos", "Dolor lumbar", "Dolor de cabeza", "Sensibilidad mamaria",
-  "Hinchazón", "Cansancio", "Cambios de ánimo", "Acné", "Náuseas",
-  "Cambios de apetito", "Diarrea o estreñimiento", "Otro",
+  { label: "Cólicos", icon: "🤕" },
+  { label: "Dolor lumbar", icon: "🧍" },
+  { label: "Dolor de cabeza", icon: "🤯" },
+  { label: "Sensibilidad mamaria", icon: "💗" },
+  { label: "Hinchazón", icon: "🎈" },
+  { label: "Cansancio", icon: "🥱" },
+  { label: "Cambios de ánimo", icon: "🎭" },
+  { label: "Acné", icon: "🫧" },
+  { label: "Náuseas", icon: "🤢" },
+  { label: "Cambios de apetito", icon: "🍽️" },
+  { label: "Diarrea o estreñimiento", icon: "🚽" },
+  { label: "Otro", icon: "✨" },
+];
+
+const CYCLE_SEXUALITY = [
+  { label: "Deseo sexual", icon: "🔥" },
+  { label: "Sexo sin protección", icon: "⚠️" },
+  { label: "Sexo protegido", icon: "🛡️" },
+  { label: "Relaciones sexuales", icon: "💞" },
 ];
 
 const CYCLE_FLOW_OPTIONS = [
@@ -372,8 +388,7 @@ function CycleProfile({
 }) {
   const { user } = useAuth();
   const today = todayISO();
-  const [newStart, setNewStart] = useState(today);
-  const [closeDate, setCloseDate] = useState(today);
+  const [selectingStart, setSelectingStart] = useState(false);
   const [selectedDate, setSelectedDate] = useState(today);
   const [month, setMonth] = useState(today.slice(0, 7) + "-01");
   const [flow, setFlow] = useState("none");
@@ -416,6 +431,7 @@ function CycleProfile({
         return sum + duration;
       }, 0) / closedPeriods.length)
     : null;
+  const predictedBleedingDays = Math.max(1, averageBleedingDays ?? (Number(profile.average_period_days) || 5));
 
   const monthDate = new Date(month + "T12:00:00");
   const year = monthDate.getFullYear();
@@ -430,14 +446,26 @@ function CycleProfile({
   const isPeriodDay = (date: string) => ownRecords.some((record: any) =>
     date >= record.start_date && date <= (record.end_date || today)
   );
+  const isPredictedPeriodDay = (date: string) => {
+    if (isPeriodDay(date)) return false;
+    if (activePeriod) {
+      const predictedEnd = cycleShiftDate(activePeriod.start_date, predictedBleedingDays - 1);
+      return date > today && date <= predictedEnd;
+    }
+    if (nextEstimate) {
+      const predictedEnd = cycleShiftDate(nextEstimate, predictedBleedingDays - 1);
+      return date >= nextEstimate && date <= predictedEnd;
+    }
+    return false;
+  };
 
-  const startPeriod = async () => {
-    if (!newStart || newStart > today) {
-      toast.error("Elige una fecha de inicio que ya haya ocurrido.");
+  const startPeriod = async (startDate: string) => {
+    if (!startDate || startDate > today) {
+      toast.error("Elige en el calendario el primer día que ya haya ocurrido.");
       return;
     }
     const overlap = ownRecords.some((record: any) =>
-      newStart >= record.start_date && newStart <= (record.end_date || today)
+      startDate >= record.start_date && startDate <= (record.end_date || today)
     );
     if (overlap) {
       toast.error("Esa fecha ya pertenece a un período registrado.");
@@ -447,32 +475,28 @@ function CycleProfile({
       await periodMutations.create.mutateAsync({
         user_id: user?.id,
         profile_id: profile.id,
-        start_date: newStart,
+        start_date: startDate,
         end_date: null,
         flow: null,
         notes: null,
       });
-      setMonth(newStart.slice(0, 7) + "-01");
-      setSelectedDate(newStart);
-      setCloseDate(today);
-      toast.success("Inicio del período registrado.");
+      setMonth(startDate.slice(0, 7) + "-01");
+      setSelectedDate(startDate);
+      setSelectingStart(false);
+      toast.success("Inicio del período registrado. Los próximos días se muestran como predicción.");
     } catch {
       // Mutation displays its own error.
     }
   };
 
-  const closePeriod = async () => {
-    if (!activePeriod || !closeDate) return;
-    if (closeDate < activePeriod.start_date || closeDate > today) {
-      toast.error("El fin debe estar entre el inicio y hoy.");
-      return;
-    }
+  const finishPeriodOnSelectedDate = async () => {
+    if (!activePeriod || selectedDate < activePeriod.start_date || selectedDate > today) return;
     try {
       await periodMutations.update.mutateAsync({
         id: activePeriod.id,
-        patch: { end_date: closeDate },
+        patch: { end_date: selectedDate },
       });
-      toast.success("Período cerrado. Su duración quedó guardada en el historial.");
+      toast.success("Último día de sangrado guardado.");
     } catch {
       // Mutation displays its own error.
     }
@@ -529,38 +553,23 @@ function CycleProfile({
         </Button>
       </header>
 
-      <section className="rounded-xl border border-border/70 p-3">
-        <h4 className="text-sm font-semibold">Registrar un período</h4>
-        <p className="mt-1 text-xs text-muted-foreground">Solo necesitas indicar el primer día. El período quedará abierto hasta que registres su último día.</p>
-        <div className="mt-3 flex flex-wrap items-end gap-2">
-          <label className="min-w-0 flex-1 space-y-1 text-xs text-muted-foreground">
-            Primer día de sangrado
-            <Input type="date" value={newStart} max={today} onChange={(event) => setNewStart(event.target.value)} />
-          </label>
-          <Button onClick={() => void startPeriod()} disabled={!newStart || periodMutations.create.isPending}>
-            <Plus className="mr-1 h-4 w-4" /> Registrar inicio
-          </Button>
-        </div>
-        {activePeriod && (
-          <div className="mt-3 grid gap-2 rounded-xl bg-rose-500/5 p-3 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div>
-              <p className="text-sm font-medium text-rose-600 dark:text-rose-300">Período en curso desde {activePeriod.start_date}</p>
-              <p className="text-xs text-muted-foreground">Cuando termine, selecciona aquí el último día de sangrado.</p>
-              <Input className="mt-2 max-w-xs" type="date" min={activePeriod.start_date} max={today} value={closeDate} onChange={(event) => setCloseDate(event.target.value)} />
-            </div>
-            <Button variant="outline" onClick={() => void closePeriod()} disabled={periodMutations.update.isPending}>
-              Registrar fin del período
-            </Button>
-          </div>
-        )}
-      </section>
-
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
             <h4 className="font-semibold">Calendario del ciclo</h4>
-            <p className="text-xs text-muted-foreground">Los días de período aparecen en rojo. Toca un día para consultar o completar su registro.</p>
+            <p className="text-xs text-muted-foreground">
+              {selectingStart
+                ? "Toca el primer día de sangrado en el calendario."
+                : activePeriod
+                  ? "Período en curso desde " + activePeriod.start_date + ". Los días rosados claros son una predicción."
+                  : "Pulsa Registrar y selecciona en el calendario el primer día de sangrado."}
+            </p>
           </div>
+          {!activePeriod && (
+            <Button size="sm" onClick={() => setSelectingStart((value) => !value)} variant={selectingStart ? "secondary" : "default"}>
+              {selectingStart ? "Cancelar" : "Registrar"}
+            </Button>
+          )}
           <div className="flex items-center gap-1">
             <Button size="icon" variant="outline" aria-label="Mes anterior" onClick={() => setMonth(cycleMonthShift(month, -1))}><ChevronLeft className="h-4 w-4" /></Button>
             <Button size="icon" variant="outline" aria-label="Mes siguiente" onClick={() => setMonth(cycleMonthShift(month, 1))}><ChevronRight className="h-4 w-4" /></Button>
@@ -576,23 +585,29 @@ function CycleProfile({
               if (day === null) return <span key={"blank-" + index} className="aspect-square" />;
               const date = year + "-" + String(monthNumber).padStart(2, "0") + "-" + String(day).padStart(2, "0");
               const isRed = isPeriodDay(date);
+              const isForecast = isPredictedPeriodDay(date);
               const isSelected = selectedDate === date;
               const isToday = today === date;
+              const canStartHere = selectingStart && date <= today && !isRed;
               const hasLog = ownLogs.some((log: any) => log.log_date === date);
               return (
                 <button
                   key={date}
                   type="button"
-                  onClick={() => setSelectedDate(date)}
-                  disabled={date > today || !isRed}
+                  onClick={() => {
+                    if (canStartHere) void startPeriod(date);
+                    else setSelectedDate(date);
+                  }}
+                  disabled={date > today || (selectingStart ? !canStartHere : !isRed)}
                   aria-pressed={isSelected}
-                  aria-label={date + (isRed ? ", día de período" : "") + (hasLog ? ", con registro diario" : "")}
+                  aria-label={date + (isRed ? ", día registrado de período" : isForecast ? ", predicción de período" : "") + (hasLog ? ", con registro diario" : "")}
                   className={[
                     "relative aspect-square rounded-lg text-xs font-medium transition",
-                    isRed ? "bg-rose-500 text-white hover:bg-rose-600" : "text-muted-foreground hover:bg-muted",
+                    isRed ? "bg-rose-500 text-white hover:bg-rose-600" : isForecast ? "bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:hover:bg-rose-900/70" : "text-muted-foreground hover:bg-muted",
+                    canStartHere ? "outline outline-1 outline-offset-1 outline-rose-300" : "",
                     isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "",
                     isToday ? "outline outline-1 outline-offset-1 outline-primary" : "",
-                    date > today || !isRed ? "cursor-default opacity-55" : "",
+                    date > today ? "cursor-default" : "",
                   ].join(" ")}
                 >
                   {day}
@@ -602,7 +617,8 @@ function CycleProfile({
             })}
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-rose-500" /> Días de período</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-rose-500" /> Días registrados</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-rose-100 ring-1 ring-rose-200 dark:bg-rose-950/50 dark:ring-rose-900" /> Predicción</span>
             <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> Día seleccionado</span>
             <span className="inline-flex items-center gap-1.5">• Punto blanco: registro diario guardado</span>
           </div>
@@ -621,28 +637,60 @@ function CycleProfile({
               {CYCLE_FLOW_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
-          <div className="space-y-2">
-            <p className="text-xs font-medium">Síntomas de este día</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {CYCLE_SYMPTOMS.map((symptom) => (
-                <label key={symptom} className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm">
-                  <input type="checkbox" checked={symptoms.includes(symptom)} onChange={() => toggleSymptom(symptom)} />
-                  {symptom}
-                </label>
-              ))}
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <h5 className="flex items-center gap-2 text-sm font-semibold"><span className="text-2xl" aria-hidden>🩺</span> Síntomas</h5>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {CYCLE_SYMPTOMS.map((symptom) => (
+                  <button
+                    key={symptom.label}
+                    type="button"
+                    aria-pressed={symptoms.includes(symptom.label)}
+                    onClick={() => toggleSymptom(symptom.label)}
+                    className={"flex min-h-[82px] flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-center transition " + (symptoms.includes(symptom.label) ? "border-primary bg-primary/10 text-foreground" : "border-border/70 bg-muted/35 hover:bg-muted/70")}
+                  >
+                    <span className="text-[27px] leading-none" aria-hidden>{symptom.icon}</span>
+                    <span className="text-[11px] font-medium leading-tight">{symptom.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h5 className="flex items-center gap-2 text-sm font-semibold"><span className="text-2xl" aria-hidden>💗</span> Sexualidad</h5>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {CYCLE_SEXUALITY.map((symptom) => (
+                  <button
+                    key={symptom.label}
+                    type="button"
+                    aria-pressed={symptoms.includes(symptom.label)}
+                    onClick={() => toggleSymptom(symptom.label)}
+                    className={"flex min-h-[82px] flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-center transition " + (symptoms.includes(symptom.label) ? "border-primary bg-primary/10 text-foreground" : "border-border/70 bg-muted/35 hover:bg-muted/70")}
+                  >
+                    <span className="text-[27px] leading-none" aria-hidden>{symptom.icon}</span>
+                    <span className="text-[11px] font-medium leading-tight">{symptom.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <label className="block space-y-1 text-xs text-muted-foreground">
             Notas de este día
             <textarea className="min-h-20 w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Cómo se sintió hoy, intensidad, cambios o cualquier detalle…" />
           </label>
-          <Button onClick={() => void saveDailyLog()} disabled={dailyMutations.create.isPending || dailyMutations.update.isPending}>
-            Guardar registro de este día
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => void saveDailyLog()} disabled={dailyMutations.create.isPending || dailyMutations.update.isPending}>
+              Guardar registro de este día
+            </Button>
+            {activePeriod?.id === selectedPeriod.id && (
+              <Button type="button" variant="outline" onClick={() => void finishPeriodOnSelectedDate()} disabled={periodMutations.update.isPending}>
+                Marcar como último día
+              </Button>
+            )}
+          </div>
         </section>
       ) : (
         <p className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
-          Selecciona un día rojo del calendario para registrar su flujo y síntomas. Puedes consultar los días anteriores del historial.
+          Selecciona un día registrado del calendario para consultar o completar su flujo y síntomas. Pulsa Registrar para marcar el primer día de un nuevo período.
         </p>
       )}
 

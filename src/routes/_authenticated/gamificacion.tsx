@@ -13,6 +13,30 @@ import { addDaysISO, todayISO } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/gamificacion")({ component: GamificationPage });
 
+const XP_ACTIONS = [
+  ["Registrar un hábito del día", 5],
+  ["Escribir una entrada en Diario", 5],
+  ["Registrar una tarea o acción de trabajo", 5],
+  ["Registrar un bloque de trabajo", 10],
+  ["Registrar una medición de salud", 5],
+  ["Registrar un movimiento financiero", 2],
+  ["Registrar una sesión de aprendizaje o tiempo jugado", 10],
+  ["Registrar una interacción en Relaciones", 8],
+  ["Registrar una práctica o reflexión espiritual", 5],
+  ["Registrar una acción en una meta de Vida", 5],
+  ["Completar una rutina", 5],
+] as const;
+
+const XP_ACHIEVEMENTS = [
+  ["Primera acción", 10],
+  ["Diez acciones", 25],
+  ["Racha de siete días", 30],
+  ["Primera interacción en Relaciones", 15],
+  ["Primera entrada espiritual", 15],
+  ["Primera sesión de aprendizaje", 15],
+  ["Primer bloque de trabajo", 15],
+] as const;
+
 function GamificationPage() {
   const xpEvents=useLGList("gamification_xp_events");
   const profile=useLGList("gamification_profiles");
@@ -78,9 +102,40 @@ function GamificationPage() {
         </div>
       </div>
     </section>
+    <section className="glass space-y-4 rounded-2xl p-4 sm:p-5">
+      <div>
+        <h2 className="flex items-center gap-2 font-semibold"><Zap className="h-4 w-4 text-amber-500"/>¿Cómo se consiguen los XP?</h2>
+        <p className="mt-1 text-xs text-muted-foreground">Esta es la tabla de puntos que usa actualmente Personal OS. Cada registro real genera los puntos indicados una sola vez por evento.</p>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="min-w-0">
+          <h3 className="mb-2 text-sm font-semibold">Acciones</h3>
+          <div className="overflow-hidden rounded-xl border">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-muted/60"><tr><th className="px-3 py-2 font-semibold">Acción registrada</th><th className="w-20 px-3 py-2 text-right font-semibold">XP</th></tr></thead>
+              <tbody>{XP_ACTIONS.map(([label,points])=><tr key={label} className="border-t border-border/70"><td className="px-3 py-2">{label}</td><td className="px-3 py-2 text-right font-semibold tabular-nums">+{points}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+        <div className="min-w-0">
+          <h3 className="mb-2 text-sm font-semibold">Logros especiales (una sola vez)</h3>
+          <div className="overflow-hidden rounded-xl border">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-muted/60"><tr><th className="px-3 py-2 font-semibold">Logro</th><th className="w-20 px-3 py-2 text-right font-semibold">Bono</th></tr></thead>
+              <tbody>{XP_ACHIEVEMENTS.map(([label,points])=><tr key={label} className="border-t border-border/70"><td className="px-3 py-2">{label}</td><td className="px-3 py-2 text-right font-semibold tabular-nums">+{points}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl bg-muted/45 p-3 text-xs">
+        <p className="font-semibold">Ejemplos para llegar a 30 XP en un día</p>
+        <p className="mt-1 text-muted-foreground">6 hábitos registrados (6 × 5 XP), o 3 sesiones de trabajo/aprendizaje (3 × 10 XP), o 4 interacciones en Relaciones (4 × 8 XP = 32 XP).</p>
+      </div>
+      <p className="text-xs text-muted-foreground">La meta diaria de 30 XP es una referencia de progreso: completarla no entrega otros 30 XP adicionales. Los bonos de logros sí se suman aparte, pero solo la primera vez. Las tomas de medicamentos, hidratación, registro menstrual y citas todavía no generan XP automático.</p>
+    </section>
     <section className="glass space-y-3 rounded-2xl border border-amber-400/20 p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
-        <div><p className="text-xs font-semibold uppercase tracking-wider text-amber-500">Misión de hoy</p><h2 className="mt-1 flex items-center gap-2 font-semibold"><Flame className="h-4 w-4 text-amber-500"/>Consigue 30 XP</h2><p className="mt-1 text-xs text-muted-foreground">Suma XP con acciones reales en tus módulos. Cada pequeño avance cuenta.</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-wider text-amber-500">Misión de hoy</p><h2 className="mt-1 flex items-center gap-2 font-semibold"><Flame className="h-4 w-4 text-amber-500"/>Consigue 30 XP</h2><p className="mt-1 text-xs text-muted-foreground">Suma puntos al registrar acciones. La tabla de abajo te muestra cuánto vale cada una.</p></div>
         <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-full border-4 border-amber-400/40 bg-amber-400/10"><span className="text-lg font-bold tabular-nums">{dailyXpProgress}%</span><span className="text-[9px] text-muted-foreground">hoy</span></div>
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all" style={{width:dailyXpProgress+"%"}}/></div>

@@ -13,7 +13,7 @@ import { useGlobalDate } from "@/hooks/use-global-date";
 import { useAuth } from "@/hooks/use-auth";
 import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lifeGraphService } from "@/services/life-graph.service";
 export const Route=createFileRoute("/_authenticated/trabajo")({component:WorkPage});
-function WorkPage(){
+export function WorkPage(){
  const{date}=useGlobalDate();const{user}=useAuth();const items=useLGList("work_items");const sessions=useLGList("work_sessions","session_date");const im=useLGMutations("work_items");const sm=useLGMutations("work_sessions");const cm=useLGMutations("checklists");const cim=useLGMutations("checklist_items");const cqs=useLGList("checklists");
  const[projectName,setProjectName]=useState(""),[projectNotes,setProjectNotes]=useState(""),[due,setDue]=useState(""),[selected,setSelected]=useState<string>(()=>typeof window==="undefined"?"":new URLSearchParams(window.location.search).get("project")||""),[task,setTask]=useState(""),[taskNotes,setTaskNotes]=useState(""),[checkTitle,setCheckTitle]=useState(""),[selectedChecklist,setSelectedChecklist]=useState<string>(""),[checkItem,setCheckItem]=useState(""),[idea,setIdea]=useState(""),[timerRefresh,setTimerRefresh]=useState(0);
  const all=items.data||[];const projects=all.filter((x:any)=>x.kind==="project");const tasks=all.filter((x:any)=>x.kind==="task");const active=(sessions.data||[]).find((x:any)=>x.status==="active");const activeProject=active?all.find((x:any)=>x.id===active.work_item_id):null;
