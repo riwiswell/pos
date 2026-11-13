@@ -169,88 +169,69 @@ export function AppShell({ children }: { children: ReactNode }) {
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
   const activeGroup = currentNavItem?.group ?? null;
+  const desktopMenuGroups = useMemo(() => {
+    const groups: { label: string; items: typeof menuItems }[] = [];
+    for (const item of menuItems) {
+      const label = item.group ?? "Principal";
+      let group = groups.find((entry) => entry.label === label);
+      if (!group) {
+        group = { label, items: [] };
+        groups.push(group);
+      }
+      group.items.push(item);
+    }
+    return groups;
+  }, [menuItems]);
 
   const background = profile?.background_url ?? null;
   const isColor = Boolean(background?.startsWith("#"));
   const bgImageUrl = useProfileMediaUrl(background && !isColor ? background : null).data;
-  const style = isColor
-    ? { backgroundColor: background! }
-    : {
-        backgroundImage: bgImageUrl
-          ? `linear-gradient(color-mix(in oklab, var(--background) 82%, transparent),color-mix(in oklab, var(--background) 92%, transparent)),url(${bgImageUrl})`
-          : undefined,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-      };
-
-  return (
-    <div className="min-h-screen bg-background text-foreground" style={style}>
-      <aside
+  const renderMenuItem = (item: typeof menuItems[number]) => {
+    const visible = !hiddenModules.includes(item.key);
+    return (
+      <div
+        key={item.key}
+        data-sidebar-item-key={item.key}
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border bg-sidebar md:flex",
-          collapsed ? "w-[80px]" : "w-[272px]",
+          "flex min-w-0 items-center gap-1 rounded-xl transition-colors",
+          !visible && "opacity-55",
+          draggingKey === item.key && "opacity-45",
+          dragTarget === item.key && "bg-sidebar-accent ring-2 ring-sidebar-primary/60",
         )}
       >
-        <div
-          className={cn(
-            "flex h-16 items-center border-b border-sidebar-border px-4",
-            collapsed ? "justify-center" : "justify-between",
-          )}
-        >
-          {!collapsed && (
-            <span className="text-sm font-semibold tracking-[0.16em] text-sidebar-foreground">
-              PERSONAL OS
-            </span>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggle}
-            aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
-          >
-            {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-          </Button>
-        </div>
-
-        <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3">
-          <div className="mb-1 flex justify-end">
-            <Button
-              type="button"
-              size="icon"
-              variant={menuEditing ? "secondary" : "ghost"}
-              className="h-8 w-8"
-              onClick={() => setMenuEditing((current) => !current)}
-              aria-label="Opciones del menú"
-              title="Opciones del menú"
-              aria-pressed={menuEditing}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {menuItems.map((item) => {
-            const visible = !hiddenModules.includes(item.key);
-            return (
-              <div
-                key={item.key}
-                data-sidebar-item-key={item.key}
-                className={cn(
-                  "flex min-w-0 items-center gap-1 rounded-xl transition-colors",
-                  !visible && "opacity-55",
-                  draggingKey === item.key && "opacity-45",
-                  dragTarget === item.key && "bg-sidebar-accent ring-2 ring-sidebar-primary/60",
-                )}
-              >
-                {!collapsed && (
-                  <button
-                    type="button"
-                    aria-label={"Arrastrar para reordenar " + item.label}
-                    title="Arrastra para cambiar de posición"
-                    className="flex h-10 w-5 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-primary active:cursor-grabbing"
-                    onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
-                      if (event.button !== 0) return;
-                      event.currentTarget.setPointerCapture(event.pointerId);
+        {!collapsed && (
+          <button
+            type="button"
+            aria-label={"Arrastrar para reordenar " + item.label}
+            title="Arrastra para cambiar de posición"
+            className="flex h-10 w-5 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-primary active:cursor-grabbing"
+            onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
+              if (event.button !== 0) return;
+              event.currentTarget.setPointerCapture(event.pointerId);
+              dragState.current = { key: item.key, pointerId: event.pointerId, startY: event.clientY, active: false, targetKey: null, order: orderedItems.map((entry) => entry.key) };
+            }}
+            onPointerMove={(event: PointerEvent<HTMLButtonElement>) => {
+              const current = dragState.current;
+              if (!current || current.key !== item.key || current.pointerId !== event.pointerId) return;
+              if (!current.active && Math.abs(event.clientY - current.startY) < 5) return;
+              if (!current.active) { current.active = true; setDraggingKey(current.key); }
+              event.preventDefault();
+              const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-sidebar-item-key]");
+              const targetKey = target?.dataset.sidebarItemKey;
+              current.targetKey = targetKey && targetKey !== current.key ? targetK          {collapsed
+            ? menuItems.map(renderMenuItem)
+            : desktopMenuGroups.map(({ label, items: groupItems }) => (
+                <details key={label} className="overflow-hidden rounded-xl border border-sidebar-border/70 bg-sidebar/40" open={menuEditing || label === activeGroup}>
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-sidebar-foreground/85 marker:hidden hover:bg-sidebar-accent">
+                    <span>{label}</span>
+                    <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">{groupItems.length}</span>
+                  </summary>
+                  <div className="space-y-1 border-t border-sidebar-border/60 p-1.5">
+                    {groupItems.map(renderMenuItem)}
+                  </div>
+                </details>
+              ))}
+        </nav>               event.currentTarget.setPointerCapture(event.pointerId);
                       dragState.current = {
                         key: item.key,
                         pointerId: event.pointerId,
