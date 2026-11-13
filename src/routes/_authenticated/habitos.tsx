@@ -195,7 +195,7 @@ export function HabitsPage() {
           const done = group.habits.filter((h) => isDone(h, logByHabit.get(h.id))).length;
           const color = group.category?.color ?? "#94a3b8";
           return (
-            <section key={group.key} className="glass rounded-2xl p-4">
+            <section key={group.key} className={"glass rounded-2xl p-4 " + (group.category?.layout_columns === 3 ? "lg:col-span-full" : "")}>
               <div className="flex items-center gap-2">
                 {group.category?.icon ? (
                   <span
@@ -277,7 +277,7 @@ export function HabitsPage() {
                 )}
               </div>
 
-              <div className={"mt-3 grid gap-2 " + (group.category?.layout_columns === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
+              <div className={"mt-3 grid gap-2 " + (group.category?.layout_columns === 3 ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : group.category?.layout_columns === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
                 {group.habits.length === 0 ? (
                   <p className="px-1 py-2 text-xs text-muted-foreground">
                     Sin hábitos en esta categoría todavía.
@@ -355,11 +355,11 @@ export function HabitsPage() {
         open={categoryDialog.open}
         onOpenChange={(open) => setCategoryDialog((prev) => ({ ...prev, open }))}
         category={categoryDialog.category}
-        onSubmit={(input) => {
+        onSubmit={async (input) => {
           if (categoryDialog.category) {
-            m.updateCategory.mutate({ id: categoryDialog.category.id, patch: input });
+            await m.updateCategory.mutateAsync({ id: categoryDialog.category.id, patch: input });
           } else {
-            m.createCategory.mutate({ input, position: categories.length });
+            await m.createCategory.mutateAsync({ input, position: categories.length });
           }
         }}
       />

@@ -30,6 +30,17 @@ function flagForLanguageProfile(profile:any){
   const fallback=LANGS.find((lang:any)=>lang.code===profile.language_code)?.variants?.[0]?.[0]||"";
   return flagForLocale(profile.locale_code||fallback);
 }
+function minutesToHoursInput(minutes:unknown){
+  const value=Math.max(0,Number(minutes)||0);
+  return String(Number((value/60).toFixed(2)));
+}
+function hoursInputToMinutes(raw:string):number|null{
+  const normalized=raw.trim().replace(",",".");
+  if(!normalized)return null;
+  const hours=Number(normalized);
+  if(!Number.isFinite(hours)||hours<0||hours>1000000/60)return null;
+  return Math.round(hours*60);
+}
 type LearningSort = "used_desc" | "used_asc" | "title_asc" | "title_desc" | "recent" | "oldest" | "genre";
 const GAME_PLATFORMS = ["PC","PlayStation 5","PlayStation 4","PlayStation 3","Xbox Series X/S","Xbox One","Xbox 360","Nintendo Switch","Steam Deck","Android / iOS","Otra"];
 const GAME_GENRES = ["Acción","Aventura","Acción y Aventuras","Mundo abierto","Rol (RPG)","RPG de acción","JRPG","Disparos (FPS)","Disparos en tercera persona","Terror / Survival horror","Sigilo","Plataformas","Carreras","Deportes","Estrategia","Puzles","Simulación","Lucha","Narrativo","Musical","Otro"];
@@ -468,16 +479,16 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
   const[editSessionDate,setEditSessionDate]=useState(todayISO());
   const[savingEditId,setSavingEditId]=useState<string|null>(null);
   const[editingLegacyTotal,setEditingLegacyTotal]=useState(false);
-  const[legacyTotalInput,setLegacyTotalInput]=useState(String(Math.round(minutesPlayed)));
+  const[legacyTotalInput,setLegacyTotalInput]=useState(minutesToHoursInput(minutesPlayed));
   const[savingLegacyTotal,setSavingLegacyTotal]=useState(false);
   const input=useRef<HTMLInputElement>(null);
   const totalPlayedMinutes=Math.round(minutesPlayed);
-  useEffect(()=>setLegacyTotalInput(String(totalPlayedMinutes)),[totalPlayedMinutes]);
+  useEffect(()=>setLegacyTotalInput(minutesToHoursInput(totalPlayedMinutes)),[totalPlayedMinutes]);
   const isChess=item.kind==="chess";
   const isGame=item.kind==="video_game"||item.kind==="game";
   const saveLegacyTotal=async()=>{
-    const value=Number(legacyTotalInput);
-    if(!Number.isInteger(value)||value<0||value>1000000){toast.error("El tiempo acumulado debe ser un número entero entre 0 y 1.000.000 de minutos.");return;}
+    const value=hoursInputToMinutes(legacyTotalInput);
+    if(value===null||value>1000000){toast.error("Escribe un tiempo válido en horas (por ejemplo, 10,1).");return;}
     setSavingLegacyTotal(true);
     try{
       await onUpdateLegacyTotal(value);
@@ -503,8 +514,8 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
   const saveRecordedSession=async()=>{
     const value=Number(sessionMinutes);
     if(!Number.isInteger(value)||value<1||value>1440){toast.error("La duración debe estar entre 1 y 1440 minutos.");return;}
-    const selectedDate=isChess?sessionDate:todayISO();
-    if(isChess&&(!selectedDate||selectedDate>todayISO())){toast.error("Selecciona una fecha válida que no sea futura.");return;}
+    const selectedDate=(isChess||isGame)?sessionDate:todayISO();
+    if((isChess||isGame)&&(!selectedDate||selectedDate>todayISO())){toast.error("Selecciona una fecha válida que no sea futura.");return;}
     setSavingSession(true);
     try{
       await onRecordSession(value,selectedDate,isChess?sessionSource:undefined);
@@ -567,11 +578,11 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
         {isGame&&sessionCount===0&&<div className="space-y-2 rounded-lg border border-border/50 p-2">
           {editingLegacyTotal
             ? <div className="space-y-2">
-                <label className="block text-[11px] text-muted-foreground">Tiempo acumulado anterior (minutos)
-                  <Input className="mt-1 h-9" type="number" min="0" max="1000000" step="1" value={legacyTotalInput} onChange={event=>setLegacyTotalInput(event.target.value)}/>
+                <label className="block text-[11px] text-muted-foreground">Tiempo acumulado anterior (horas)
+                  <Input className="mt-1 h-9" type="text" inputMode="decimal" placeholder="Ej. 10,1" value={legacyTotalInput} onChange={event=>setLegacyTotalInput(event.target.value)}/>
                 </label>
                 <div className="flex justify-end gap-1">
-                  <Button size="sm" variant="ghost" onClick={()=>{setLegacyTotalInput(String(totalPlayedMinutes));setEditingLegacyTotal(false);}}>Cancelar</Button>
+                  <Button size="sm" variant="ghost" onClick={()=>{setLegacyTotalInput(minutesToHoursInput(totalPlayedMinutes));setEditingLegacyTotal(false);}}>Cancelar</Button>
                   <Button size="sm" disabled={savingLegacyTotal} onClick={()=>void saveLegacyTotal()}>{savingLegacyTotal?"Guardando…":"Guardar"}</Button>
                 </div>
               </div>
@@ -621,11 +632,11 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
           {recentSessions.slice(0,4).map((entry:any)=><div key={entry.id} className="flex items-center justify-between gap-2 text-[11px]"><span className="text-muted-foreground">{entry.session_date} · {String(entry.notes||"").includes("Duolingo")?"Duolingo · práctica":String(entry.notes||"").includes("chess.com")?"chess.com · online":"Presencial"}</span><span className="font-medium tabular-nums">{entry.minutes} min</span></div>)}
         </div>}
         {recording?<div className="flex flex-wrap items-end gap-2 rounded-xl border border-border/60 bg-background/60 p-2">
-          {isChess&&<label className="min-w-[130px] flex-1 text-[11px] text-muted-foreground">Fecha de juego
+          {(isChess||isGame)&&<label className="min-w-[130px] flex-1 text-[11px] text-muted-foreground">Fecha de juego
             <Input className="mt-1 h-9" type="date" max={todayISO()} value={sessionDate} onChange={event=>setSessionDate(event.target.value)}/>
           </label>}
           <label className="min-w-[110px] flex-1 text-[11px] text-muted-foreground">Duración (minutos)
-            {isChess?<Input className="mt-1 h-9" type="number" min="1" max="1440" step="1" value={sessionMinutes} onChange={event=>setSessionMinutes(event.target.value)}/>:<select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionMinutes} onChange={event=>setSessionMinutes(event.target.value)}>
+            {(isChess||isGame)?<Input className="mt-1 h-9" type="number" min="1" max="1440" step="1" value={sessionMinutes} onChange={event=>setSessionMinutes(event.target.value)}/>:<select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionMinutes} onChange={event=>setSessionMinutes(event.target.value)}>
               <option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option><option value="90">1 h 30 min</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="240">4 horas</option>
             </select>}
           </label>
@@ -665,18 +676,18 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const items=allItems.filter((item:any)=>isGames?isGameItem(item):!isGameItem(item));
   const visibleItems=sortLearningItems(isGames?items:items.filter((item:any)=>filter==="all"||item.kind===filter),sessions.data||[],sort);
   const resetForm=()=>{setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setGameMinutes("0");setPlatform("");setGenre("");setEditingId(null);setAdding(false);};
-  const startEdit=(item:any)=>{const sessionTotal=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setGameMinutes(String(Math.max(sessionTotal,Math.max(0,Number(item.minutes_total)||0))));setPlatform(item.platform||"");setGenre(item.genre||"");setEditingId(item.id);setAdding(true);};
+  const startEdit=(item:any)=>{const sessionTotal=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setGameMinutes(minutesToHoursInput(Math.max(sessionTotal,Math.max(0,Number(item.minutes_total)||0))));setPlatform(item.platform||"");setGenre(item.genre||"");setEditingId(item.id);setAdding(true);};
   const saveItem=async()=>{
     const isGame=kind==="video_game"||kind==="game";
     if(!title.trim()){toast.error("Escribe el nombre del elemento.");return;}
     const progress=Math.min(100,Math.max(0,Number(gameProgress)||0));
-    const parsedMinutes=Number(gameMinutes);
-    if(isGame&&(!Number.isInteger(parsedMinutes)||parsedMinutes<0||parsedMinutes>1000000)){toast.error("El tiempo acumulado debe ser un número entero entre 0 y 1.000.000 de minutos.");return;}
+    const parsedMinutes=hoursInputToMinutes(gameMinutes);
+    if(isGame&&(parsedMinutes===null||parsedMinutes>1000000)){toast.error("Escribe un tiempo válido en horas (por ejemplo, 10,1).");return;}
     if(editingId){
-      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined,minutes_total:isGame?parsedMinutes:undefined,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null}});
+      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:notes.trim()||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined,minutes_total:isGame?parsedMinutes!:undefined,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null}});
       toast.success("Elemento actualizado.");
     }else{
-      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:0,minutes_total:isGame?parsedMinutes:0,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null});
+      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:notes.trim()||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:0,minutes_total:isGame?parsedMinutes!:0,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null});
       toast.success("Elemento agregado.");
     }
     resetForm();
@@ -715,7 +726,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
         <label className="text-xs text-muted-foreground">Objetivo<Input className="mt-1" placeholder="Ej. Terminar la historia" value={goalDescription} onChange={e=>setGoalDescription(e.target.value)}/></label>
         <label className="text-xs text-muted-foreground">Fecha objetivo<Input className="mt-1" type="date" value={goalDate} onChange={e=>setGoalDate(e.target.value)}/></label>
         <label className="text-xs text-muted-foreground">Avance (%)<Input className="mt-1" type="number" min="0" max="100" value={gameProgress} onChange={e=>setGameProgress(e.target.value)}/></label>
-        <label className="text-xs text-muted-foreground">Tiempo acumulado (minutos)<Input className="mt-1" type="number" min="0" max="1000000" step="1" placeholder="Ej. 45" value={gameMinutes} onChange={e=>setGameMinutes(e.target.value)}/></label>
+        <label className="text-xs text-muted-foreground">Tiempo acumulado (horas)<Input className="mt-1" type="text" inputMode="decimal" placeholder="Ej. 10,1" value={gameMinutes} onChange={e=>setGameMinutes(e.target.value)}/></label>
       </div>}
       {editingId&&<p className="text-xs text-muted-foreground">{isGames?"Puedes actualizar la ficha y el tiempo acumulado. Las sesiones detalladas se corrigen desde la tarjeta del videojuego.":"Puedes actualizar el nombre, la categoría y la descripción."}</p>}
     </div>}
@@ -725,7 +736,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">{isGames?"Todavía no has agregado videojuegos. Pulsa Agregar para registrar el que estás jugando.":"Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno."}</div>}
     <div className={isGames?"grid grid-cols-1 gap-3 md:grid-cols-3":"grid grid-cols-1 gap-3 sm:grid-cols-2"}>
-      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).sort((a:any,b:any)=>String(b.session_date||"").localeCompare(String(a.session_date||""))||String(b.created_at||"").localeCompare(String(a.created_at||"")));const sessionMinutes=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);const storedMinutes=isGameItem(item)?Math.max(0,Number(item.minutes_total)||0):0;const minutesPlayed=Math.max(sessionMinutes,storedMinutes);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={itemSessions.length} recentSessions={item.kind==="chess"?itemSessions:[]} sessionHistory={isGameItem(item)?itemSessions:[]} onUpdateSession={async(id:string,patch:Record<string,unknown>)=>{const oldSum=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);const oldEntry=itemSessions.find((entry:any)=>entry.id===id);const nextSum=Math.max(0,oldSum+(Number(patch.minutes??oldEntry?.minutes??0)-Number(oldEntry?.minutes??0)));const currentTotal=Math.max(oldSum,Math.max(0,Number(item.minutes_total)||0));await sessionMutation.update.mutateAsync({id,patch});await m.update.mutateAsync({id:item.id,patch:{minutes_total:Math.max(0,currentTotal+(nextSum-oldSum))}});}} onUpdateLegacyTotal={(minutes:number)=>m.update.mutateAsync({id:item.id,patch:{minutes_total:minutes}})} onEdit={()=>startEdit(item)} onRecordSession={async(minutes:number,sessionDate?:string,source?:string)=>{const previousSessionSum=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);const currentTotal=Math.max(previousSessionSum,Math.max(0,Number(item.minutes_total)||0));await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:item.kind==="chess"&&sessionDate?sessionDate:todayISO(),minutes,notes:item.kind==="chess"?"Ajedrez · "+(source==="chess.com"?"chess.com (online)":source==="duolingo"?"Duolingo (práctica)":"Presencial"):"Videojuego: "+item.title});if(isGameItem(item))await m.update.mutateAsync({id:item.id,patch:{minutes_total:currentTotal+minutes}});}} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
+      {visibleItems.map((item:any)=>{const itemSessions=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).sort((a:any,b:any)=>String(b.session_date||"").localeCompare(String(a.session_date||""))||String(b.created_at||"").localeCompare(String(a.created_at||"")));const sessionMinutes=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);const storedMinutes=isGameItem(item)?Math.max(0,Number(item.minutes_total)||0):0;const minutesPlayed=Math.max(sessionMinutes,storedMinutes);return <OtherLearningCard key={item.id} item={item} minutesPlayed={minutesPlayed} sessionCount={itemSessions.length} recentSessions={item.kind==="chess"?itemSessions:[]} sessionHistory={isGameItem(item)?itemSessions:[]} onUpdateSession={async(id:string,patch:Record<string,unknown>)=>{const oldSum=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);const oldEntry=itemSessions.find((entry:any)=>entry.id===id);const nextSum=Math.max(0,oldSum+(Number(patch.minutes??oldEntry?.minutes??0)-Number(oldEntry?.minutes??0)));const currentTotal=Math.max(oldSum,Math.max(0,Number(item.minutes_total)||0));await sessionMutation.update.mutateAsync({id,patch});await m.update.mutateAsync({id:item.id,patch:{minutes_total:Math.max(0,currentTotal+(nextSum-oldSum))}});}} onUpdateLegacyTotal={(minutes:number)=>m.update.mutateAsync({id:item.id,patch:{minutes_total:minutes}})} onEdit={()=>startEdit(item)} onRecordSession={async(minutes:number,sessionDate?:string,source?:string)=>{const previousSessionSum=itemSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);const currentTotal=Math.max(previousSessionSum,Math.max(0,Number(item.minutes_total)||0));await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:(item.kind==="chess"||isGameItem(item))&&sessionDate?sessionDate:todayISO(),minutes,notes:item.kind==="chess"?"Ajedrez · "+(source==="chess.com"?"chess.com (online)":source==="duolingo"?"Duolingo (práctica)":"Presencial"):"Videojuego: "+item.title});if(isGameItem(item))await m.update.mutateAsync({id:item.id,patch:{minutes_total:currentTotal+minutes}});}} onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}} onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}/>;}) }
     </div>
   </section>;
 }
@@ -768,8 +779,11 @@ function Languages(){
     setMinutes("");toast.success("Sesión registrada en tu historial.");
   };
   const skills:Record<string,string>={speaking:"Conversación",listening:"Escucha",reading:"Lectura",writing:"Escritura",vocabulary:"Vocabulario",grammar:"Gramática"};
-  const localeSessions=(s.data||[]).filter((entry:any)=>entry.resource_url===locale);
   const[sort,setSort]=useState<LearningSort>("used_desc");
+  const[showAllSessions,setShowAllSessions]=useState(false);
+  useEffect(()=>setShowAllSessions(false),[locale]);
+  const localeSessions=(s.data||[]).filter((entry:any)=>entry.resource_url===locale).sort((a:any,b:any)=>String(b.session_date||"").localeCompare(String(a.session_date||""))||String(b.created_at||"").localeCompare(String(a.created_at||"")));
+  const visibleLocaleSessions=showAllSessions?localeSessions:localeSessions.slice(0,12);
   const sortedLanguages=[...(q.data||[])].sort((a:any,b:any)=>{const aCount=(s.data||[]).filter((entry:any)=>entry.resource_url===a.locale_code).length,bCount=(s.data||[]).filter((entry:any)=>entry.resource_url===b.locale_code).length;const names=String(a.language_name||"").localeCompare(String(b.language_name||""),"es",{sensitivity:"base"});if(sort==="title_asc")return names;if(sort==="title_desc")return -names;if(sort==="used_asc")return aCount-bCount||names;if(sort==="recent")return String(b.updated_at||b.created_at||"").localeCompare(String(a.updated_at||a.created_at||""))||names;if(sort==="oldest")return String(a.created_at||"").localeCompare(String(b.created_at||""))||names;return bCount-aCount||names;});
   return <section className="space-y-4">
     {(q.isError||s.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:s.error instanceof Error?s.error.message:"No se pudieron cargar idiomas o sesiones."}/>}
@@ -808,8 +822,8 @@ function Languages(){
       </button>)}</div>}
     </div>
     <div className="glass space-y-3 rounded-2xl p-4">
-      <div><h2 className="font-semibold">Historial de práctica</h2><p className="text-xs text-muted-foreground">Sesiones registradas para {localeInfo(locale).language} · {localeInfo(locale).country}.</p></div>
-      {localeSessions.length===0?<p className="text-sm text-muted-foreground">Aún no hay sesiones para esta variante. Registra la primera arriba.</p>:<div className="space-y-2">{localeSessions.slice(0,12).map((entry:any)=><div key={entry.id} className="flex items-center gap-3 rounded-xl border p-3"><FlagIcon locale={entry.resource_url||locale}/><div className="min-w-0 flex-1"><p className="text-sm font-medium">Práctica de idioma{entry.skill==="Duolingo"?" · Duolingo":""} · {Number(entry.minutes)>0?entry.minutes+" min":"Duración no registrada"}</p><p className="text-xs text-muted-foreground">{entry.session_date}</p></div><Button size="icon" variant="ghost" aria-label="Eliminar sesión" onClick={()=>void sm.remove.mutateAsync(entry.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>)}</div>}
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Historial de práctica · {localeSessions.length} sesiones</h2><p className="text-xs text-muted-foreground">Sesiones registradas para {localeInfo(locale).language} · {localeInfo(locale).country}.</p></div>{localeSessions.length>12&&<Button size="sm" variant="outline" onClick={()=>setShowAllSessions(value=>!value)}>{showAllSessions?"Mostrar menos":`Ver las ${localeSessions.length} sesiones`}</Button>}</div>
+      {localeSessions.length===0?<p className="text-sm text-muted-foreground">Aún no hay sesiones para esta variante. Registra la primera arriba.</p>:<div className="space-y-2">{visibleLocaleSessions.map((entry:any)=><div key={entry.id} className="flex items-center gap-3 rounded-xl border p-3"><FlagIcon locale={entry.resource_url||locale}/><div className="min-w-0 flex-1"><p className="text-sm font-medium">Práctica de idioma{entry.skill==="Duolingo"?" · Duolingo":""} · {Number(entry.minutes)>0?entry.minutes+" min":"Duración no registrada"}</p><p className="text-xs text-muted-foreground">{entry.session_date}</p></div><Button size="icon" variant="ghost" aria-label="Eliminar sesión" onClick={()=>void sm.remove.mutateAsync(entry.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>)}</div>}
     </div>
   </section>;
 }

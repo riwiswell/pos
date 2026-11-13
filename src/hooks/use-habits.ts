@@ -14,8 +14,19 @@ export const habitKeys = {
 };
 
 function onError(error: unknown) {
-  const message = error instanceof Error ? error.message : "Ocurrió un error inesperado";
-  toast.error(message);
+  const value = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const message = typeof value.message === "string"
+    ? value.message
+    : error instanceof Error
+      ? error.message
+      : "Ocurrió un error inesperado";
+  const code = typeof value.code === "string" ? " [" + value.code + "]" : "";
+  const detail = typeof value.details === "string" && value.details
+    ? " · " + value.details
+    : typeof value.hint === "string" && value.hint
+      ? " · " + value.hint
+      : "";
+  toast.error(message + code + detail, { duration: 9000 });
 }
 
 export function useCategories() {
