@@ -19,6 +19,54 @@
 
 begin;
 
+-- Esta función también se define aquí porque el SQL Editor de Lovable puede
+-- no haber aplicado todavía la migración anterior del Planeador.
+-- Mantiene exactamente las reglas de XP usadas por POS.
+create or replace function public.gamification_xp_for_event(
+  p_entity_type text,
+  p_payload jsonb
+)
+returns integer
+language sql
+immutable
+as $
+  select case
+    when p_entity_type = 'work_sessions'
+      and coalesce(p_payload->>'status','') = 'completed'
+      and coalesce(p_payload->>'_operation','INSERT') in ('INSERT','UPDATE')
+      then 10
+
+    when p_entity_type = 'habit_logs'
+      and coalesce(p_payload->>'habit_kind','habit') <> 'habit' then 0
+    when p_entity_type = 'habit_logs'
+      and coalesce((p_payload->>'completed')::boolean,false) = false
+      and coalesce(nullif(p_payload->>'value','')::numeric,0) <= 0 then 0
+    when p_entity_type = 'habit_logs'
+      and coalesce(p_payload->>'_operation','INSERT') in ('INSERT','UPDATE') then 5
+
+    when p_entity_type = 'routine_logs'
+      and coalesce((p_payload->>'completed')::boolean,false) = true
+      and coalesce(p_payload->>'_operation','INSERT') in ('INSERT','UPDATE') then 5
+    when p_entity_type = 'routine_logs' then 0
+
+    when p_entity_type = 'planner_items'
+      and coalesce(p_payload->>'status','') = 'done'
+      and coalesce(p_payload->>'_completion_event','false') = 'true'
+      then 5
+
+    when coalesce(p_payload->>'_operation','INSERT') <> 'INSERT' then 0
+    when p_entity_type = 'journal_entries' then 5
+    when p_entity_type = 'work_items' then 5
+    when p_entity_type = 'health_metrics' then 5
+    when p_entity_type = 'finance_transactions' then 2
+    when p_entity_type = 'learning_sessions' then 10
+    when p_entity_type = 'relationship_interactions' then 8
+    when p_entity_type = 'spiritual_entries' then 5
+    when p_entity_type = 'life_goals' then 5
+    else 0
+  end
+$;
+
 create or replace function public.backfill_historical_gamification_xp()
 returns integer
 language plpgsql
