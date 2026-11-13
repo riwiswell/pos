@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/habitos")({
 
 const UNCATEGORIZED = "__uncategorized__";
 
-function HabitsPage() {
+export function HabitsPage() {
   const { date } = useGlobalDate();
   const [activeTab, setActiveTab] = useState("registro");
   useEffect(() => {
