@@ -295,7 +295,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
               <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>
               <Button size="sm" variant={panel==="summary"?"default":"outline"} onClick={()=>setPanel(panel==="summary"?null:"summary")}><FileText className="mr-1 h-3.5 w-3.5"/>Resumen</Button>
               <Button size="sm" variant={panel==="notes"?"default":"outline"} onClick={()=>setPanel(panel==="notes"?null:"notes")}><NotebookPen className="mr-1 h-3.5 w-3.5"/>Notas ({mine.length})</Button>
-              <Button size="sm" variant={panel==="details"?"default":"outline"} onClick={()=>setPanel(panel==="details"?null:"details")}><Pencil className="mr-1 h-3.5 w-3.5"/>Datos del libro</Button>
+              <Button size="sm" variant={panel==="details"?"default":"outline"} onClick={()=>setPanel(panel==="details"?null:"details")}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar ficha</Button>
             </>}
         </div>
       </div>
