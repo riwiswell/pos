@@ -416,6 +416,81 @@ export function getBiblePlanDay(dayNumber: number): BibleReadingDay | undefined 
   return BIBLE_READING_PLAN.find((day) => day.dayNumber === dayNumber);
 }
 
+const SINGLE_CHAPTER_BOOKS = new Set(["abd", "2 jn", "3 jn", "jud", "flm"]);
+
+/** Converts a plan reference into all chapters touched by that passage. */
+function chaptersInReference(reference: string): string[] {
+  const match = reference.trim().match(/^(.+?)\s+(\d+)(?:\.(\d+))?(.*)$/);
+  if (!match) {
+    const book = reference.trim().replace(/\s+/g, " ").toLowerCase();
+    return SINGLE_CHAPTER_BOOKS.has(book) ? [book + "|1"] : [];
+  }
+
+  const book = match[1]!.trim().replace(/\s+/g, " ").toLowerCase();
+  const start = Number(match[2]);
+  const startVerse = match[3] ? Number(match[3]) : null;
+  const rest = match[4] ?? "";
+  const range = rest.match(/^[—–-]\s*(\d+)(?:\.(\d+))?/);
+  const endNumber = range ? Number(range[1]) : start;
+  const endVerse = range?.[2] ? Number(range[2]) : null;
+  // A bare end number after a verse (e.g. 1.1-25) is a verse range;
+  // when the ending chapter differs and carries a verse, it spans chapters.
+  const end = range && endNumber !== start && (startVerse === null || endVerse !== null)
+    ? endNumber
+    : start;
+
+  return Array.from({ length: Math.max(1, end - start + 1) }, (_, index) => book + "|" + (start + index));
+}
+
+export interface BibleDayChapterProgress {
+  day_number: number;
+  first_done: boolean;
+  second_done: boolean;
+  third_done: boolean;
+}
+
+/**
+ * Counts a chapter only when every scheduled passage that touches it is checked.
+ * This maps the annual RVR1960 plan to its canonical 1,189 chapters.
+ */
+export function bibleChapterProgress(rows: BibleDayChapterProgress[]) {
+  const completedByDay = new Map<number, boolean[]>(
+    rows.map((row): [number, boolean[]] => [
+      row.day_number,
+      [row.first_done, row.second_done, row.third_done],
+    ]),
+  );
+  const requiredSegments = new Map<string, Set<string>>();
+
+  for (const day of BIBLE_READING_PLAN) {
+    day.references.forEach((reference, index) => {
+      const segment = day.dayNumber + ":" + index;
+      for (const chapter of chaptersInReference(reference)) {
+        const segments = requiredSegments.get(chapter) ?? new Set<string>();
+        segments.add(segment);
+        requiredSegments.set(chapter, segments);
+      }
+    });
+  }
+
+  let read = 0;
+  for (const segments of requiredSegments.values()) {
+    const complete = [...segments].every((segment) => {
+      const [day, index] = segment.split(":").map(Number);
+      return Boolean(completedByDay.get(day!)?.[index!]);
+    });
+    if (complete) read += 1;
+  }
+
+  const total = 1189;
+  return {
+    read,
+    total,
+    remaining: Math.max(0, total - read),
+    percent: Math.round((read / total) * 10000) / 100,
+  };
+}
+
 export function biblePlanProgress(completedDays: number): number {
   return Math.round((Math.max(0, Math.min(365, completedDays)) / 365) * 10000) / 100;
 }

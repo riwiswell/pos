@@ -148,7 +148,7 @@ function PlannerPage() {
           </div>
           <Calendar
             mode="single"
-            classNames={{ root: "w-full", months: "w-full", month: "w-full", table: "w-full", week: "w-full" }}
+            classNames={{ root: "w-full", months: "w-full gap-2", month: "w-full gap-2", table: "w-full", weekdays: "flex", weekday: "text-[0.65rem] leading-none", week: "mt-1 flex w-full" }}
             month={calendarMonth}
             onMonthChange={setCalendarMonth}
             selected={new Date(date + "T12:00:00")}
@@ -161,7 +161,7 @@ function PlannerPage() {
               const dayNumber = String(day.getDate()).padStart(2, "0");
               setDate(year + "-" + month + "-" + dayNumber);
             }}
-            className="mx-auto block w-full max-w-full [--cell-size:clamp(2.75rem,calc((100vw-3rem)/7),3.5rem)]"
+            className="mx-auto block w-full max-w-full p-0 [--cell-size:clamp(0.7rem,calc((100vw-3rem)/28),0.85rem)]"
           />
         </div>
         <div className="w-full rounded-xl bg-muted/30 p-3">

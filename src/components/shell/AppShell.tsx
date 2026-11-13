@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
+import { Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -33,10 +33,6 @@ function useCollapsed() {
 
   return {
     collapsed,
-    expand: () => {
-      setCollapsed(false);
-      localStorage.setItem(STORAGE_KEY, "0");
-    },
     toggle: () =>
       setCollapsed((value) => {
         const next = !value;
@@ -103,7 +99,7 @@ function useSignOut() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { collapsed, toggle, expand } = useCollapsed();
+  const { collapsed, toggle } = useCollapsed();
   const [moreOpen, setMoreOpen] = useState(false);
   const [menuEditing, setMenuEditing] = useState(false);
   const [menuSaving, setMenuSaving] = useState(false);
@@ -145,10 +141,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     void persistMenu(allItems.map((item) => item.key), hidden);
   };
 
-  const beginMenuEdit = () => {
-    if (collapsed) expand();
-    setMenuEditing((current) => !current);
-  };
   const mobilePrimaryItems = items.filter((item) => MOBILE_PRIMARY_KEYS.has(item.key));
   const mobileMoreItems = items.filter((item) => !MOBILE_PRIMARY_KEYS.has(item.key));
   const mobileMoreGroups = NAV_GROUPS
@@ -204,10 +196,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3">
-          <Button type="button" size="sm" variant={menuEditing ? "secondary" : "ghost"} className={cn("mb-1 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")} onClick={beginMenuEdit} aria-pressed={menuEditing} title="Organizar módulos" aria-label="Organizar módulos">
-            <SlidersHorizontal className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>{menuEditing ? "Terminar" : "Organizar módulos"}</span>}
-          </Button>
           {(!menuEditing && !collapsed) ? (
             <div className="space-y-0.5">
               {menuItems.map((item) => (

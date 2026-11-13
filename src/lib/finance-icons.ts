@@ -128,3 +128,22 @@ export const ICONS: Record<string, LucideIcon> = {
 export function getIcon(name: string | null | undefined): LucideIcon {
   return (name && ICONS[name]) || Circle;
 }
+
+/** Better context-aware defaults when displaying finance categories. */
+export function getCategoryIconName(categoryName: string, fallback?: string | null): string {
+  const name = categoryName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (/moto|gasolina|combustible/.test(name)) return /gasolina|combustible/.test(name) ? "Fuel" : "Bike";
+  if (/comida|mercado|restaurante|pan|alimento/.test(name)) return "Utensils";
+  if (/transporte|taxi|bus|parqueadero/.test(name)) return "Car";
+  if (/juego|videojuego|entretenimiento/.test(name)) return "Gamepad2";
+  if (/salud|medic|farmacia/.test(name)) return "HeartPulse";
+  if (/internet|servicio|telefono|celular|tv|streaming/.test(name)) return "Wifi";
+  if (/wiswellart|arte|clase|material/.test(name)) return "Palette";
+  if (/diezmo|iglesia|ofrenda/.test(name)) return "Church";
+  if (/casa|arriendo|hogar|vivienda/.test(name)) return "Home";
+  if (/libro|educaci|estudio/.test(name)) return "BookOpen";
+  if (/banco|credito|tarjeta|deuda/.test(name)) return "CreditCard";
+  if (/ahorro|reserva|alcancia/.test(name)) return "PiggyBank";
+  if (/regalo|ayuda|angela|reembolso/.test(name)) return "HandCoins";
+  return fallback || "Circle";
+}

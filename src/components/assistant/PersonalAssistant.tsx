@@ -64,7 +64,7 @@ export function PersonalAssistant() {
   return (
     <>
       {open && (
-        <section role="dialog" aria-label="Asistente personal de Personal OS" aria-modal="false" className="fixed bottom-36 right-3 z-50 flex h-[min(72vh,620px)] w-[min(94vw,390px)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl md:bottom-20 md:right-6">
+        <section role="dialog" aria-label="Asistente personal de Personal OS" aria-modal="false" className="fixed bottom-40 right-3 z-50 flex h-[min(72vh,620px)] w-[min(94vw,390px)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl md:bottom-28 md:right-6">
           <header className="flex items-center gap-3 border-b border-border bg-background/95 px-4 py-3">
             <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary"><Bot className="h-5 w-5" /></span>
             <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold">Asistente Personal OS</h2><p className="text-xs text-muted-foreground">Consulta tus módulos y relaciona tus datos</p></div>
@@ -85,7 +85,7 @@ export function PersonalAssistant() {
           </div>
         </section>
       )}
-      <Button type="button" size="icon" aria-label={open ? "Cerrar asistente" : "Abrir asistente personal"} title="Asistente Personal OS" onClick={() => setOpen((value) => !value)} className="fixed bottom-36 right-3 z-50 h-12 w-12 rounded-full shadow-lg md:bottom-20 md:right-6">
+      <Button type="button" size="icon" aria-label={open ? "Cerrar asistente" : "Abrir asistente personal"} title="Asistente Personal OS" onClick={() => setOpen((value) => !value)} className="fixed bottom-40 right-3 z-50 h-12 w-12 rounded-full shadow-lg md:bottom-28 md:right-6">
         {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
       </Button>
     </>

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen,ChevronDown,ChevronUp,FileText,ImagePlus,NotebookPen,Pencil,Plus,Save,Trash2,X } from "lucide-react";
+import { BookOpen,Check,ChevronDown,ChevronUp,FileText,ImagePlus,NotebookPen,Pencil,Plus,Save,Trash2,X } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor";
 import { SafeRichText } from "@/components/common/SafeRichText";
 import { ErrorState } from "@/components/common/States";
 import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lifeGraphService } from "@/services/life-graph.service"; import { useAuth } from "@/hooks/use-auth"; import { useProfile } from "@/hooks/use-profile"; import { useGlobalDate } from "@/hooks/use-global-date";
-import { BibleReadingPanel } from "@/components/learning/BibleReadingPanel";
+import { BibleChapterProgressSummary, BibleReadingPanel } from "@/components/learning/BibleReadingPanel";
 import { usePrivatePhotos } from "@/hooks/use-private-photos";
 import { privateMediaService } from "@/services/private-media.service";
 export const Route=createFileRoute("/_authenticated/aprendizaje")({component:LearningPage});
@@ -233,11 +233,12 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
   const saveProgress=async()=>{
     const nextPage=total?Math.min(total,pageValue):pageValue;
     const nextProgress=total?Math.min(100,Math.max(0,nextPage/total*100)):Number(book.progress)||0;
-    await onSave({current_page:nextPage,progress:nextProgress,completed_on:total&&nextPage>=total?new Date().toISOString().slice(0,10):null});
+    await onSave({current_page:nextPage,progress:nextProgress,status:total&&nextPage>=total?"completed":"active",completed_on:total&&nextPage>=total?new Date().toISOString().slice(0,10):null});
     setPage(String(nextPage));
     setPanel(null);
     toast.success(isBible?"Avance de capítulos guardado.":"Avance de lectura guardado.");
   };
+  const markFinished=async()=>{ if(!total){toast.error("Indica primero el total de páginas en Editar ficha.");setPanel("details");return;} const today=new Date().toISOString().slice(0,10); await onSave({current_page:total,progress:100,status:"completed",completed_on:today}); setPage(String(total)); setPanel(null); toast.success("Libro marcado como terminado."); };
   const saveDetails=async()=>{
     if(!newTitle.trim()){toast.error("El título no puede quedar vacío.");return;}
     const parsedTotal=Number(newTotal);
@@ -283,7 +284,7 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-2 font-semibold leading-snug">{book.title}</h3>
             {!isBible&&(book.author||book.publication_year)&&<p className="mt-0.5 text-xs text-muted-foreground">{[book.author,book.publication_year].filter(Boolean).join(" · ")}</p>}
-            {isBible?<p className="mt-1 text-xs text-muted-foreground">{total.toLocaleString("es-CO")} capítulos · {Math.round(progress)}% · {remain.toLocaleString("es-CO")} restantes</p>:<><p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>{Number(book.target_pages)>0&&<p className="mt-1 text-xs text-primary">Meta intermedia: {book.target_pages} páginas · {Math.max(0,Number(book.target_pages)-pageValue)} restantes</p>}</>}
+            {isBible?<BibleChapterProgressSummary learningItemId={book.id}/>:<><p className="mt-1 text-xs text-muted-foreground">{total?total+" páginas · "+Math.round(progress)+"% · "+remain+" restantes":"Sin total de páginas"}</p>{Number(book.target_pages)>0&&<p className="mt-1 text-xs text-primary">Meta intermedia: {book.target_pages} páginas · {Math.max(0,Number(book.target_pages)-pageValue)} restantes</p>}</>}
           </div>
           <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={()=>void onDelete()} aria-label={"Eliminar "+book.title}>
             <Trash2 className="h-4 w-4 text-destructive"/>
@@ -291,18 +292,18 @@ function BookCard({book,notes,coverPath,onSave,onDelete,onAddNote,onDeleteNote}:
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:progress+"%"}}/></div>{total>0&&progress>=100&&<p className="text-[11px] font-medium text-emerald-600">{isBible?"Capítulos registrados completos":"Lectura completada"}</p>}
         <div className="flex flex-wrap gap-1.5">
-          {isBible?<><Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Capítulos</Button><a href="/biblia" target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"><BookOpen className="mr-1 h-3.5 w-3.5"/>Abrir Plan Bíblico <span className="ml-1">↗</span></a></>:<>
-              <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>
+          {isBible?<><a href="/biblia" target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"><BookOpen className="mr-1 h-3.5 w-3.5"/>Abrir Plan Bíblico <span className="ml-1">↗</span></a></>:<>
+              <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>\n               <Button size="sm" variant={book.status==="completed"?"secondary":"outline"} onClick={()=>void markFinished()} disabled={book.status==="completed"}><Check className="mr-1 h-3.5 w-3.5"/> {book.status==="completed"?"Terminado":"Marcar terminado"}</Button>
               <Button size="sm" variant={panel==="summary"?"default":"outline"} onClick={()=>setPanel(panel==="summary"?null:"summary")}><FileText className="mr-1 h-3.5 w-3.5"/>Resumen</Button>
               <Button size="sm" variant={panel==="notes"?"default":"outline"} onClick={()=>setPanel(panel==="notes"?null:"notes")}><NotebookPen className="mr-1 h-3.5 w-3.5"/>Notas ({mine.length})</Button>
-              <Button size="sm" variant={panel==="details"?"default":"outline"} onClick={()=>setPanel(panel==="details"?null:"details")}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button>
+              <Button size="sm" variant={panel==="details"?"default":"outline"} onClick={()=>setPanel(panel==="details"?null:"details")}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar ficha</Button>
             </>}
         </div>
       </div>
     </div>
 
     {panel==="details"&&!isBible&&<div className="space-y-2 border-t p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-medium">Editar libro</p><Button size="sm" type="button" variant="outline" onClick={()=>coverInput.current?.click()} disabled={uploadingCover}><ImagePlus className="mr-1 h-3.5 w-3.5"/>{uploadingCover?"Subiendo…":coverPath?"Cambiar portada":"Agregar portada"}</Button></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-semibold">Datos del libro</p><p className="text-xs text-muted-foreground">Aquí puedes cambiar el título, autor, año, número de páginas, meta y portada.</p></div><Button size="sm" type="button" variant="outline" onClick={()=>coverInput.current?.click()} disabled={uploadingCover}><ImagePlus className="mr-1 h-3.5 w-3.5"/>{uploadingCover?"Subiendo…":coverPath?"Cambiar portada":"Agregar portada"}</Button></div>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.3fr_1fr_110px_130px_130px_auto]">
         <Input aria-label="Título" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/>
         <Input aria-label="Autor" placeholder="Autor" value={newAuthor} onChange={e=>setNewAuthor(e.target.value)}/>

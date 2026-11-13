@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { CategoryDialog } from "@/components/finance/CategoryDialog";
-import { getIcon } from "@/lib/finance-icons";
+import { getCategoryIconName, getIcon } from "@/lib/finance-icons";
 import { cn } from "@/lib/utils";
 import { useFinanceMutations } from "@/hooks/use-finance";
 import { categoryAppliesTo } from "@/domain/finance";
@@ -73,17 +73,17 @@ export function CategoryManagerDialog({ open, onOpenChange, categories }: Props)
               </li>
             )}
             {list.map((category) => {
-              const Icon = getIcon(category.icon);
+              const Icon = getIcon(getCategoryIconName(category.name, category.icon));
               return (
                 <li
                   key={category.id}
                   className="flex items-center gap-3 rounded-xl border border-border/60 px-3 py-2"
                 >
                   <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                    style={{ backgroundColor: `${category.color}22` }}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 shadow-sm"
+                    style={{ background: `linear-gradient(145deg, ${category.color}30, ${category.color}12)`, color: category.color }}
                   >
-                    <Icon className="h-4 w-4" style={{ color: category.color }} />
+                    <Icon className="h-5 w-5" strokeWidth={2.1} />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm">
                     {category.name}
