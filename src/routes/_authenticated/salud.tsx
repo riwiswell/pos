@@ -2,6 +2,7 @@ import { useEffect,useMemo,useRef,useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { CalendarHeart,ChevronDown,ChevronLeft,ChevronRight,ChevronUp,ClipboardList,Coffee,CupSoda,Droplets,HeartPulse,Leaf,Pencil,Pill,Plus,Toilet,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label"; import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { BowelLogPanel } from "@/components/health/BowelLogPanel"; import { SleepPanel } from "@/components/health/SleepPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { todayISO } from "@/lib/date";
@@ -61,6 +62,7 @@ function HydrationCard(){
  const [confirmDeleteId,setConfirmDeleteId]=useState<string|null>(null);
  const [showTodayDrinks,setShowTodayDrinks]=useState(false);
  const [schedule,setSchedule]=useState<HydrationConfig>(DEFAULT_HYDRATION);
+ const [showHydrationSettings,setShowHydrationSettings]=useState(false);
  const [savingSchedule,setSavingSchedule]=useState(false);
  const [pushBusy,setPushBusy]=useState(false);
  useEffect(()=>{
@@ -226,24 +228,28 @@ function HydrationCard(){
   </div>
   <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-muted-foreground">Ayer ({yesterdayDate}): {yesterdayEntries.isLoading?"cargando…":yesterdayEntries.isError?"sin conexión al historial":fmt(yesterdayWaterMl)+" ml de agua"}</span>{(entries.isError||yesterdayEntries.isError)&&<Button type="button" size="sm" variant="outline" className="h-7" onClick={()=>{void entries.refetch();void yesterdayEntries.refetch()}}>Reintentar carga</Button>}</div>
   {entries.isError&&<p className="text-xs text-destructive">No se pudo cargar el registro de bebidas. Puedes intentar registrar de todas formas; el error no bloquea el formulario. Detalle: {entries.error instanceof Error?entries.error.message:"error desconocido"}</p>}
-  <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/[.04] p-3 space-y-3">
-   <div className="flex items-center justify-between gap-3">
-    <div><p className="text-sm font-semibold">Avisos para tomar agua</p><p className="text-xs text-muted-foreground">Recordatorios automáticos; no crean un hábito duplicado.</p></div>
-    <Switch checked={schedule.enabled} onCheckedChange={enabled=>setSchedule(current=>({...current,enabled}))}/>
-   </div>
-   {schedule.enabled&&<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-    <label className="space-y-1 text-xs text-muted-foreground">Desde<Input type="time" value={schedule.start_time} onChange={e=>setSchedule(current=>({...current,start_time:e.target.value}))}/></label>
-    <label className="space-y-1 text-xs text-muted-foreground">Hasta<Input type="time" value={schedule.end_time} onChange={e=>setSchedule(current=>({...current,end_time:e.target.value}))}/></label>
-    <label className="space-y-1 text-xs text-muted-foreground">Cada<select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={schedule.interval_minutes} onChange={e=>setSchedule(current=>({...current,interval_minutes:Number(e.target.value)}))}>{[30,45,60,90,120,180].map(value=><option key={value} value={value}>{value} min</option>)}</select></label>
-    <label className="space-y-1 text-xs text-muted-foreground">Cantidad<select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={schedule.amount_ml} onChange={e=>setSchedule(current=>({...current,amount_ml:Number(e.target.value)}))}>{!reminderWaterOptions.some(option=>option.amount_ml===schedule.amount_ml)&&<option value={schedule.amount_ml}>{schedule.amount_ml} ml · valor guardado</option>}{reminderWaterOptions.map(({glasses,amount_ml})=><option key={glasses} value={amount_ml}>{formatWaterGlassOption(glasses)}</option>)}</select></label>
-   </div>}
-   <div className="flex flex-wrap items-center gap-2">
-    <Button size="sm" disabled={savingSchedule||profileQuery.isLoading} onClick={()=>void saveSchedule()}>{savingSchedule?"Guardando…":"Guardar avisos"}</Button>
-    <Button size="sm" variant="outline" disabled={pushBusy} onClick={()=>void activatePush()}>{pushBusy?"Activando…":"Activar avisos en segundo plano"}</Button>
-    <Link to="/perfil" search={(prev:Record<string,unknown>)=>prev} className="text-xs text-primary hover:underline">Configuración completa</Link>
-   </div>
-   <p className="text-[11px] text-muted-foreground">{schedule.background_push?"Push confirmado: los avisos pueden llegar con POS cerrado.":"Avisos locales: aparecen mientras Personal OS está abierto. Activa push para recibirlos con el navegador cerrado."}</p>
-  </div>
+  <Dialog open={showHydrationSettings} onOpenChange={setShowHydrationSettings}>
+   <DialogTrigger asChild><Button type="button" variant="outline" size="sm" className="gap-2" onClick={()=>setShowHydrationSettings(true)}>🔔 Configurar avisos</Button></DialogTrigger>
+   <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+    <DialogHeader><DialogTitle>Avisos para tomar agua</DialogTitle></DialogHeader>
+    <div className="space-y-4">
+     <p className="text-xs text-muted-foreground">Configura cuándo quieres recibir recordatorios. No se crea un hábito duplicado.</p>
+     <div className="flex items-center justify-between gap-3 rounded-xl border p-3"><div><p className="text-sm font-medium">Activar avisos</p><p className="text-xs text-muted-foreground">Puedes pausarlos cuando quieras.</p></div><Switch checked={schedule.enabled} onCheckedChange={enabled=>setSchedule(current=>({...current,enabled}))}/></div>
+     {schedule.enabled&&<div className="grid grid-cols-2 gap-3">
+      <label className="space-y-1 text-xs text-muted-foreground">Desde<Input type="time" value={schedule.start_time} onChange={e=>setSchedule(current=>({...current,start_time:e.target.value}))}/></label>
+      <label className="space-y-1 text-xs text-muted-foreground">Hasta<Input type="time" value={schedule.end_time} onChange={e=>setSchedule(current=>({...current,end_time:e.target.value}))}/></label>
+      <label className="space-y-1 text-xs text-muted-foreground">Cada<select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={schedule.interval_minutes} onChange={e=>setSchedule(current=>({...current,interval_minutes:Number(e.target.value)}))}>{[30,45,60,90,120,180].map(value=><option key={value} value={value}>{value} min</option>)}</select></label>
+      <label className="space-y-1 text-xs text-muted-foreground">Cantidad<select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={schedule.amount_ml} onChange={e=>setSchedule(current=>({...current,amount_ml:Number(e.target.value)}))}>{!reminderWaterOptions.some(option=>option.amount_ml===schedule.amount_ml)&&<option value={schedule.amount_ml}>{schedule.amount_ml} ml · valor guardado</option>}{reminderWaterOptions.map(({glasses,amount_ml})=><option key={glasses} value={amount_ml}>{formatWaterGlassOption(glasses)}</option>)}</select></label>
+     </div>}
+     <div className="flex flex-wrap items-center gap-2">
+      <Button size="sm" disabled={savingSchedule||profileQuery.isLoading} onClick={()=>void saveSchedule()}>{savingSchedule?"Guardando…":"Guardar avisos"}</Button>
+      <Button size="sm" variant="outline" disabled={pushBusy} onClick={()=>void activatePush()}>{pushBusy?"Activando…":"Activar avisos en segundo plano"}</Button>
+      <Link to="/perfil" search={(prev:Record<string,unknown>)=>prev} className="text-xs text-primary hover:underline">Configuración completa</Link>
+     </div>
+     <p className="text-[11px] text-muted-foreground">{schedule.background_push?"Push confirmado: los avisos pueden llegar con POS cerrado.":"Avisos locales: aparecen mientras Personal OS está abierto. Activa push para recibirlos con el navegador cerrado."}</p>
+    </div>
+   </DialogContent>
+  </Dialog>
   <p className="text-xs text-muted-foreground">El agua asociada a medicamentos también suma al total de agua simple, pero se corrige desde la toma del medicamento. Los registros antiguos agregados siguen visibles en el total; esta lista permite editar los registros individuales de bebidas.</p>
  </section>;
 }
