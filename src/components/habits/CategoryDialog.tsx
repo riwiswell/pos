@@ -37,18 +37,20 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Props
   const [name, setName] = useState("");
   const [color, setColor] = useState(PALETTE[0]!);
   const [icon, setIcon] = useState("✨");
+  const [layoutColumns, setLayoutColumns] = useState<1 | 2>(1);
 
   useEffect(() => {
     if (!open) return;
     setName(category?.name ?? "");
     setColor(category?.color ?? PALETTE[0]!);
     setIcon(category?.icon ?? "✨");
+    setLayoutColumns(category?.layout_columns === 2 ? 2 : 1);
   }, [open, category]);
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    onSubmit({ name: name.trim(), color, icon });
+    onSubmit({ name: name.trim(), color, icon, layout_columns: layoutColumns });
     onOpenChange(false);
   }
 
@@ -87,6 +89,35 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Props
                   style={{ backgroundColor: c }}
                 />
               ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Distribución de hábitos</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                aria-pressed={layoutColumns === 1}
+                onClick={() => setLayoutColumns(1)}
+                className={cn(
+                  "rounded-xl border px-3 py-3 text-sm transition",
+                  layoutColumns === 1 ? "border-primary bg-primary/10 font-semibold text-primary" : "bg-background hover:bg-accent",
+                )}
+              >
+                1 columna
+                <span className="mt-1 block text-[11px] font-normal text-muted-foreground">Lista vertical</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={layoutColumns === 2}
+                onClick={() => setLayoutColumns(2)}
+                className={cn(
+                  "rounded-xl border px-3 py-3 text-sm transition",
+                  layoutColumns === 2 ? "border-primary bg-primary/10 font-semibold text-primary" : "bg-background hover:bg-accent",
+                )}
+              >
+                2 columnas
+                <span className="mt-1 block text-[11px] font-normal text-muted-foreground">Más compacto en pantallas amplias</span>
+              </button>
             </div>
           </div>
           <DialogFooter>

@@ -277,7 +277,7 @@ export function HabitsPage() {
                 )}
               </div>
 
-              <div className="mt-3 space-y-2">
+              <div className={"mt-3 grid gap-2 " + (group.category?.layout_columns === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
                 {group.habits.length === 0 ? (
                   <p className="px-1 py-2 text-xs text-muted-foreground">
                     Sin hábitos en esta categoría todavía.
