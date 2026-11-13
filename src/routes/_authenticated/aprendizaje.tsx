@@ -30,9 +30,9 @@ function flagForLanguageProfile(profile:any){
   const fallback=LANGS.find((lang:any)=>lang.code===profile.language_code)?.variants?.[0]?.[0]||"";
   return flagForLocale(profile.locale_code||fallback);
 }
-type LearningSort = "used_desc" | "used_asc" | "title_asc" | "title_desc" | "recent" | "oldest" | "genre_asc";
+type LearningSort = "used_desc" | "used_asc" | "title_asc" | "title_desc" | "recent" | "oldest" | "genre";
 const GAME_PLATFORMS = ["PC","PlayStation 5","PlayStation 4","PlayStation 3","Xbox Series X/S","Xbox One","Xbox 360","Nintendo Switch","Steam Deck","Android / iOS","Otra"];
-const GAME_GENRES = ["Acción","Aventura","Acción y aventura","Mundo abierto","Rol (RPG)","RPG de acción","JRPG","Disparos (FPS)","Disparos en tercera persona","Terror / Survival horror","Sigilo","Plataformas","Carreras","Deportes","Estrategia","Puzles","Simulación","Lucha","Narrativo","Musical","Otro"];
+const GAME_GENRES = ["Acción","Aventura","Acción y Aventuras","Mundo abierto","Rol (RPG)","RPG de acción","JRPG","Disparos (FPS)","Disparos en tercera persona","Terror / Survival horror","Sigilo","Plataformas","Carreras","Deportes","Estrategia","Puzles","Simulación","Lucha","Narrativo","Musical","Otro"];
 const INITIAL_READING_ORDER = [
   "los 5 lenguajes del amor",
   "el hombre en busca de sentido",
@@ -49,7 +49,7 @@ function sortLearningItems(items:any[],sessions:any[],sort:LearningSort){
   const createdA=String(a.created_at||""),createdB=String(b.created_at||"");
   if(sort==="title_asc")return names;
   if(sort==="title_desc")return -names;
-  if(sort==="genre_asc")return String(a.genre||"Sin género").localeCompare(String(b.genre||"Sin género"),"es",{sensitivity:"base"})||names;
+  if(sort==="genre")return String(a.genre||"Sin género").localeCompare(String(b.genre||"Sin género"),"es",{sensitivity:"base"})||names;
   if(sort==="used_asc")return aMinutes-bMinutes||aCount-bCount||aProgress-bProgress||names;
   if(sort==="recent")return bLast.localeCompare(aLast)||createdB.localeCompare(createdA)||names;
   if(sort==="oldest"){
@@ -65,7 +65,7 @@ function sortLearningItems(items:any[],sessions:any[],sort:LearningSort){
   return bMinutes-aMinutes||bCount-aCount||bProgress-aProgress||bLast.localeCompare(aLast)||names;
  });
 }
-function LearningSortControl({value,onChange,includeGenre=false}:{value:LearningSort;onChange:(value:LearningSort)=>void;includeGenre?:boolean}){return <select aria-label="Ordenar elementos" title="Ordenar elementos" className="h-9 max-w-[148px] rounded-lg border border-input bg-background px-2 text-xs text-foreground" value={value} onChange={event=>onChange(event.target.value as LearningSort)}><option value="used_desc">Más usado</option><option value="used_asc">Menos usado</option>{includeGenre&&<option value="genre_asc">Género A–Z</option>}<option value="title_asc">A–Z</option><option value="title_desc">Z–A</option><option value="recent">Más reciente</option><option value="oldest">Más antiguo</option></select>;}
+function LearningSortControl({value,onChange,includeGenre=false}:{value:LearningSort;onChange:(value:LearningSort)=>void;includeGenre?:boolean}){return <select aria-label="Ordenar elementos" title="Ordenar elementos" className="h-9 max-w-[148px] rounded-lg border border-input bg-background px-2 text-xs text-foreground" value={value} onChange={event=>onChange(event.target.value as LearningSort)}><option value="used_desc">Más usado</option><option value="used_asc">Menos usado</option>{includeGenre&&<option value="genre">Género</option>}<option value="title_asc">A–Z</option><option value="title_desc">Z–A</option><option value="recent">Más reciente</option><option value="oldest">Más antiguo</option></select>;}
 function LearningPage(){
   const[tab,setTab]=useState("books");
   const{data:profile}=useProfile();
@@ -462,6 +462,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const m=useLGMutations("learning_items");
   const sessionMutation=useLGMutations("learning_sessions");
   const[sort,setSort]=useState<LearningSort>("used_desc");
+  const[existingGamesUpdated,setExistingGamesUpdated]=useState(false);
   const{user}=useAuth();
   const isGames=mode==="games";
   const[adding,setAdding]=useState(false);
@@ -478,6 +479,16 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const isGameItem=(item:any)=>item.kind==="video_game"||item.kind==="game";
   const allItems=(q.data||[]).filter((item:any)=>item.kind!=="book"&&item.kind!=="language");
   const items=allItems.filter((item:any)=>isGames?isGameItem(item):!isGameItem(item));
+  const applyExistingGameDefaults=async()=>{
+    if(!isGames||items.length===0)return;
+    try{
+      await Promise.all(items.map((item:any)=>m.update.mutateAsync({id:item.id,patch:{platform:"PC",genre:"Acción y Aventuras"}})));
+      setExistingGamesUpdated(true);
+      toast.success("Se actualizaron "+items.length+" juegos actuales: PC · Acción y Aventuras.");
+    }catch{
+      // La mutación muestra el detalle del error.
+    }
+  };
   const visibleItems=sortLearningItems(isGames?items:items.filter((item:any)=>filter==="all"||item.kind===filter),sessions.data||[],sort);
   const resetForm=()=>{setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setPlatform("");setGenre("");setEditingId(null);setAdding(false);};
   const startEdit=(item:any)=>{setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setPlatform(item.platform||"");setGenre(item.genre||"");setEditingId(item.id);setAdding(true);};
@@ -496,7 +507,11 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   };
   return <section className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, objetivos y avance de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div><div className="flex items-center gap-2"><LearningSortControl value={sort} onChange={setSort} includeGenre={isGames}/><Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setPlatform("");setGenre("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button></div>
+      <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, tiempo jugado y progreso de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div><div className="flex items-center gap-2">
+      {isGames&&items.length>0&&!existingGamesUpdated&&<Button size="sm" variant="outline" onClick={()=>void applyExistingGameDefaults()}>Actualizar juegos actuales</Button>}
+      <LearningSortControl value={sort} onChange={setSort} includeGenre={isGames}/>
+      <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setPlatform("");setGenre("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
+    </div>
     </div>
     {adding&&<div className="glass max-w-2xl space-y-2 rounded-2xl p-3">
       <div className="grid gap-2 sm:grid-cols-[1fr_190px_auto]">
