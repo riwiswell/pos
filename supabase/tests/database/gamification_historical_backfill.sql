@@ -1,6 +1,6 @@
 begin;
 
-select plan(6);
+select plan(9);
 
 create temporary table xp_hist_test_user(user_id uuid not null);
 
@@ -97,6 +97,39 @@ select is(
   public.backfill_historical_gamification_xp(),
   0,
   'running the backfill a second time does not award duplicate XP'
+);
+
+-- A current record must flow through the source-table emitter and XP trigger.
+insert into public.finance_transactions(user_id, type, amount, occurred_on)
+values (
+  (select user_id from pg_temp.xp_hist_test_user),
+  'expense',
+  5000,
+  current_date
+);
+
+select is(
+  (select count(*)::integer
+     from public.gamification_xp_events
+    where user_id = (select user_id from pg_temp.xp_hist_test_user)
+      and event_key like 'record:finance_transactions:%'
+      and xp = 2),
+  2,
+  'a new transaction added today automatically generates its 2 XP event'
+);
+
+select is(
+  (select sum(xp)::integer
+     from public.gamification_xp_events
+    where user_id = (select user_id from pg_temp.xp_hist_test_user)),
+  64,
+  'new automatic XP is reflected in the ledger total'
+);
+
+select is(
+  public.backfill_historical_gamification_xp(),
+  0,
+  'the historical recovery does not double-credit records already rewarded live'
 );
 
 select is(
