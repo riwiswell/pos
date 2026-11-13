@@ -127,7 +127,7 @@ set search_path = public, pg_temp
 as $life_event_emitter$
 declare
   payload jsonb;
-  event_key text;
+  v_event_key text;
   habit_kind_value text := 'habit';
 begin
   payload := to_jsonb(new) || jsonb_build_object('_operation', tg_op);
@@ -144,7 +144,7 @@ begin
     );
   end if;
 
-  event_key := tg_table_name || ':' || new.id::text || ':' ||
+  v_event_key := tg_table_name || ':' || new.id::text || ':' ||
     coalesce(payload->>'updated_at', payload->>'created_at', clock_timestamp()::text);
 
   insert into public.life_events(
@@ -152,7 +152,7 @@ begin
   )
   values(
     new.user_id,
-    event_key,
+    v_event_key,
     'recorded',
     tg_table_name,
     new.id,
