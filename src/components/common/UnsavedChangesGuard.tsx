@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useBlocker } from "@tanstack/react-router";
 
-type EditableControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+type EditableControl = HTMLElement;
 
 function isEditableControl(target: EventTarget | null): target is EditableControl {
   if (!(target instanceof HTMLElement)) return false;
-  if (!target.matches("input, textarea, select")) return false;
+  if (target.isContentEditable) return true;
+  if (!target.matches("input, textarea, select, [role='checkbox'], [role='switch']")) return false;
   if (target instanceof HTMLInputElement && ["hidden", "search", "submit", "button", "reset"].includes(target.type)) return false;
   if (target instanceof HTMLInputElement && (target.disabled || target.readOnly)) return false;
   if (target instanceof HTMLTextAreaElement && (target.disabled || target.readOnly)) return false;
   if (target instanceof HTMLSelectElement && target.disabled) return false;
+  if (target.getAttribute("aria-disabled") === "true") return false;
   const description = [target.getAttribute("placeholder"), target.getAttribute("aria-label"), target.getAttribute("name")].join(" ").toLowerCase();
   if (description.includes("buscar") || description.includes("search") || description.includes("filtro")) return false;
   return true;
@@ -22,7 +24,13 @@ function controlValue(control: EditableControl): string {
   if (control instanceof HTMLSelectElement && control.multiple) {
     return Array.from(control.selectedOptions).map((option) => option.value).join("|");
   }
-  return control.value;
+  if (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement || control instanceof HTMLSelectElement) {
+    return control.value;
+  }
+  if (control.matches("[role='checkbox'], [role='switch']")) {
+    return control.getAttribute("aria-checked") ?? "unchecked";
+  }
+  return control.innerHTML;
 }
 
 function formScope(element: Element): Element {
