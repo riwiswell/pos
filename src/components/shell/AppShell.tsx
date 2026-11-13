@@ -168,7 +168,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
-  const activeGroup = currentNavItem?.group ?? null;
+  const activeGroup = currentNavItem?.group ?? "Principal";
   const desktopMenuGroups = useMemo(() => {
     const groups: { label: string; items: typeof menuItems }[] = [];
     for (const item of menuItems) {
