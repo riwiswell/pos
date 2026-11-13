@@ -126,7 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: profile } = useProfile();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  useTheme();
+  const { theme } = useTheme();
   useMedicationReminders();
   useHydrationReminders();
   useAppointmentReminders();
@@ -191,7 +191,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isColor = Boolean(background?.startsWith("#"));
   const bgImageUrl = useProfileMediaUrl(background && !isColor ? background : null).data;
   const style = isColor
-    ? { backgroundColor: background! }
+    ? theme === "light"
+      ? {
+          // Keep the selected workspace hue as a subtle tint in light mode;
+          // never let a dark custom color turn the whole canvas dark.
+          backgroundColor: `color-mix(in oklab, var(--background) 88%, ${background} 12%)`,
+        }
+      : { backgroundColor: background! }
     : {
         backgroundImage: bgImageUrl
           ? `linear-gradient(color-mix(in oklab, var(--background) 82%, transparent),color-mix(in oklab, var(--background) 92%, transparent)),url(${bgImageUrl})`
