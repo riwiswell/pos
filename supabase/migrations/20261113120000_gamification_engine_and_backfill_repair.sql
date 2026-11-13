@@ -28,7 +28,6 @@ create unique index if not exists gamification_challenges_user_code_uidx
 create or replace function public.ensure_default_gamification_challenges(p_user_id uuid)
 returns void
 language plpgsql
-security definer
 set search_path = public, pg_temp
 as $ensure_challenges$
 begin
@@ -95,12 +94,13 @@ as $xp_score$
   end
 $xp_score$;
 
+revoke all on function public.ensure_default_gamification_challenges(uuid) from public, anon, authenticated;
+
 -- Emisor del Life Graph. El identificador del evento cambia al editar una fila,
 -- pero la clave de XP será estable por registro: editar no duplica sus puntos.
 create or replace function public.emit_life_event()
 returns trigger
 language plpgsql
-security definer
 set search_path = public, pg_temp
 as $life_event_emitter$
 declare
@@ -188,7 +188,6 @@ $install_emitters$;
 create or replace function public.apply_gamification_for_life_event()
 returns trigger
 language plpgsql
-security definer
 set search_path = public, pg_temp
 as $apply_gamification$
 declare
@@ -410,6 +409,9 @@ begin
   return new;
 end;
 $apply_gamification$;
+
+revoke all on function public.emit_life_event() from public, anon, authenticated;
+revoke all on function public.apply_gamification_for_life_event() from public, anon, authenticated;
 
 drop trigger if exists gamification_from_life_event on public.life_events;
 create trigger gamification_from_life_event
