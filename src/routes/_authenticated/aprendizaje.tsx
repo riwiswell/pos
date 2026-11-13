@@ -845,8 +845,8 @@ function Languages(){
   };
   const skills:Record<string,string>={speaking:"Conversación",listening:"Escucha",reading:"Lectura",writing:"Escritura",vocabulary:"Vocabulario",grammar:"Gramática"};
   const[sort,setSort]=useState<LearningSort>("used_desc");
-  const[showAllSessions,setShowAllSessions]=useState(false);
-  useEffect(()=>setShowAllSessions(false),[locale]);
+  const[showAllSessions,setShowAllSessions]=useState(true);
+  useEffect(()=>setShowAllSessions(true),[locale]);
   const localeSessions=(s.data||[]).filter((entry:any)=>entry.resource_url===locale).sort((a:any,b:any)=>String(b.session_date||"").localeCompare(String(a.session_date||""))||String(b.created_at||"").localeCompare(String(a.created_at||"")));
   const visibleLocaleSessions=showAllSessions?localeSessions:localeSessions.slice(0,12);
   const sortedLanguages=[...(q.data||[])].sort((a:any,b:any)=>{const aCount=(s.data||[]).filter((entry:any)=>entry.resource_url===a.locale_code).length,bCount=(s.data||[]).filter((entry:any)=>entry.resource_url===b.locale_code).length;const names=String(a.language_name||"").localeCompare(String(b.language_name||""),"es",{sensitivity:"base"});if(sort==="title_asc")return names;if(sort==="title_desc")return -names;if(sort==="used_asc")return aCount-bCount||names;if(sort==="recent")return String(b.updated_at||b.created_at||"").localeCompare(String(a.updated_at||a.created_at||""))||names;if(sort==="oldest")return String(a.created_at||"").localeCompare(String(b.created_at||""))||names;return bCount-aCount||names;});
