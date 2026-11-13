@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { MoonStar, Save } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { MoonStar, Save, Sparkles } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,6 +90,7 @@ function shortDate(date: string): string {
 
 export function SleepPanel() {
   const { date } = useGlobalDate();
+  const navigate = useNavigate();
   const currentQuery = usePersonalDateList<HealthMetric>("health_metrics", "metric_date", date);
   const historyQuery = usePersonalRecentList<HealthMetric>("health_metrics", "metric_date", 100);
   const saveMetric = useHealthMetricMutation();
@@ -118,10 +122,14 @@ export function SleepPanel() {
     return (historyQuery.data ?? [])
       .map((row) => {
         const details = readSleepDetails(row.notes);
-        const hours =
-          row.sleep_hours == null
-            ? sleepDurationHours(details.bedtime, details.wakeTime)
-            : Number(row.sleep_hours);
+        const storedHours = row.sleep_hours == null ? null : Number(row.sleep_hours);
+        // If an older form saved 0/invalid hours but kept the real times in notes,
+        // recover the duration from those times instead of hiding that night.
+        const hasValidStoredHours =
+          storedHours !== null && Number.isFinite(storedHours) && storedHours > 0 && storedHours <= 24;
+        const hours = hasValidStoredHours
+          ? storedHours
+          : sleepDurationHours(details.bedtime, details.wakeTime);
         return { date: row.metric_date, hours, details };
       })
       .filter((row): row is { date: string; hours: number; details: SleepDetails } =>
@@ -159,6 +167,49 @@ export function SleepPanel() {
   }, [history, date]);
   const latest = history.at(-1) ?? null;
   const maxHours = Math.max(10, Math.ceil(Math.max(...history.map((row) => row.hours), 0) + 1));
+  const sleepFingerprint = history.map((row) => row.date + ":" + row.hours.toFixed(2)).join("|");
+  const personalSleepTarget = sleepDurationHours(schedule.bedtime, schedule.wakeTime);
+
+  // The assistant reads the owner's Health + Diary records and reports only
+  // patterns supported by dated sleep entries. The result is cached per data
+  // fingerprint, so switching tabs does not call the model repeatedly.
+  const sleepInsight = useQuery({
+    queryKey: ["assistant", "sleep-insight", sleepFingerprint, personalSleepTarget ?? "no-personal-target"],
+    enabled: !historyQuery.isLoading && !profileQuery.isLoading && history.length >= 3,
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: false,
+    queryFn: async () => {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !data.session) {
+        throw new Error("Tu sesión no está disponible para consultar la IA.");
+      }
+
+      const targetContext = personalSleepTarget === null
+        ? "No he definido una duración objetivo; no etiquetes mis noches como buenas o malas. Describe solo tendencias y promedios reales."
+        : "Mi horario habitual equivale a " + formatSleepHours(personalSleepTarget) + ". Puedes señalar noches consecutivas por debajo de mi propia referencia, pero no conviertas eso en un diagnóstico.";
+
+      const response = await fetch("/api/assistant/chat", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer " + data.session.access_token,
+        },
+        body: JSON.stringify({
+          message:
+            "Dame una lectura proactiva y breve de mi descanso de los últimos 14 días. Cruza Salud con Diario y mis registros de sueños si aportan contexto. " +
+            "Cuenta únicamente noches con fecha y duración válidas; nunca conviertas una fecha sin registro en cero ni inventes datos. " +
+            "Indica cuántas noches consecutivas están por debajo de mi horario habitual solo si las fechas lo demuestran. " +
+            targetContext +
+            " Compara semanas solo cuando haya datos suficientes; si no, dilo. Ofrece un siguiente paso amable, sin alarmismo ni diagnóstico.",
+          history: [],
+        }),
+      });
+      const result = (await response.json().catch(() => ({}))) as { answer?: string; error?: string };
+      if (!response.ok) throw new Error(result.error || "No se pudo generar el análisis del descanso.");
+      if (!result.answer?.trim()) throw new Error("La IA no devolvió una recomendación.");
+      return result.answer.trim();
+    },
+  });
 
   const saveSleep = async () => {
     if (Boolean(sleepDetails.bedtime) !== Boolean(sleepDetails.wakeTime)) {
@@ -282,6 +333,37 @@ export function SleepPanel() {
         {weeklyComparison.difference!==null?<p className="text-xs text-muted-foreground">{weeklyComparison.difference>0.05?"Estás durmiendo en promedio "+formatSleepHours(weeklyComparison.difference)+" más por noche.":weeklyComparison.difference< -0.05?"Estás durmiendo en promedio "+formatSleepHours(Math.abs(weeklyComparison.difference))+" menos por noche.":"Tu promedio se mantiene prácticamente igual."}</p>:<p className="text-xs text-muted-foreground">Registra noches en ambos periodos para comparar las semanas.</p>}
       </section>
 
+      <section className="glass space-y-3 rounded-2xl border border-primary/20 p-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <div>
+            <h3 className="font-semibold">Lectura inteligente del descanso</h3>
+            <p className="text-xs text-muted-foreground">La IA contrasta tus noches registradas con tu horario habitual y consulta el Diario cuando hay sueños que aportan contexto.</p>
+          </div>
+        </div>
+        {history.length < 3 ? (
+          <p className="text-sm text-muted-foreground">Aún hacen falta al menos 3 noches con duración válida para buscar una tendencia. Las fechas sin registro no se cuentan como cero.</p>
+        ) : sleepInsight.isLoading ? (
+          <p className="text-sm text-muted-foreground">Analizando tus registros de Salud y Diario…</p>
+        ) : sleepInsight.isError ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">{sleepInsight.error instanceof Error ? sleepInsight.error.message : "No se pudo generar el análisis."}</p>
+            <Button type="button" size="sm" variant="outline" onClick={() => void sleepInsight.refetch()}>
+              Volver a analizar
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="whitespace-pre-wrap text-sm leading-6">{sleepInsight.data}</p>
+            <div className="flex justify-end">
+              <Button type="button" size="sm" variant="ghost" onClick={() => void sleepInsight.refetch()}>
+                Actualizar análisis
+              </Button>
+            </div>
+          </div>
+        )}
+      </section>
+
       <section className="glass space-y-3 rounded-2xl p-4">
         <div>
           <h3 className="font-semibold">Evolución del sueño</h3>
@@ -326,7 +408,7 @@ export function SleepPanel() {
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""}
                   formatter={(value: number) => [formatSleepHours(Number(value)), "Duración"]}
                 />
-                <Bar dataKey="hours" name="Sueño" fill="hsl(var(--primary))" radius={[5, 5, 0, 0]} maxBarSize={48} />
+                <Bar dataKey="hours" name="Sueño" fill="hsl(var(--primary))" radius={[5, 5, 0, 0]} barSize={26} maxBarSize={26} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -357,10 +439,22 @@ export function SleepPanel() {
             Despertares
             <Input className="mt-1" type="number" min="0" max="30" step="1" value={sleepDetails.awakenings} onChange={(event) => setSleepDetails((value) => ({ ...value, awakenings: event.target.value }))} placeholder="0" />
           </label>
-          <label className="text-xs text-muted-foreground">
-            Siesta (min)
-            <Input className="mt-1" type="number" min="0" max="1440" step="5" value={sleepDetails.napMinutes} onChange={(event) => setSleepDetails((value) => ({ ...value, napMinutes: event.target.value }))} placeholder="0" />
-          </label>
+          <div className="min-w-0 space-y-2">
+            <label className="block text-xs text-muted-foreground">
+              Siesta (min)
+              <Input className="mt-1" type="number" min="0" max="1440" step="5" value={sleepDetails.napMinutes} onChange={(event) => setSleepDetails((value) => ({ ...value, napMinutes: event.target.value }))} placeholder="0" />
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-full px-2 text-xs"
+              onClick={() => void navigate({ to: "/diario", search: { capture: "dream" } })}
+            >
+              <MoonStar className="mr-1.5 h-3.5 w-3.5" />
+              Sueño (soñar)
+            </Button>
+          </div>
         </div>
         {hoursValue !== null && Number.isFinite(hoursValue) && hoursValue > 0 && (
           <p className="text-xs text-muted-foreground">Duración calculada: {formatSleepHours(hoursValue)}</p>
