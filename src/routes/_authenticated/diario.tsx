@@ -17,7 +17,7 @@ import { lifeGraphService } from "@/services/life-graph.service";
 import { formatDayLabel,offsetFromToday } from "@/lib/date";
 import { JOURNAL_META,JOURNAL_TYPES,compareEntries,entryMatches,entrySnippet,type JournalEntry,type JournalType } from "@/domain/journal";
 
-export const Route=createFileRoute("/_authenticated/diario")({head:()=>({meta:[{title:"Diario — Personal OS"},{name:"description",content:"Diario personal con captura libre, ideas, sueños, reflexiones, recuerdos y proyectos conectados al Life Graph."}]}),component:DiarioPage});
+export const Route=createFileRoute("/_authenticated/diario")({validateSearch:(search:Record<string,unknown>)=>({capture:search.capture==="dream"?"dream" as const:undefined}),head:()=>({meta:[{title:"Diario — Personal OS"},{name:"description",content:"Diario personal con captura libre, ideas, sueños, reflexiones, recuerdos y proyectos conectados al Life Graph."}]}),component:DiarioPage});
 type Filter="all"|JournalType|"shopping";
 const TYPE_INTENT:Record<JournalType,string>={
  diary:"Cuenta lo que está pasando.",
