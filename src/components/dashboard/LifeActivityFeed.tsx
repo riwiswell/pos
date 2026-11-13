@@ -1,5 +1,8 @@
 import { Activity, BookOpen, BriefcaseBusiness, HeartPulse, Link2, NotebookPen, Sparkles, Target, Users } from "lucide-react";
-import { useLGRecentEvents } from "@/hooks/use-life-graph";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useLGEventsByDate } from "@/hooks/use-life-graph";
 
 type LifeEvent = {
   id: string;
@@ -113,50 +116,113 @@ function eventDate(value: string) {
   return new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(date);
 }
 
-export function LifeActivityFeed({ connections, connectionsLoading }: { connections: LifeConnection[]; connectionsLoading: boolean }) {
-  const query = useLGRecentEvents(6);
+export function LifeActivityFeed({ date, connections, connectionsLoading }: { date:string; connections: LifeConnection[]; connectionsLoading: boolean }) {
+  const [open, setOpen] = useState(false);
+  const query = useLGEventsByDate(date, open);
   const events = (query.data ?? []) as LifeEvent[];
+  const dayLabel = new Intl.DateTimeFormat("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(date + "T12:00:00"));
+
   return (
-    <section className="overflow-hidden rounded-[26px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[.06] via-card to-card shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-3 pt-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-cyan-500">Tu historia conectada</p>
-          <h2 className="mt-1 flex items-center gap-2 text-lg font-semibold"><Activity className="h-4 w-4 text-cyan-500" /> Actividad reciente</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Acciones reales de tus módulos, reunidas en una sola línea de vida.</p>
+    <>
+      <section className="rounded-[22px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[.07] via-card to-card px-3.5 py-3 shadow-sm">
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[.15em] text-cyan-500">Tu historia conectada</p>
+            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+                <Activity className="h-4 w-4 shrink-0 text-cyan-500" />
+                Línea de vida
+              </h2>
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background/70 px-2 py-0.5 text-[10px] text-muted-foreground">
+                <Link2 className="h-3 w-3" />
+                {connectionsLoading ? "…" : `${connections.length} conexiones`}
+              </span>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-9 shrink-0 rounded-xl px-3 text-xs"
+            onClick={() => setOpen(true)}
+          >
+            <Activity className="mr-1.5 h-3.5 w-3.5" />
+            Ver actividad
+          </Button>
         </div>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1.5 text-xs text-muted-foreground">
-          <Link2 className="h-3.5 w-3.5" /> {connectionsLoading ? "…" : `${connections.length} conexiones`}
-        </div>
-      </div>
-      {query.isLoading ? <p className="px-4 pb-4 text-sm text-muted-foreground">Cargando tu actividad…</p> :
-        query.isError ? <p className="px-4 pb-4 text-sm text-destructive">No se pudo cargar tu línea de vida.</p> :
-        events.length === 0 ? <div className="mx-4 mb-4 rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">Cuando registres hábitos, salud, aprendizaje o proyectos, sus acontecimientos aparecerán aquí automáticamente.</div> :
-        <div className="divide-y divide-border/70 px-4">
-          {events.map((event) => {
-            const domain = DOMAIN[event.entity_type ?? ""] ?? { label: "Personal", icon: Activity, tone: "text-muted-foreground bg-muted" };
-            const Icon = domain.icon;
-            const connected = hasTypedConnection(event, connections);
-            return (
-              <article key={event.id} className="flex items-start gap-3 py-3">
-                <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${domain.tone}`}><Icon className="h-4 w-4" /></span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium">{eventTitle(event)}</p>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{domain.label}</span>
-                  </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{eventDetail(event)}</p>
+      </section>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="flex max-h-[88vh] w-[calc(100vw-1rem)] max-w-xl flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl">
+          <DialogHeader className="border-b border-border px-4 pb-3 pt-5 pr-12 text-left sm:px-5">
+            <DialogTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-cyan-500" />
+              Actividad del día
+            </DialogTitle>
+            <DialogDescription className="capitalize">
+              Tus registros del {dayLabel}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2 sm:px-5">
+            {query.isLoading ? (
+              <div className="space-y-3 py-3">
+                <div className="h-16 animate-pulse rounded-xl bg-muted/60" />
+                <div className="h-16 animate-pulse rounded-xl bg-muted/60" />
+                <div className="h-16 animate-pulse rounded-xl bg-muted/60" />
+              </div>
+            ) : query.isError ? (
+              <div className="my-3 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                No se pudo cargar la actividad de esta fecha. Cierra la ventana e inténtalo de nuevo.
+              </div>
+            ) : events.length === 0 ? (
+              <div className="my-3 rounded-xl border border-dashed border-border p-5 text-center">
+                <Activity className="mx-auto h-6 w-6 text-muted-foreground/60" />
+                <p className="mt-2 text-sm font-medium">Todavía no hay actividad registrada</p>
+                <p className="mt-1 text-xs text-muted-foreground">Cuando registres algo en tus módulos, aparecerá aquí.</p>
+              </div>
+            ) : (
+              <>
+                <p className="py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {events.length} {events.length === 1 ? "registro" : "registros"}
+                </p>
+                <div className="divide-y divide-border/70">
+                  {events.map((event) => {
+                    const domain = DOMAIN[event.entity_type ?? ""] ?? { label: "Personal", icon: Activity, tone: "text-muted-foreground bg-muted" };
+                    const Icon = domain.icon;
+                    const connected = hasTypedConnection(event, connections);
+                    return (
+                      <article key={event.id} className="flex min-w-0 items-start gap-3 py-3">
+                        <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${domain.tone}`}>
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <p className="min-w-0 break-words text-sm font-medium">{eventTitle(event)}</p>
+                            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{domain.label}</span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{eventDetail(event)}</p>
+                          <span className={`mt-1 inline-flex items-center gap-1 text-[10px] ${connected ? "text-emerald-500" : "text-muted-foreground"}`}>
+                            <Link2 className="h-3 w-3" />
+                            {connected ? "Conectado" : "En historial"}
+                          </span>
+                        </div>
+                        <time className="shrink-0 pt-0.5 text-right text-[10px] tabular-nums text-muted-foreground">
+                          {eventDate(event.event_at).replace(/^.*?,?\s*/, "")}
+                        </time>
+                      </article>
+                    );
+                  })}
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-[10px] text-muted-foreground">{eventDate(event.event_at)}</p>
-                  <span className={`mt-1 inline-flex items-center gap-1 text-[10px] ${connected ? "text-emerald-500" : "text-muted-foreground"}`}>
-                    <Link2 className="h-3 w-3" /> {connected ? "Conectado" : "En historial"}
-                  </span>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      }
-    </section>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
