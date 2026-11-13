@@ -110,10 +110,10 @@ function eventDetail(event: LifeEvent) {
   return event.event_type === "updated" ? "Registro actualizado" : "Añadido a tu historial";
 }
 
-function eventDate(value: string) {
+function eventTime(value: string) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Fecha no disponible";
-  return new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(date);
+  if (Number.isNaN(date.getTime())) return "Hora no disponible";
+  return new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digit" }).format(date);
 }
 
 export function LifeActivityFeed({ date, connections, connectionsLoading }: { date:string; connections: LifeConnection[]; connectionsLoading: boolean }) {
