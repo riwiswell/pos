@@ -228,7 +228,7 @@ export function LifeActivityFeed({ date, connections, connectionsLoading }: { da
     () => new Map<string, Habit>((habitsQuery.data ?? []).map((habit) => [habit.id, habit] as const)),
     [habitsQuery.data],
   );
-  const previewQuery = useLGEventsByDate(date, true, 8);
+  const previewQuery = useLGEventsByDate(date, true, 7);
   const query = useLGEventsByDate(date, open);
   const previewEvents = (previewQuery.data ?? []) as LifeEvent[];
   const events = (query.data ?? []) as LifeEvent[];
