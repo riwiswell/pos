@@ -1100,3 +1100,60 @@ html[data-skin="chess"] .app-shell-main{background-image:linear-gradient(45deg,r
 html[data-skin="chess"] .glass{border:1px solid color-mix(in oklab,#A98A67 35%,var(--border));border-radius:.42rem}
 html[data-skin="chess"] .inicio-hero{border:1px solid #A98A67;background:linear-gradient(120deg,#36251B,#62412D 62%,#94714D)!important}
 html[data-skin="chess"] .weather-card{border:1px solid #A98A67;background:linear-gradient(130deg,#4A3022,#755237 65%,#B28A60)}
+
+
+/* Personal OS master emblem: the app identity stays constant across theme packs. */
+.skin-branding{
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:.12rem;
+}
+html[data-skin] .skin-branding__symbol{
+  display:grid;
+  width:2.35rem!important;
+  height:2.35rem!important;
+  flex:0 0 auto;
+  place-items:center;
+  overflow:visible;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.skin-branding__symbol img{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+.skin-branding__copy{
+  align-items:center;
+  gap:.12rem;
+  text-align:center;
+}
+.skin-branding__copy strong{
+  max-width:100%;
+  font-size:.66rem;
+  letter-spacing:.09em;
+  text-align:center;
+}
+.skin-branding__copy small{
+  font-size:.42rem;
+  text-align:center;
+}
+html[data-skin] .skin-branding--collapsed .skin-branding__symbol{
+  width:1.7rem!important;
+  height:1.7rem!important;
+}
+html[data-skin] .skin-branding--compact .skin-branding__symbol{
+  width:1.65rem!important;
+  height:1.65rem!important;
+}
+.skin-branding--compact .skin-branding__copy small{
+  display:none;
+}
+.skin-branding--compact .skin-branding__copy strong{
+  font-size:.59rem;
+  letter-spacing:.07em;
+}
