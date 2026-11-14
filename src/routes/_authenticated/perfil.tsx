@@ -41,7 +41,7 @@ const BACKUP_TABLES = [
   "journal_entries",
   "shopping_lists", "shopping_items",
   "alarms", "health_metrics", "medications", "medication_doses",
-  "relationships", "menstrual_profiles", "menstrual_records", "medical_appointments", "nutrition_logs",
+  "relationships", "menstrual_profiles", "menstrual_records", "menstrual_daily_logs", "medical_appointments", "nutrition_logs",
   "life_goals", "routines", "routine_logs", "checklists", "checklist_items", "bucket_list",
   "learning_items", "learning_notes", "learning_sessions", "language_profiles",
   "relationship_interactions", "work_items", "work_sessions",
