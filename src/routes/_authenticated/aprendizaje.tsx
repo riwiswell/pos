@@ -77,24 +77,87 @@ function sortLearningItems(items:any[],sessions:any[],sort:LearningSort){
  });
 }
 function LearningSortControl({value,onChange,includeGenre=false}:{value:LearningSort;onChange:(value:LearningSort)=>void;includeGenre?:boolean}){return <select aria-label="Ordenar elementos" title="Ordenar elementos" className="h-9 max-w-[148px] rounded-lg border border-input bg-background px-2 text-xs text-foreground" value={value} onChange={event=>onChange(event.target.value as LearningSort)}><option value="used_desc">Más usado</option><option value="used_asc">Menos usado</option>{includeGenre&&<option value="genre">Género</option>}<option value="title_asc">A–Z</option><option value="title_desc">Z–A</option><option value="recent">Más reciente</option><option value="oldest">Más antiguo</option></select>;}
+type ChessApiData={profile:any;stats:any;games:any[];archives:string[]};
+function ChessDashboard(){
+ const[data,setData]=useState<ChessApiData|null>(null);
+ const[loading,setLoading]=useState(true);
+ const[error,setError]=useState("");
+ const[sessions,setSessions]=useState<any[]>([]);
+ const{data:items}=useLGList("learning_items");
+ const{data:allSessions}=useLGList("learning_sessions","session_date");
+ const{user}=useAuth();
+ const chessItem=(items||[]).find((item:any)=>item.kind==="chess"||/ajedrez/i.test(String(item.title||"")));
+ const chessSessions=(allSessions||[]).filter((entry:any)=>entry.learning_item_id===chessItem?.id&&Number(entry.minutes)>0);
+ const totalMinutes=chessSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);
+ useEffect(()=>{
+  let active=true;
+  const load=async()=>{
+   setLoading(true);setError("");
+   try{
+    const response=await fetch("/api/chess/profile",{headers:{Accept:"application/json"},cache:"no-store"});
+    const payload=await response.json();
+    if(!response.ok)throw new Error(payload.error||"No se pudo consultar Chess.com.");
+    if(active)setData(payload);
+   }catch(e){if(active)setError(e instanceof Error?e.message:"No se pudo cargar Chess.com.");}
+   finally{if(active)setLoading(false);}
+  };
+  void load();return()=>{active=false};
+ },[]);
+ const ratingRows=Object.entries(data?.stats||{}).filter(([key,value]:any)=>key.startsWith("chess_")&&value?.last?.rating).map(([key,value]:any)=>({key:key.replace("chess_","").replaceAll("_"," "),rating:value.last.rating,best:value.best?.rating,record:value.record||{}}));
+ const totals=ratingRows.reduce((acc,row)=>({wins:acc.wins+(Number(row.record.win)||0),losses:acc.losses+(Number(row.record.loss)||0),draws:acc.draws+(Number(row.record.draw)||0)}),{wins:0,losses:0,draws:0});
+ const latestGames=[...(data?.games||[])].sort((a:any,b:any)=>(Number(b.end_time)||0)-(Number(a.end_time)||0)).slice(0,8);
+ const gameOutcome=(game:any)=>{const username=String(data?.profile?.username||"").toLowerCase();const isWhite=String(game.white?.username||"").toLowerCase()===username;const mine=isWhite?game.white:game.black;const result=String(mine?.result||"");if(["win","checkmated","timeout","resigned","abandoned","lose"].includes(result))return result==="win"?"Victoria":"Derrota";if(["agreed","repetition","stalemate","insufficient","50move","timevsinsufficient","threecheck","draw"].includes(result))return "Tablas";return result||"Resultado no disponible"};
+ const dateLabel=(stamp:number)=>stamp?new Date(stamp*1000).toLocaleDateString("es-CO",{day:"2-digit",month:"short",year:"numeric"}):"Fecha no disponible";
+ return <section className="space-y-4">
+  <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 p-4 text-white shadow-sm">
+   <div className="absolute -right-8 -top-10 text-[190px] leading-none text-white/5">♞</div>
+   <div className="relative flex items-center gap-3">
+    {data?.profile?.avatar?<img src={data.profile.avatar} alt="Avatar de Chess.com" className="h-16 w-16 rounded-2xl border-2 border-white/30 object-cover"/>:<div className="grid h-16 w-16 place-items-center rounded-2xl border border-white/20 bg-white/10 text-4xl">♟</div>}
+    <div className="min-w-0 flex-1"><p className="text-xs uppercase tracking-[.2em] text-amber-200">Tu espacio de ajedrez</p><h2 className="truncate text-xl font-semibold">{data?.profile?.name||"Ricardo"}</h2><a href="https://www.chess.com/member/ricardowiswell" target="_blank" rel="noreferrer" className="text-sm text-amber-100 underline underline-offset-2">@ricardowiswell ↗</a></div>
+    <span className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px]">Chess.com</span>
+   </div>
+   <p className="relative mt-4 max-w-xl text-sm text-slate-200">Partidas verificadas y práctica personal, reunidas en un solo lugar.</p>
+  </div>
+  {loading&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">Consultando tu perfil y tus estadísticas…</div>}
+  {error&&<div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm"><p>{error}</p><Button size="sm" variant="outline" className="mt-2" onClick={()=>location.reload()}>Reintentar</Button></div>}
+  {data&&<>
+   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="glass rounded-xl p-3"><p className="text-xs text-muted-foreground">Victorias</p><p className="mt-1 text-2xl font-semibold tabular-nums">{totals.wins.toLocaleString("es-CO")}</p></div>
+    <div className="glass rounded-xl p-3"><p className="text-xs text-muted-foreground">Derrotas</p><p className="mt-1 text-2xl font-semibold tabular-nums">{totals.losses.toLocaleString("es-CO")}</p></div>
+    <div className="glass rounded-xl p-3"><p className="text-xs text-muted-foreground">Tablas</p><p className="mt-1 text-2xl font-semibold tabular-nums">{totals.draws.toLocaleString("es-CO")}</p></div>
+    <div className="glass rounded-xl p-3"><p className="text-xs text-muted-foreground">Práctica en POS</p><p className="mt-1 text-2xl font-semibold tabular-nums">{Math.floor(totalMinutes/60)}h {totalMinutes%60}m</p><p className="text-[10px] text-muted-foreground">{chessSessions.length} sesiones registradas</p></div>
+   </div>
+   <div className="space-y-2"><div className="flex items-center justify-between"><h3 className="font-semibold">Tu nivel por modalidad</h3><span className="text-[10px] text-muted-foreground">Datos públicos de Chess.com</span></div>
+    {ratingRows.length? <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{ratingRows.map(row=><div key={row.key} className="glass rounded-xl p-3"><p className="truncate text-xs capitalize text-muted-foreground">{row.key}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{Number(row.rating).toLocaleString("es-CO")}</p><p className="text-[10px] text-muted-foreground">Máximo {row.best?Number(row.best).toLocaleString("es-CO"):"—"}</p></div>)}</div>:<div className="glass rounded-xl p-3 text-sm text-muted-foreground">Chess.com aún no publica puntuaciones para tus modalidades.</div>}
+   </div>
+   <div className="glass rounded-2xl p-3"><div className="mb-2 flex items-center justify-between"><h3 className="font-semibold">Partidas recientes</h3><span className="text-xs text-muted-foreground">{latestGames.length} mostradas</span></div>
+    {latestGames.length?<div className="divide-y">{latestGames.map((game:any,index:number)=><a key={game.uuid||game.url||index} href={game.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-lg">♟</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{game.white?.username} vs. {game.black?.username}</span><span className="block text-xs capitalize text-muted-foreground">{String(game.time_class||"partida").replaceAll("_"," ")} · {dateLabel(Number(game.end_time))}</span></span><span className={"text-xs font-medium "+(gameOutcome(game)==="Victoria"?"text-emerald-600":gameOutcome(game)==="Derrota"?"text-destructive":"text-muted-foreground")}>{gameOutcome(game)}</span></a>)}</div>:<p className="text-sm text-muted-foreground">No hay partidas en los últimos archivos consultados.</p>}
+   </div>
+   <div className="glass rounded-2xl p-3"><h3 className="font-semibold">Tu práctica en POS</h3><p className="mt-1 text-sm text-muted-foreground">Las sesiones que registres aquí siguen siendo independientes de las partidas importadas. Así también puedes contar estudio, tácticas y partidas presenciales.</p><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" onClick={()=>{const el=document.getElementById("chess-practice-link");el?.click()}} disabled={!chessItem}>Registrar práctica</Button><a id="chess-practice-link" href="/aprendizaje?tab=other" className="hidden">Otros aprendizajes</a><a href="https://www.chess.com/member/ricardowiswell/stats" target="_blank" rel="noreferrer" className="inline-flex h-9 items-center rounded-md border px-3 text-sm">Ver estadísticas completas ↗</a></div>{!chessItem&&<p className="mt-2 text-xs text-amber-700">No encontré una ficha de Ajedrez existente para enlazar las sesiones; no he creado otra ni alterado tus registros.</p>}</div>
+   <p className="text-[11px] text-muted-foreground">Chess.com actualiza la API pública de forma periódica (puede tardar hasta 12 horas). POS no está afiliado a Chess.com. Partidas consultadas: {data.archives?.length||0} archivos mensuales disponibles; se muestran los tres más recientes.</p>
+  </>}
+ </section>;
+}
+
 function LearningPage(){
   const[tab,setTab]=useState("books");
   const{data:profile}=useProfile();
   const booksHidden=profile?.hidden_features?.["learning.books"]===true;
   const current=booksHidden&&tab==="books"?"languages":tab;
-  const tabsClass=booksHidden?"grid-cols-2":"grid-cols-3";
+  const tabsClass=booksHidden?"grid-cols-4":"grid-cols-4";
   return <div className="space-y-5 pb-24">
     <GlobalDateHeader/>
     <div>
       <h1 className="flex items-center gap-2 text-xl font-semibold">Aprendizaje <HelpTip helpKey="learning"/></h1>
-      <p className="text-sm text-muted-foreground">Lecturas, idiomas y otros aprendizajes.</p>
+      <p className="text-sm text-muted-foreground">Lecturas, idiomas, ajedrez y otros aprendizajes.</p>
     </div>
     <div className={"grid "+tabsClass+" gap-1 rounded-xl border bg-muted/30 p-1"}>
       {!booksHidden&&<button type="button" onClick={()=>setTab("books")} aria-pressed={current==="books"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="books"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Libros</button>}
       <button type="button" onClick={()=>setTab("languages")} aria-pressed={current==="languages"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="languages"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Idiomas</button>
+      <button type="button" onClick={()=>setTab("chess")} aria-pressed={current==="chess"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="chess"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>♟ Ajedrez</button>
       <button type="button" onClick={()=>setTab("other")} aria-pressed={current==="other"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="other"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Otros</button>
     </div>
-    {current==="books"?<Books/>:current==="languages"?<Languages/>:<OtherLearning mode="resources"/>}
+    {current==="books"?<Books/>:current==="languages"?<Languages/>:current==="chess"?<ChessDashboard/>:<OtherLearning mode="resources"/>}
   </div>;
 }
 export function VideoGamesLibrary(){return <OtherLearning mode="games"/>;}
