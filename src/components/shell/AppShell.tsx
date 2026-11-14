@@ -224,7 +224,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div key={item.key} data-sidebar-item-key={item.key}
         className={cn("flex min-w-0 items-center gap-1 rounded-xl transition-colors", !visible && "opacity-55", draggingKey === item.key && "opacity-45", dragTarget === item.key && "bg-sidebar-accent ring-2 ring-sidebar-primary/60")}>
         {expanded && <button type="button" aria-label={"Arrastrar para reordenar " + item.label} title="Arrastra para cambiar de posición"
-          className="flex h-10 w-5 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-primary active:cursor-grabbing"
+          className="flex h-7 w-4 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-primary active:cursor-grabbing"
           onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
             if (event.button !== 0) return;
             event.currentTarget.setPointerCapture(event.pointerId);
@@ -287,8 +287,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div
           className={cn(
-            "relative flex shrink-0 flex-col items-center justify-end gap-4 border-b border-sidebar-border bg-sidebar/35 pb-5 pt-12 backdrop-blur-sm",
-            collapsed ? "min-h-[156px] px-2" : "min-h-[300px] px-4",
+            "relative flex shrink-0 flex-col items-center justify-start gap-2 border-b border-sidebar-border bg-sidebar/35 px-4 pb-2 pt-2 backdrop-blur-sm",
+            collapsed ? "h-[136px] min-h-[136px]" : "h-[216px] min-h-[216px]",
           )}
         >
           <SkinBranding skin={skin} collapsed={collapsed} sidebar />
@@ -303,7 +303,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-2 overflow-y-auto bg-sidebar p-3">
+        <nav className="sidebar-nav flex min-h-0 flex-1 flex-col gap-1 overflow-hidden bg-sidebar p-2">
           <div className="mb-1 flex justify-end">
             <Button type="button" size="icon" variant={menuEditing ? "secondary" : "ghost"} className="h-8 w-8"
               onClick={() => setMenuEditing((current) => !current)} aria-label="Opciones del menú" title="Opciones del menú" aria-pressed={menuEditing}>
