@@ -15,6 +15,8 @@ import { formatDayLabel } from "@/lib/date";
 
 const STRUCTURED_MARKER = "__POS_BODY_MEASURES__";
 
+type SleepSession = { bedtime: string; wakeTime: string };
+
 type SleepDetails = {
   bedtime: string;
   wakeTime: string;
@@ -103,10 +105,17 @@ export function SleepPanel() {
   const [manualHours, setManualHours] = useState("");
   const [schedule, setSchedule] = useState({ bedtime: "", wakeTime: "" });
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
+  const [extraSessions, setExtraSessions] = useState<SleepSession[]>([]);
 
   useEffect(() => {
     setSleepDetails(readSleepDetails(current?.notes ?? null));
     setManualHours(current?.sleep_hours == null ? "" : String(current.sleep_hours));
+    const storedSleep = readStructuredNotes(current?.notes ?? null).sleep;
+    const sessions = Array.isArray(storedSleep.sessions) ? storedSleep.sessions : [];
+    setExtraSessions(sessions.slice(1).filter((item) => item && typeof item === "object").map((item: any) => ({
+      bedtime: typeof item.bedtime === "string" ? item.bedtime : "",
+      wakeTime: typeof item.wakeTime === "string" ? item.wakeTime : "",
+    })));
   }, [current?.id, current?.metric_date, current?.notes, current?.sleep_hours]);
 
   useEffect(() => {
@@ -117,7 +126,13 @@ export function SleepPanel() {
     });
   }, [profileQuery.data]);
 
-  const calculatedHours = sleepDurationHours(sleepDetails.bedtime, sleepDetails.wakeTime);
+  const sessionDurations = [
+    sleepDurationHours(sleepDetails.bedtime, sleepDetails.wakeTime),
+    ...extraSessions.map((session) => sleepDurationHours(session.bedtime, session.wakeTime)),
+  ];
+  const calculatedHours = sessionDurations.every((value) => value !== null)
+    ? Math.round((sessionDurations.reduce((sum, value) => sum + (value ?? 0), 0)) * 100) / 100
+    : null;
   const hoursValue = calculatedHours ?? (manualHours.trim() ? Number(manualHours.replace(",", ".")) : null);
 
   // Keep every row that actually contains sleep information, even when its
@@ -130,12 +145,17 @@ export function SleepPanel() {
         const storedHours = row.sleep_hours == null ? null : Number(row.sleep_hours);
         const hasValidStoredHours =
           storedHours !== null && Number.isFinite(storedHours) && storedHours > 0 && storedHours <= 24;
+        const storedSessions = readStructuredNotes(row.notes).sleep.sessions;
+        const sessionTotal = Array.isArray(storedSessions) && storedSessions.length
+          ? storedSessions.reduce((sum: number, session: any) => sum + (sleepDurationHours(session?.bedtime, session?.wakeTime) ?? 0), 0)
+          : null;
         const recoveredHours = hasValidStoredHours
           ? storedHours
-          : sleepDurationHours(details.bedtime, details.wakeTime);
+          : sessionTotal !== null ? sessionTotal : sleepDurationHours(details.bedtime, details.wakeTime);
         const hasSleepData =
           row.sleep_hours !== null && row.sleep_hours !== undefined ||
-          Boolean(details.bedtime || details.wakeTime || details.awakenings || details.napMinutes);
+          Boolean(details.bedtime || details.wakeTime || details.awakenings || details.napMinutes) ||
+          (Array.isArray(storedSessions) && storedSessions.length > 0);
         const hours = recoveredHours !== null && Number.isFinite(recoveredHours) &&
           recoveredHours > 0 && recoveredHours <= 24 ? recoveredHours : null;
         return { date: row.metric_date, hours, details, hasSleepData };
@@ -230,14 +250,17 @@ export function SleepPanel() {
       setConfirmOverwrite(true);
       return;
     }
-    if (Boolean(sleepDetails.bedtime) !== Boolean(sleepDetails.wakeTime)) {
-      throw new Error("Completa la hora de acostarte y la de levantarte.");
+    const sessions = [{ bedtime: sleepDetails.bedtime, wakeTime: sleepDetails.wakeTime }, ...extraSessions];
+    for (const [index, session] of sessions.entries()) {
+      if (Boolean(session.bedtime) !== Boolean(session.wakeTime)) {
+        throw new Error(`Completa las dos horas de la sesión ${index + 1}.`);
+      }
+      if (session.bedtime && session.bedtime === session.wakeTime) {
+        throw new Error(`Las horas de la sesión ${index + 1} no pueden ser iguales.`);
+      }
     }
-    if (sleepDetails.bedtime && sleepDetails.bedtime === sleepDetails.wakeTime) {
-      throw new Error("La hora de acostarte y la de levantarte no pueden ser iguales.");
-    }
-    if (!sleepDetails.bedtime && !sleepDetails.wakeTime && !manualHours.trim()) {
-      throw new Error("Registra las horas de acostarte y levantarte, o indica la duración.");
+    if (!sessions.some((session) => session.bedtime && session.wakeTime) && !manualHours.trim()) {
+      throw new Error("Registra al menos una sesión completa o indica la duración.");
     }
 
     const integers = [
@@ -271,6 +294,7 @@ export function SleepPanel() {
         wakeTime: sleepDetails.wakeTime || null,
         awakenings: sleepDetails.awakenings === "" ? null : Number(sleepDetails.awakenings),
         napMinutes: sleepDetails.napMinutes === "" ? null : Number(sleepDetails.napMinutes),
+        sessions: sessions.filter((session) => session.bedtime && session.wakeTime),
       },
     });
 
@@ -477,7 +501,21 @@ export function SleepPanel() {
             </Button>
           </div>
         </div>
-        {hoursValue !== null && Number.isFinite(hoursValue) && hoursValue > 0 && (
+        <div className="space-y-2 rounded-xl border border-dashed p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Otras sesiones del día</p>
+            <Button type="button" size="sm" variant="outline" onClick={() => setExtraSessions((items) => [...items, { bedtime: "", wakeTime: "" }])}>Añadir siesta / sesión</Button>
+          </div>
+          {extraSessions.map((session, index) => (
+            <div key={index} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+              <label className="text-xs text-muted-foreground">Inicio<Input className="mt-1" type="time" value={session.bedtime} onChange={(event) => setExtraSessions((items) => items.map((item, i) => i === index ? { ...item, bedtime: event.target.value } : item))} /></label>
+              <label className="text-xs text-muted-foreground">Fin<Input className="mt-1" type="time" value={session.wakeTime} onChange={(event) => setExtraSessions((items) => items.map((item, i) => i === index ? { ...item, wakeTime: event.target.value } : item))} /></label>
+              <Button type="button" size="icon" variant="ghost" aria-label="Quitar sesión" onClick={() => setExtraSessions((items) => items.filter((_, i) => i !== index))}>×</Button>
+            </div>
+          ))}
+          <p className="text-[11px] text-muted-foreground">Puedes guardar el sueño principal y varias siestas. POS sumará las duraciones sin borrar las sesiones anteriores.</p>
+        </div>
+                {hoursValue !== null && Number.isFinite(hoursValue) && hoursValue > 0 && (
           <p className="text-xs text-muted-foreground">Duración calculada: {formatSleepHours(hoursValue)}</p>
         )}
         <Button
@@ -555,11 +593,11 @@ export function SleepPanel() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="sleep-overwrite-title">
           <div className="w-full max-w-md space-y-4 rounded-2xl border bg-background p-5 shadow-xl">
             <h3 id="sleep-overwrite-title" className="text-lg font-semibold">Ya existe un registro de sueño para esta fecha</h3>
-            <p className="text-sm text-muted-foreground">¿Estás corrigiendo el sueño que ya registraste o quieres añadir una siesta? No reemplazaremos nada sin tu confirmación.</p>
-            <p className="text-sm">Para añadir una siesta, conserva las horas del sueño principal y completa «Siesta (min)». Para sustituir el registro, confirma expresamente.</p>
+            <p className="text-sm text-muted-foreground">Ya hay sueño registrado para esta fecha. Puedes añadir sesiones y siestas; al guardar se conservarán todas las sesiones que aparecen en el formulario.</p>
+            <p className="text-sm">Confirma solo si deseas guardar los cambios del día.</p>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button type="button" variant="ghost" onClick={() => setConfirmOverwrite(false)}>Volver sin guardar</Button>
-              <Button type="button" onClick={() => { setConfirmOverwrite(false); void saveSleep(true).catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo guardar el registro de sueño.")); }}>Confirmar y reemplazar</Button>
+              <Button type="button" onClick={() => { setConfirmOverwrite(false); void saveSleep(true).catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo guardar el registro de sueño.")); }}>Guardar sesiones del día</Button>
             </div>
           </div>
         </div>
