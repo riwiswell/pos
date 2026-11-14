@@ -27,7 +27,7 @@ self.addEventListener("push", (event) => {
   const options = {
     body: typeof payload.body === "string" ? payload.body : "Tienes un recordatorio pendiente.",
     tag: typeof payload.tag === "string" ? payload.tag : "personal-os",
-    icon: "/favicon.ico",
+    icon: "/personal-os-logo.png",
     data: { ...rawData, url: safeUrl },
     requireInteraction: true,
     ...(isMedicationDose
