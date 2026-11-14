@@ -475,6 +475,25 @@ async function syncHydrationJobs(env:Env,userId:string,input?:unknown) {
 
 async function handleApi(request:Request,env:Env):Promise<Response|null>{
  const url=new URL(request.url);
+ if(url.pathname==="/api/chess/profile"&&request.method==="GET"){
+  const username="ricardowiswell";
+  const headers={Accept:"application/json","User-Agent":"POS-Personal-OS/1.0 (contact: riwiswell@gmail.com)"};
+  try{
+   const base="https://api.chess.com/pub/player/"+username;
+   const [profileResponse,statsResponse,archivesResponse]=await Promise.all([
+    fetch(base,{headers}),fetch(base+"/stats",{headers}),fetch(base+"/games/archives",{headers})
+   ]);
+   if(!profileResponse.ok||!statsResponse.ok||!archivesResponse.ok)return json({error:"Chess.com no pudo entregar el perfil, estadísticas o archivos de partidas.",status:Math.max(profileResponse.status,statsResponse.status,archivesResponse.status)},502);
+   const [profile,stats,archiveData]=await Promise.all([profileResponse.json(),statsResponse.json(),archivesResponse.json()]);
+   const archives=Array.isArray(archiveData.archives)?archiveData.archives:[];
+   const games:any[]=[];
+   for(const archiveUrl of archives.slice(-3)){
+    const gameResponse=await fetch(archiveUrl,{headers});
+    if(gameResponse.ok){const payload=await gameResponse.json() as any;if(Array.isArray(payload.games))games.push(...payload.games);}
+   }
+   return json({profile,stats,archives,games},{200});
+  }catch(error){console.error("[chess] Chess.com PubAPI request failed",error);return json({error:"No fue posible conectar con Chess.com en este momento."},502)}
+ }
  if(url.pathname==="/api/assistant/briefing")return handleAssistantBriefing(request,env);
  if(url.pathname==="/api/assistant/chat")return handleAssistantChat(request,env);
  if(url.pathname==="/api/push-config"&&request.method==="GET")return new Response(JSON.stringify({vapidPublicKey:env.VAPID_PUBLIC_KEY??null}),{status:200,headers:{"content-type":"application/json;charset=utf-8","cache-control":"public, max-age=300"}});
