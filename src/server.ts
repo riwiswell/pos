@@ -480,9 +480,10 @@ async function handleApi(request:Request,env:Env):Promise<Response|null>{
   const headers={Accept:"application/json","User-Agent":"POS-Personal-OS/1.0 (contact: riwiswell@gmail.com)"};
   try{
    const base="https://api.chess.com/pub/player/"+username;
-   const [profileResponse,statsResponse,archivesResponse]=await Promise.all([
-    fetch(base,{headers}),fetch(base+"/stats",{headers}),fetch(base+"/games/archives",{headers})
-   ]);
+   // Chess.com asks clients to serialize requests to avoid 429 responses.
+   const profileResponse=await fetch(base,{headers});
+   const statsResponse=await fetch(base+"/stats",{headers});
+   const archivesResponse=await fetch(base+"/games/archives",{headers});
    if(!profileResponse.ok||!statsResponse.ok||!archivesResponse.ok)return json({error:"Chess.com no pudo entregar el perfil, estadísticas o archivos de partidas.",status:Math.max(profileResponse.status,statsResponse.status,archivesResponse.status)},502);
    const [profile,stats,archiveData]=await Promise.all([profileResponse.json(),statsResponse.json(),archivesResponse.json()]);
    const archives=Array.isArray(archiveData.archives)?archiveData.archives:[];
