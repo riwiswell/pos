@@ -338,7 +338,7 @@ function ProfilePage() {
             Cambia la identidad visual completa: tipografía, paleta, superficies, controles, bordes y estilo de los paneles. Tus datos y funciones permanecen intactos.
           </p>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {skins.map((option) => (
             <button
               key={option.id}
