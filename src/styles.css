@@ -1280,3 +1280,48 @@ html[data-skin] .skin-preview .skin-branding__symbol--personal {
   aspect-ratio: 2.35 / 1;
   object-fit: cover;
 }
+
+
+/* Keep the sidebar logo near the top and fit navigation without a scrollbar. */
+.sidebar-nav [data-sidebar-item-key] {
+  min-height: 1.75rem;
+  flex: 0 0 auto;
+  gap: .125rem;
+}
+.sidebar-nav [data-sidebar-item-key] > a {
+  min-height: 1.75rem;
+  padding: .25rem .5rem;
+  gap: .55rem;
+  font-size: .8125rem;
+  line-height: 1.25rem;
+}
+.sidebar-nav [data-sidebar-item-key] > a > svg {
+  width: .95rem;
+  height: .95rem;
+}
+.sidebar-nav [data-sidebar-item-key] > button:first-child {
+  width: 1rem;
+  height: 1.75rem;
+}
+.sidebar-nav > div:first-child {
+  margin-bottom: .125rem;
+  flex: 0 0 auto;
+}
+@media (max-height: 720px) {
+  .skin-branding--sidebar .skin-branding__symbol--personal {
+    width: 8.5rem !important;
+    height: 8.5rem !important;
+    flex-basis: 8.5rem;
+  }
+  .skin-branding--sidebar {
+    gap: .35rem;
+  }
+  .sidebar-nav [data-sidebar-item-key] > a {
+    min-height: 1.625rem;
+    padding-top: .1875rem;
+    padding-bottom: .1875rem;
+  }
+  .sidebar-nav [data-sidebar-item-key] > button:first-child {
+    height: 1.625rem;
+  }
+}
