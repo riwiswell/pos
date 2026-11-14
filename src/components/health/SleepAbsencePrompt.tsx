@@ -57,7 +57,22 @@ export function SleepAbsencePrompt() {
     }
 
     const markActive = () => {
-      try { localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now())); } catch {}
+      const now = new Date();
+      try {
+        const raw = localStorage.getItem(LAST_ACTIVE_KEY);
+        const previous = raw ? new Date(Number(raw)) : null;
+        if (previous && Number.isFinite(previous.getTime())) {
+          const gapHours = (now.getTime() - previous.getTime()) / 3600000;
+          if (gapHours >= 4.5 && gapHours <= 14 && isNightStart(previous) && isMorningReturn(now)) {
+            setCandidate((current) => current ?? { start: previous, end: now });
+            setBedtime(localTime(previous));
+            setWakeTime(localTime(now));
+          }
+        }
+        localStorage.setItem(LAST_ACTIVE_KEY, String(now.getTime()));
+      } catch {
+        // Browser storage can be unavailable; never interrupt POS.
+      }
     };
     const onVisibility = () => {
       if (document.visibilityState === "hidden") markActive();
