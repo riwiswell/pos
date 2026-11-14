@@ -287,14 +287,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div
           className={cn(
-            "flex h-16 items-center border-b border-sidebar-border bg-sidebar/35 px-4 backdrop-blur-sm",
-            collapsed ? "justify-center" : "justify-between",
+            "flex h-20 items-center border-b border-sidebar-border bg-sidebar/35 backdrop-blur-sm",
+            collapsed ? "justify-center gap-1 px-2" : "justify-between px-4",
           )}
         >
           <SkinBranding skin={skin} collapsed={collapsed} />
           <Button
             variant="ghost"
             size="icon"
+            className="h-8 w-8 shrink-0"
             onClick={toggle}
             aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
           >
