@@ -1282,26 +1282,77 @@ html[data-skin] .skin-preview .skin-branding__symbol--personal {
 }
 
 
-/* Keep the sidebar logo near the top and fit navigation without a scrollbar. */
+/* Sidebar: readable module labels and a logo area that never clips the image. */
+aside > div:first-child {
+  overflow: visible !important;
+}
+.skin-branding--sidebar {
+  overflow: visible !important;
+  align-items: center;
+  justify-content: flex-start;
+}
+.skin-branding--sidebar .skin-branding__symbol--personal {
+  display: grid !important;
+  width: 9.4rem !important;
+  height: 9.4rem !important;
+  min-width: 9.4rem !important;
+  min-height: 9.4rem !important;
+  max-width: none !important;
+  max-height: none !important;
+  flex: 0 0 9.4rem !important;
+  align-self: center;
+  place-items: center;
+  overflow: visible !important;
+  padding: 0 !important;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+  clip-path: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.skin-branding--sidebar .skin-branding__symbol--personal img {
+  position: static !important;
+  inset: auto !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  transform: none !important;
+  vertical-align: middle;
+}
+
+/* Keep the sidebar compact without shrinking the labels to miniature text. */
 .sidebar-nav [data-sidebar-item-key] {
-  min-height: 1.75rem;
+  min-height: 2rem;
   flex: 0 0 auto;
   gap: .125rem;
 }
 .sidebar-nav [data-sidebar-item-key] > a {
-  min-height: 1.75rem;
-  padding: .25rem .5rem;
-  gap: .55rem;
-  font-size: .8125rem;
+  min-height: 2rem;
+  padding: .375rem .5rem;
+  gap: .65rem;
+  font-size: .9375rem !important;
   line-height: 1.25rem;
+  font-weight: 600;
 }
 .sidebar-nav [data-sidebar-item-key] > a > svg {
-  width: .95rem;
-  height: .95rem;
+  width: 1rem;
+  height: 1rem;
 }
 .sidebar-nav [data-sidebar-item-key] > button:first-child {
   width: 1rem;
-  height: 1.75rem;
+  height: 2rem;
 }
 .sidebar-nav > div:first-child {
   margin-bottom: .125rem;
@@ -1311,17 +1362,23 @@ html[data-skin] .skin-preview .skin-branding__symbol--personal {
   .skin-branding--sidebar .skin-branding__symbol--personal {
     width: 8.5rem !important;
     height: 8.5rem !important;
-    flex-basis: 8.5rem;
+    min-width: 8.5rem !important;
+    min-height: 8.5rem !important;
+    flex-basis: 8.5rem !important;
   }
-  .skin-branding--sidebar {
-    gap: .35rem;
+  .sidebar-nav {
+    gap: .125rem;
+  }
+  .sidebar-nav [data-sidebar-item-key] {
+    min-height: 1.875rem;
   }
   .sidebar-nav [data-sidebar-item-key] > a {
-    min-height: 1.625rem;
-    padding-top: .1875rem;
-    padding-bottom: .1875rem;
+    min-height: 1.875rem;
+    padding-top: .3125rem;
+    padding-bottom: .3125rem;
+    font-size: .9rem !important;
   }
   .sidebar-nav [data-sidebar-item-key] > button:first-child {
-    height: 1.625rem;
+    height: 1.875rem;
   }
 }
