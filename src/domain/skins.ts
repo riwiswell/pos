@@ -1,7 +1,8 @@
 export type SkinId =
   | "classic" | "lego" | "dc-comics" | "marvel"
   | "star-wars" | "football" | "pixel" | "winamp"
-  | "nintendo" | "pokemon" | "resident-evil" | "zelda" | "mario" | "chess";
+  | "nintendo" | "pokemon" | "resident-evil" | "zelda" | "mario" | "chess"
+  | "lumen" | "orchid";
 
 export type SkinCollection = "Base" | "Universos" | "Estilos" | "Deportes";
 
@@ -118,6 +119,20 @@ export const BUILT_IN_SKINS: SkinDefinition[] = [
     glyph: "♟", collection: "Estilos", brandTitle: "CHESS CLUB", brandSubtitle: "THINK BEFORE YOU MOVE",
     workspaceColor: { light: "#F0E6D5", dark: "#241A15" },
     preview: { background: "#E8D7BC", sidebar: "#3B291F", primary: "#805238", accent: "#F8F0E3" },
+  },
+  {
+    id: "lumen", name: "Luz Natural", tagline: "Respira, enfócate, avanza",
+    description: "Una identidad luminosa y despejada: superficies blancas, azul cielo, luz suave y detalles dorados discretos.",
+    glyph: "✧", collection: "Estilos", brandTitle: "LUMEN STUDIO", brandSubtitle: "LIGHT · SPACE · FOCUS",
+    workspaceColor: { light: "#F3F7FB", dark: "#172535" },
+    preview: { background: "#F5F9FC", sidebar: "#29445B", primary: "#5D9FC9", accent: "#F1C97C" },
+  },
+  {
+    id: "orchid", name: "Orquídea", tagline: "Color suave, ideas claras",
+    description: "Una atmósfera equilibrada entre violeta malva y rosa empolvado, con capas suaves y detalles botánicos.",
+    glyph: "✿", collection: "Estilos", brandTitle: "ORCHID ATELIER", brandSubtitle: "VIOLET · ROSE · BALANCE",
+    workspaceColor: { light: "#F0EAF4", dark: "#292334" },
+    preview: { background: "#EDE4F1", sidebar: "#4B3A57", primary: "#9C76A7", accent: "#DDA9BE" },
   },
 ];
 
