@@ -77,6 +77,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
+    title: "Personal OS",
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
@@ -89,7 +90,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/personal-os-logo.png", type: "image/png", sizes: "128x128" },
+      { rel: "apple-touch-icon", href: "/personal-os-logo.png", sizes: "128x128" },
     ],
   }),
   shellComponent: RootShell,
