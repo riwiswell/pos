@@ -89,7 +89,8 @@ function shortDate(date: string): string {
 }
 
 export function SleepPanel() {
-  const { date } = useGlobalDate();
+  const { date, goToday } = useGlobalDate();
+  useEffect(() => { goToday(); }, [goToday]);
   const navigate = useNavigate();
   const currentQuery = usePersonalDateList<HealthMetric>("health_metrics", "metric_date", date);
   const historyQuery = usePersonalRecentList<HealthMetric>("health_metrics", "metric_date", 100);
@@ -101,6 +102,7 @@ export function SleepPanel() {
   const [sleepDetails, setSleepDetails] = useState<SleepDetails>(EMPTY_SLEEP);
   const [manualHours, setManualHours] = useState("");
   const [schedule, setSchedule] = useState({ bedtime: "", wakeTime: "" });
+  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
 
   useEffect(() => {
     setSleepDetails(readSleepDetails(current?.notes ?? null));
@@ -223,7 +225,11 @@ export function SleepPanel() {
     },
   });
 
-  const saveSleep = async () => {
+  const saveSleep = async (confirmed = false) => {
+    if (current?.sleep_hours != null && !confirmed) {
+      setConfirmOverwrite(true);
+      return;
+    }
     if (Boolean(sleepDetails.bedtime) !== Boolean(sleepDetails.wakeTime)) {
       throw new Error("Completa la hora de acostarte y la de levantarte.");
     }
@@ -434,7 +440,7 @@ export function SleepPanel() {
         <div>
           <h3 className="font-semibold">Registrar sueño</h3>
           <p className="text-xs text-muted-foreground">
-            Fecha seleccionada: {formatDayLabel(date)}. Si dormiste después de medianoche, el sistema calcula el cruce de día.
+            Fecha del registro: {formatDayLabel(date)}. Si dormiste después de medianoche, el sistema calcula el cruce de día.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -544,6 +550,20 @@ export function SleepPanel() {
           </div>
         )}
       </section>
+
+      {confirmOverwrite && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="sleep-overwrite-title">
+          <div className="w-full max-w-md space-y-4 rounded-2xl border bg-background p-5 shadow-xl">
+            <h3 id="sleep-overwrite-title" className="text-lg font-semibold">Ya existe un registro de sueño para esta fecha</h3>
+            <p className="text-sm text-muted-foreground">¿Estás corrigiendo el sueño que ya registraste o quieres añadir una siesta? No reemplazaremos nada sin tu confirmación.</p>
+            <p className="text-sm">Para añadir una siesta, conserva las horas del sueño principal y completa «Siesta (min)». Para sustituir el registro, confirma expresamente.</p>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="ghost" onClick={() => setConfirmOverwrite(false)}>Volver sin guardar</Button>
+              <Button type="button" onClick={() => { setConfirmOverwrite(false); void saveSleep(true).catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo guardar el registro de sueño.")); }}>Confirmar y reemplazar</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
