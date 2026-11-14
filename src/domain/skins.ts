@@ -85,11 +85,11 @@ export const BUILT_IN_SKINS: SkinDefinition[] = [
     preview: { background: "#E9EDF2", sidebar: "#303A48", primary: "#E60012", accent: "#00A6E4" },
   },
   {
-    id: "pokemon", name: "Pokémon", tagline: "Una nueva aventura",
-    description: "Un mundo de rutas, hierba alta, cielos azules, medallas, Poké Balls y colores vivos de entrenador.",
-    glyph: "⚡", collection: "Universos", brandTitle: "POKÉMON TRAINER", brandSubtitle: "YOUR NEXT ADVENTURE",
-    workspaceColor: { light: "#EAF6E7", dark: "#122B20" },
-    preview: { background: "#68B9E9", sidebar: "#1D633A", primary: "#39A951", accent: "#FFD84A" },
+    id: "pokemon", name: "Pokémon", tagline: "Aventura clásica",
+    description: "Inspirada en las primeras rutas de Kanto: cielo azul, césped, caminos de tierra, Poké Ball clásica y destellos amarillo Pikachu.",
+    glyph: "⚡", collection: "Universos", brandTitle: "POKÉMON CLASSIC", brandSubtitle: "KANTO · ROUTE 01",
+    workspaceColor: { light: "#EAF4FB", dark: "#132A38" },
+    preview: { background: "#65B9E9", sidebar: "#245F43", primary: "#F1C83E", accent: "#E83E3B" },
   },
   {
     id: "resident-evil", name: "Resident Evil", tagline: "La noche no termina",
