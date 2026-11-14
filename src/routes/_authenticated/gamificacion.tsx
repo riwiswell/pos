@@ -10,6 +10,7 @@ import { ErrorState } from "@/components/common/States";
 import { useLGList, useLGMutations } from "@/hooks/use-life-graph";
 import { useAuth } from "@/hooks/use-auth";
 import { addDaysISO, todayISO } from "@/lib/date";
+import { getLevelProgress } from "@/domain/gamification";
 
 export const Route = createFileRoute("/_authenticated/gamificacion")({ component: GamificationPage });
 
@@ -43,31 +44,6 @@ const XP_ACHIEVEMENTS = [
   ["Primera sesión de aprendizaje", 15],
   ["Primer bloque de trabajo", 15],
 ] as const;
-
-const FIRST_LEVEL_XP = 1200;
-const LEVEL_XP_INCREMENT = 300;
-
-/** Each level takes more XP than the previous one. XP is lifetime cumulative. */
-function getLevelProgress(totalXp: number) {
-  const safeXp = Math.max(0, Math.floor(Number(totalXp) || 0));
-  let level = 1;
-  let xpAtLevelStart = 0;
-  let xpRequiredForLevel = FIRST_LEVEL_XP;
-
-  while (safeXp >= xpAtLevelStart + xpRequiredForLevel) {
-    xpAtLevelStart += xpRequiredForLevel;
-    level += 1;
-    xpRequiredForLevel += LEVEL_XP_INCREMENT;
-  }
-
-  const xpIntoLevel = safeXp - xpAtLevelStart;
-  return {
-    level,
-    xpIntoLevel,
-    xpRequiredForLevel,
-    xpToNext: xpRequiredForLevel - xpIntoLevel,
-  };
-}
 
 function GamificationPage() {
   const xpEvents=useLGList("gamification_xp_events");
