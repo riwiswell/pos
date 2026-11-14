@@ -20,6 +20,7 @@ import { useHydrationReminders } from "@/hooks/use-hydration-reminders";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { SkinBranding } from "@/components/shell/SkinBranding";
+import { SleepAbsencePrompt } from "@/components/health/SleepAbsencePrompt";
 
 const STORAGE_KEY = "personal-os:sidebar-collapsed";
 const LEGACY_ORGANIZATION_KEYS = ["habitos", "planeador", "trabajo"];
@@ -277,7 +278,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground" style={style}>
+    <div className="min-h-screen bg-background text-foreground" style={style}>\n      <SleepAbsencePrompt />
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border md:flex",
