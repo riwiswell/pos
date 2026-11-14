@@ -37,7 +37,7 @@ export function SkinBranding({
       aria-label={definition.brandTitle + ", " + definition.brandSubtitle}
     >
       <span className="skin-branding__symbol skin-branding__symbol--personal" aria-hidden="true">
-        <img src="/personal-os-logo.webp" alt="" draggable={false} />
+        <img src="/personal-os-logo.png" alt="" draggable={false} />
       </span>
       <div className="skin-branding__identity">
         {themeMark}

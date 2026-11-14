@@ -274,12 +274,12 @@ export function LifeActivityFeed({ date, connections, connectionsLoading }: { da
           ) : previewEvents.length === 0 ? (
             <p className="text-xs text-muted-foreground">Todavía no hay actividad registrada para esta fecha.</p>
           ) : (
-            previewEvents.map((event) => {
+            previewEvents.map((event, index) => {
               const domain = eventDomain(event);
               const Icon = domain.icon;
               const habit = eventHabit(event, habitsById);
               return (
-                <div key={event.id} className="flex min-w-0 items-center gap-2.5">
+                <div key={event.id} className={`flex min-w-0 items-center gap-2.5 ${index >= 4 ? "max-sm:hidden" : ""}`}>
                   <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${domain.tone}`}>
                     <EventGlyph event={event} habit={habit} Icon={Icon} small />
                   </span>
