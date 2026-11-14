@@ -1002,3 +1002,12 @@ html[data-skin="winamp"] .glass{border-color:#3D4B55}
 html[data-skin] .skin-preview{color:#fff}
 html[data-skin="dc-comics"] .skin-preview .skin-branding__symbol,html[data-skin="marvel"] .skin-preview .skin-branding__symbol,html[data-skin="star-wars"] .skin-preview .skin-branding__symbol,html[data-skin="football"] .skin-preview .skin-branding__symbol,html[data-skin="pixel"] .skin-preview .skin-branding__symbol,html[data-skin="winamp"] .skin-preview .skin-branding__symbol{box-shadow:0 2px 8px rgb(0 0 0 / 35%)}
 @media(max-width:640px){.skin-branding--compact .skin-branding__copy strong{font-size:.62rem}.skin-preview{min-height:5.2rem}}
+
+/* LEGO: progress meters use the signature yellow, while primary actions stay red. */
+html[data-skin="lego"] [role="progressbar"] {
+  background-color: rgb(255 213 0 / 24%);
+}
+
+html[data-skin="lego"] [role="progressbar"] > div {
+  background-color: #FFD500;
+}
