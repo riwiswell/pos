@@ -1103,20 +1103,23 @@ html[data-skin="chess"] .inicio-hero{border:1px solid #A98A67;background:linear-
 html[data-skin="chess"] .weather-card{border:1px solid #A98A67;background:linear-gradient(130deg,#4A3022,#755237 65%,#B28A60)}
 
 
-/* Personal OS + theme identity: two distinct marks, neither replaces the other. */
+/* Personal OS + theme identity: a spacious, uncut sidebar brand. */
 .skin-branding--sidebar {
+  display: flex;
   width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: .4rem;
-  min-width: 0;
+  gap: .7rem;
 }
 html[data-skin] .skin-branding__symbol--personal {
   display: grid;
-  width: 4.7rem !important;
-  height: 4.7rem !important;
-  flex: 0 0 auto;
+  width: 9.4rem !important;
+  height: 9.4rem !important;
+  max-width: none;
+  flex: 0 0 9.4rem;
   place-items: center;
   overflow: visible;
   border: 0 !important;
@@ -1129,10 +1132,11 @@ html[data-skin] .skin-branding__symbol--personal {
   display: block;
   width: 100%;
   height: 100%;
-  max-width: none;
-  max-height: none;
+  max-width: none !important;
+  max-height: none !important;
   object-fit: contain;
   object-position: center;
+  flex: 0 0 auto;
 }
 .skin-branding__identity {
   display: flex;
@@ -1185,13 +1189,10 @@ html[data-skin] .skin-branding__symbol--personal {
 .skin-branding--sidebar .skin-branding__identity {
   max-width: 100%;
 }
-.skin-branding--sidebar .skin-branding__symbol--personal {
-  width: 4.7rem !important;
-  height: 4.7rem !important;
-}
 .skin-branding--sidebar.skin-branding--collapsed .skin-branding__symbol--personal {
-  width: 3.4rem !important;
-  height: 3.4rem !important;
+  width: 4.45rem !important;
+  height: 4.45rem !important;
+  flex-basis: 4.45rem;
 }
 .skin-branding--sidebar.skin-branding--collapsed .skin-branding__copy {
   display: none;
@@ -1213,6 +1214,7 @@ html[data-skin] .skin-branding__symbol--personal {
 html[data-skin] .skin-branding--compact .skin-branding__symbol--personal {
   width: 1.65rem !important;
   height: 1.65rem !important;
+  flex-basis: 1.65rem;
 }
 .skin-branding--compact .skin-branding__identity {
   gap: .4rem;
@@ -1238,6 +1240,7 @@ html[data-skin] .skin-branding--compact .skin-branding__symbol--personal {
 html[data-skin] .skin-preview .skin-branding__symbol--personal {
   width: 1.8rem !important;
   height: 1.8rem !important;
+  flex-basis: 1.8rem;
 }
 .skin-preview .skin-branding__identity {
   gap: .28rem;
@@ -1262,71 +1265,18 @@ html[data-skin] .skin-preview .skin-branding__symbol--personal {
   font-size: .38rem;
 }
 
-
-/* Lumen Studio — bright, spacious surfaces with sky-blue and warm sunlight accents. */
-.skin-preview--lumen{background:radial-gradient(circle at 82% 24%,rgb(255 255 255 / 96%) 0 1.05rem,transparent 1.1rem),linear-gradient(135deg,#F9FCFE 0%,#E2EFF6 55%,#B7D4E4 100%);border-color:#B9D0DE}
-.skin-preview--lumen::before{position:absolute;right:.8rem;top:.45rem;width:2.85rem;height:2.85rem;border:1px solid rgb(255 255 255 / 85%);border-radius:50%;box-shadow:0 0 0 7px rgb(255 255 255 / 24%),0 0 0 14px rgb(255 255 255 / 14%);content:""}
-.skin-preview--lumen::after{position:absolute;left:0;right:0;bottom:0;height:1.05rem;background:linear-gradient(90deg,rgb(255 255 255 / 0%),rgb(255 255 255 / 65%),rgb(255 255 255 / 0%));content:""}
-.skin-branding__theme-mark--lumen{border-color:#A9C6D8;background:linear-gradient(145deg,#fff,#E3F0F7);color:#397BA5;box-shadow:0 2px 8px rgb(42 86 116 / 14%)}
-.skin-preview--lumen .skin-branding__copy strong{color:#29445B}
-.skin-preview--lumen .skin-branding__copy small{color:#496B82}
-html[data-skin="lumen"]{color-scheme:dark;--background:#172535;--foreground:#EDF4F8;--surface:#203347;--surface-base:#203347;--surface-foreground:#EDF4F8;--card:#263B4E;--card-base:#263B4E;--card-foreground:#EDF4F8;--popover:#263B4E;--popover-foreground:#EDF4F8;--primary:#8FC5E5;--primary-foreground:#173148;--secondary:#344C60;--secondary-foreground:#EAF3F9;--muted:#2B4053;--muted-foreground:#B8CAD7;--accent:#F1C97C;--accent-foreground:#3D321E;--border:#3D566B;--border-strong:#58758A;--input:#4C687D;--ring:#9BCBE8;--sidebar:#101B28;--sidebar-foreground:#EDF4F8;--sidebar-primary:#F1C97C;--sidebar-primary-foreground:#263447;--sidebar-accent:#24384A;--sidebar-accent-foreground:#fff;--sidebar-border:#344B60;--sidebar-ring:#9BCBE8;--radius:.95rem;--skin-font:"Inter","Segoe UI",sans-serif}
-html.theme-light[data-skin="lumen"]{color-scheme:light;--background:#F3F7FB;--foreground:#263B4D;--surface:#FFFFFF;--surface-base:#FFFFFF;--surface-foreground:#263B4D;--card:#FFFFFF;--card-base:#FFFFFF;--card-foreground:#263B4D;--popover:#FFFFFF;--popover-foreground:#263B4D;--primary:#397FAE;--primary-foreground:#fff;--secondary:#DFEDF5;--secondary-foreground:#31566F;--muted:#E9F1F6;--muted-foreground:#60798B;--accent:#F6E5BE;--accent-foreground:#685127;--border:#D3E1EA;--border-strong:#B6CCD9;--input:#C4D7E2;--ring:#6CA9D0;--sidebar:#29445B;--sidebar-foreground:#F8FCFF;--sidebar-primary:#F1C97C;--sidebar-primary-foreground:#29394A;--sidebar-accent:#3B5B73;--sidebar-accent-foreground:#fff;--sidebar-border:#527087;--sidebar-ring:#8FC5E5}
-html[data-skin="lumen"] .skin-branding__theme-mark{border-color:#8EB9D1;background:linear-gradient(145deg,#fff,#DDECF5);color:#397FAE}
-html[data-skin="lumen"] .skin-branding__copy strong{font-weight:850;letter-spacing:.13em}
-html[data-skin="lumen"] .app-shell-main{background-image:radial-gradient(ellipse at 92% 4%,rgb(143 197 229 / 13%),transparent 25rem),radial-gradient(ellipse at 12% 100%,rgb(241 201 124 / 9%),transparent 22rem)}
-html[data-skin="lumen"] .glass{border:1px solid color-mix(in oklab,#8FB9D0 30%,var(--border));border-radius:1rem;box-shadow:0 8px 26px -21px rgb(40 75 96 / 28%)}
-html[data-skin="lumen"] .inicio-hero{border:1px solid #6F9FBD;background:linear-gradient(115deg,#294A63,#477B9B 64%,#8AB9D2)!important;color:#F8FCFF}
-html.theme-light[data-skin="lumen"] .inicio-hero{background:linear-gradient(115deg,#D8E9F2,#BBD7E6 64%,#A2C7DA)!important;color:#29445B}
-html[data-skin="lumen"] .weather-card{border:1px solid #729DB8;background:linear-gradient(130deg,#34566F,#5886A2 68%,#9BC2D5);color:#F8FCFF}
-html.theme-light[data-skin="lumen"] .weather-card{background:linear-gradient(130deg,#DDECF4,#C5DDE9 68%,#F9F5E9);color:#29445B}
-
-/* Orchid Atelier — a balanced mid-tone mix of muted violet, mauve and powder rose. */
-.skin-preview--orchid{background:radial-gradient(ellipse at 78% 18%,rgb(255 255 255 / 52%),transparent 37%),linear-gradient(130deg,#DCCBE6 0%,#B49AC4 48%,#DDA9BE 100%);border-color:#B68DAF}
-.skin-preview--orchid::before{position:absolute;right:.95rem;top:.65rem;width:2.65rem;height:2.65rem;border:1px solid rgb(255 255 255 / 48%);border-radius:50%;background:radial-gradient(circle,#F5E7F1 0 9%,transparent 10%);box-shadow:inset 0 0 0 7px rgb(255 255 255 / 10%),0 0 0 7px rgb(255 255 255 / 12%);content:""}
-.skin-preview--orchid::after{position:absolute;left:0;right:0;bottom:0;height:1rem;background:linear-gradient(90deg,rgb(83 59 99 / 0%),rgb(83 59 99 / 20%),rgb(83 59 99 / 0%));content:""}
-.skin-branding__theme-mark--orchid{border-color:#C5A5C9;background:linear-gradient(145deg,#F6ECF7,#DCC7E3);color:#73517F;box-shadow:0 2px 8px rgb(70 47 81 / 18%)}
-.skin-preview--orchid .skin-branding__copy strong{color:#493654}
-.skin-preview--orchid .skin-branding__copy small{color:#684B72}
-html[data-skin="orchid"]{color-scheme:dark;--background:#292334;--foreground:#F5EFF7;--surface:#373044;--surface-base:#373044;--surface-foreground:#F5EFF7;--card:#3D354A;--card-base:#3D354A;--card-foreground:#F5EFF7;--popover:#3D354A;--popover-foreground:#F5EFF7;--primary:#D5A5CC;--primary-foreground:#382B40;--secondary:#564667;--secondary-foreground:#F4ECF6;--muted:#443A50;--muted-foreground:#CBBBD0;--accent:#E0B2C6;--accent-foreground:#493347;--border:#5C4B65;--border-strong:#7D6785;--input:#705C7A;--ring:#D5A5CC;--sidebar:#211B2A;--sidebar-foreground:#F5EFF7;--sidebar-primary:#DDAFCF;--sidebar-primary-foreground:#382B40;--sidebar-accent:#403449;--sidebar-accent-foreground:#fff;--sidebar-border:#51425B;--sidebar-ring:#D5A5CC;--radius:.82rem;--skin-font:"Inter","Segoe UI",sans-serif}
-html.theme-light[data-skin="orchid"]{color-scheme:light;--background:#F0EAF4;--foreground:#3A2D43;--surface:#F8F3FA;--surface-base:#F8F3FA;--surface-foreground:#3A2D43;--card:#FCF9FD;--card-base:#FCF9FD;--card-foreground:#3A2D43;--popover:#FCF9FD;--popover-foreground:#3A2D43;--primary:#895A96;--primary-foreground:#fff;--secondary:#E7DAEC;--secondary-foreground:#563E60;--muted:#E9E1ED;--muted-foreground:#766A7B;--accent:#F0DCE6;--accent-foreground:#613F59;--border:#D8CADD;--border-strong:#BFAAC6;--input:#CDBBD2;--ring:#A77DB0;--sidebar:#493B55;--sidebar-foreground:#FCF8FD;--sidebar-primary:#E8BDD1;--sidebar-primary-foreground:#49354B;--sidebar-accent:#5D4968;--sidebar-accent-foreground:#fff;--sidebar-border:#705D7A;--sidebar-ring:#B88CB5}
-html[data-skin="orchid"] .skin-branding__theme-mark{border-color:#9877A3;background:linear-gradient(145deg,#F7EEF8,#E0CDE8);color:#785485}
-html[data-skin="orchid"] .skin-branding__copy strong{letter-spacing:.13em;font-weight:850}
-html[data-skin="orchid"] .skin-branding__copy small{color:color-mix(in oklab,var(--sidebar-foreground) 75%,#DDA9BE)}
-html[data-skin="orchid"] .app-shell-main{background-image:radial-gradient(ellipse at 92% 5%,rgb(183 139 190 / 13%),transparent 25rem),radial-gradient(ellipse at 7% 95%,rgb(221 169 190 / 10%),transparent 22rem)}
-html[data-skin="orchid"] .glass{border:1px solid color-mix(in oklab,#B38BB8 27%,var(--border));border-radius:.85rem;box-shadow:0 9px 26px -22px rgb(49 34 59 / 42%)}
-html[data-skin="orchid"] .inicio-hero{border:1px solid #8C6B99;background:linear-gradient(115deg,#493B59,#725777 58%,#A66E8C)!important;color:#FFF8FF}
-html.theme-light[data-skin="orchid"] .inicio-hero{background:linear-gradient(115deg,#D9CBE3,#C0A9CE 58%,#DDAFC4)!important;color:#473750}
-html[data-skin="orchid"] .weather-card{border:1px solid #987A9F;background:linear-gradient(130deg,#51405E,#795E7F 63%,#A97791);color:#FFF8FF}
-html.theme-light[data-skin="orchid"] .weather-card{background:linear-gradient(130deg,#E6D9EC,#D3BEDD 63%,#E8C4D3);color:#493750}
-
-/* Skin typography — each world has its own voice, without sacrificing reading comfort. */
-html[data-skin="classic"] { --skin-font: "Inter", system-ui, sans-serif; --skin-display-font: "Inter", system-ui, sans-serif; }
-html[data-skin="lego"] { --skin-font: "Nunito", sans-serif; --skin-display-font: "Baloo 2", sans-serif; }
-html[data-skin="dc-comics"] { --skin-font: "Roboto Condensed", sans-serif; --skin-display-font: "Barlow Condensed", sans-serif; }
-html[data-skin="marvel"] { --skin-font: "Archivo", sans-serif; --skin-display-font: "Archivo Black", sans-serif; }
-html[data-skin="star-wars"] { --skin-font: "Exo 2", sans-serif; --skin-display-font: "Orbitron", sans-serif; }
-html[data-skin="football"] { --skin-font: "Barlow Semi Condensed", sans-serif; --skin-display-font: "Teko", sans-serif; }
-html[data-skin="pixel"] { --skin-font: "IBM Plex Mono", monospace; --skin-display-font: "Press Start 2P", monospace; }
-html[data-skin="winamp"] { --skin-font: "Space Grotesk", sans-serif; --skin-display-font: "Audiowide", sans-serif; }
-html[data-skin="nintendo"] { --skin-font: "Rubik", sans-serif; --skin-display-font: "Varela Round", sans-serif; }
-html[data-skin="pokemon"] { --skin-font: "Rajdhani", sans-serif; --skin-display-font: "Chakra Petch", sans-serif; }
-html[data-skin="resident-evil"] { --skin-font: "Source Sans 3", sans-serif; --skin-display-font: "Cinzel", serif; }
-html[data-skin="zelda"] { --skin-font: "Alegreya", serif; --skin-display-font: "Cormorant Garamond", serif; }
-html[data-skin="mario"] { --skin-font: "Nunito Sans", sans-serif; --skin-display-font: "Fredoka", sans-serif; }
-html[data-skin="chess"] { --skin-font: "Libre Baskerville", serif; --skin-display-font: "Playfair Display", serif; }
-html[data-skin="lumen"] { --skin-font: "Manrope", sans-serif; --skin-display-font: "Outfit", sans-serif; }
-html[data-skin="orchid"] { --skin-font: "DM Sans", sans-serif; --skin-display-font: "Fraunces", serif; }
-
-html[data-skin] body,
-html[data-skin] button,
-html[data-skin] input,
-html[data-skin] textarea,
-html[data-skin] select {
-  font-family: var(--skin-font, ui-sans-serif, system-ui, sans-serif) !important;
+/* The active theme also gets a large visual identity on the home dashboard. */
+.inicio-theme-logo {
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 1rem;
+  background: #090B0F;
+  box-shadow: 0 12px 28px -20px rgb(0 0 0 / 75%);
 }
-
-html[data-skin] :is(h1, h2, h3, h4, h5, h6, .skin-branding__copy strong) {
-  font-family: var(--skin-display-font, var(--skin-font, ui-sans-serif, system-ui, sans-serif)) !important;
+.inicio-theme-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2.35 / 1;
+  object-fit: cover;
 }
-
