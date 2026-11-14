@@ -768,7 +768,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const[filter,setFilter]=useState("all");
   const isGameItem=(item:any)=>item.kind==="video_game"||item.kind==="game";
   const allItems=(q.data||[]).filter((item:any)=>item.kind!=="book"&&item.kind!=="language");
-  const items=allItems.filter((item:any)=>isGames?isGameItem(item):!isGameItem(item));
+  const items=allItems.filter((item:any)=>isGames?isGameItem(item):!isGameItem(item)&&item.kind!=="chess"&&!/ajedrez/i.test(String(item.title||"")));
   const visibleItems=sortLearningItems(isGames?items:items.filter((item:any)=>filter==="all"||item.kind===filter),sessions.data||[],sort);
   const resetForm=()=>{setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setGameMinutes("0");setPlatform("");setGenre("");setEditingId(null);setAdding(false);};
   const startEdit=(item:any)=>{const sessionTotal=(sessions.data||[]).filter((entry:any)=>entry.learning_item_id===item.id).reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);setTitle(item.title||"");setKind(item.kind==="game"?"video_game":item.kind||"other");setNotes(item.notes||"");setGoalDescription(item.goal_description||"");setGoalDate(item.goal_date||"");setGameProgress(String(item.progress??0));setGameMinutes(minutesToHoursInput(Math.max(sessionTotal,Math.max(0,Number(item.minutes_total)||0))));setPlatform(item.platform||"");setGenre(item.genre||"");setEditingId(item.id);setAdding(true);};
@@ -790,7 +790,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   };
   return <section className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, tiempo jugado y progreso de cada historia.":"Cursos, podcasts, videos, ajedrez y certificaciones."}</p></div><div className="flex flex-wrap items-center gap-2">
+      <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, tiempo jugado y progreso de cada historia.":"Cursos, podcasts, videos y certificaciones."}</p></div><div className="flex flex-wrap items-center gap-2">
       <LearningSortControl value={sort} onChange={setSort} includeGenre={isGames}/>
       <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setGameMinutes("0");setPlatform("");setGenre("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
     </div>
@@ -799,7 +799,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
       <div className="grid gap-2 sm:grid-cols-[1fr_190px_auto]">
         <Input placeholder={isGames?"Nombre del videojuego":"Nombre del curso o recurso"} value={title} onChange={e=>setTitle(e.target.value)}/>
         {!isGames&&<select className="h-10 rounded-md border bg-background px-3 text-sm" value={kind} onChange={e=>setKind(e.target.value)}>
-          <option value="course">Curso</option><option value="podcast">Podcast</option><option value="video">Video</option><option value="chess">Ajedrez</option><option value="certification">Certificación</option><option value="other">Otro</option>
+          <option value="course">Curso</option><option value="podcast">Podcast</option><option value="video">Video</option><option value="certification">Certificación</option><option value="other">Otro</option>
         </select>}
         <Button size="sm" disabled={!title.trim()||m.create.isPending||m.update.isPending} onClick={()=>void saveItem()}><Save className="mr-1 h-3.5 w-3.5"/>{editingId?"Guardar":"Agregar"}</Button>
       </div>
@@ -827,7 +827,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
       {editingId&&<p className="text-xs text-muted-foreground">{isGames?"Puedes actualizar la ficha y el tiempo acumulado. Las sesiones detalladas se corrigen desde la tarjeta del videojuego.":"Puedes actualizar el nombre, la categoría y la descripción."}</p>}
     </div>}
     {!isGames&&<div className="flex flex-wrap gap-1.5">
-      {[["all","Todos"],["course","Cursos"],["podcast","Podcasts"],["video","Videos"],["chess","Ajedrez"],["certification","Certificaciones"]].map(([value,label])=><button key={value} type="button" onClick={()=>setFilter(value)} className={"rounded-full border px-3 py-1.5 text-xs "+(filter===value?"border-primary bg-primary/10 font-semibold text-primary":"text-muted-foreground hover:bg-accent")}>{label}</button>)}
+      {[["all","Todos"],["course","Cursos"],["podcast","Podcasts"],["video","Videos"],["certification","Certificaciones"]].map(([value,label])=><button key={value} type="button" onClick={()=>setFilter(value)} className={"rounded-full border px-3 py-1.5 text-xs "+(filter===value?"border-primary bg-primary/10 font-semibold text-primary":"text-muted-foreground hover:bg-accent")}>{label}</button>)}
     </div>}
     {q.isError&&<ErrorState message={q.error instanceof Error?q.error.message:"No se pudieron cargar los recursos de aprendizaje."}/>}
     {visibleItems.length===0&&!q.isError&&<div className="glass rounded-2xl p-4 text-sm text-muted-foreground">{isGames?"Todavía no has agregado videojuegos. Pulsa Agregar para registrar el que estás jugando.":"Todavía no hay elementos en esta categoría. Pulsa Agregar para crear uno."}</div>}
