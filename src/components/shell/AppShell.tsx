@@ -19,6 +19,7 @@ import { useMedicationReminders } from "@/hooks/use-medication-reminders";
 import { useHydrationReminders } from "@/hooks/use-hydration-reminders";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { SkinBranding } from "@/components/shell/SkinBranding";
 
 const STORAGE_KEY = "personal-os:sidebar-collapsed";
 const LEGACY_ORGANIZATION_KEYS = ["habitos", "planeador", "trabajo"];
@@ -126,7 +127,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: profile } = useProfile();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { theme } = useTheme();
+  const { theme, skin } = useTheme();
   useMedicationReminders();
   useHydrationReminders();
   useAppointmentReminders();
@@ -290,11 +291,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             collapsed ? "justify-center" : "justify-between",
           )}
         >
-          {!collapsed && (
-            <span className="text-sm font-semibold tracking-[0.16em] text-sidebar-foreground">
-              PERSONAL OS
-            </span>
-          )}
+          <SkinBranding skin={skin} collapsed={collapsed} />
           <Button
             variant="ghost"
             size="icon"
@@ -330,7 +327,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur md:hidden">
-        <span className="text-sm font-semibold tracking-[0.16em]">PERSONAL OS</span>
+        <SkinBranding skin={skin} compact />
         <div className="flex items-center gap-1">
           <HelpTip helpKey={currentHelpKey} />
           <ProfileBlock collapsed />

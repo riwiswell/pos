@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { HelpTip } from "@/components/common/HelpTip";
 import { ErrorState } from "@/components/common/States";
 import { cn } from "@/lib/utils";
+import { SkinBranding } from "@/components/shell/SkinBranding";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useProfileMediaUrl, useProfileMutations } from "@/hooks/use-profile";
 import { useHelpEnabled, useSetHelpEnabled } from "@/hooks/use-help";
@@ -351,17 +352,12 @@ function ProfilePage() {
                   : "border-border hover:border-primary/50",
               )}
             >
-              <div
-                className="mb-3 flex h-14 overflow-hidden rounded-xl border"
-                style={{ backgroundColor: option.preview.background, borderColor: option.preview.accent }}
-              >
-                <div className="w-[22%]" style={{ backgroundColor: option.preview.sidebar }} />
-                <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-2">
-                  <span className="h-2 w-2/3 rounded-full" style={{ backgroundColor: option.preview.primary }} />
-                  <div className="flex flex-1 gap-1">
-                    <span className="flex-1 rounded-md border" style={{ backgroundColor: option.preview.accent, borderColor: option.preview.sidebar }} />
-                    <span className="flex-1 rounded-md border" style={{ backgroundColor: option.preview.background, borderColor: option.preview.primary }} />
-                  </div>
+              <div className={cn("skin-preview mb-3", `skin-preview--${option.id}`)}>
+                <SkinBranding skin={option.id} compact />
+                <div className="skin-preview__modules" aria-hidden="true">
+                  <span style={{ backgroundColor: option.preview.primary }} />
+                  <span style={{ backgroundColor: option.preview.accent }} />
+                  <span style={{ backgroundColor: option.preview.sidebar }} />
                 </div>
               </div>
               <div className="flex items-center justify-between gap-2">
@@ -369,7 +365,7 @@ function ProfilePage() {
                   <span className="text-lg leading-none">{option.glyph}</span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold">{option.name}</span>
-                    <span className="block text-[10px] text-muted-foreground">{option.tagline}</span>
+                    <span className="block text-[10px] text-muted-foreground">{option.collection} · {option.tagline}</span>
                   </span>
                 </span>
                 {skin === option.id && <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">Activo</span>}
@@ -379,7 +375,7 @@ function ProfilePage() {
           ))}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Los paquetes iniciales son estilos nativos de Personal OS. La arquitectura permite añadir nuevos skins descargables sin cambiar los registros personales.
+          Cada universo tiene identidad visual propia. Son interpretaciones gráficas no oficiales; no se incluyen logotipos ni ilustraciones licenciadas. Cambiar de skin no modifica tus datos, módulos ni funciones.
         </p>
       </section>
 
