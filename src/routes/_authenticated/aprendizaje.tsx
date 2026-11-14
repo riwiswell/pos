@@ -151,7 +151,7 @@ function LearningPage(){
   const{data:profile}=useProfile();
   const booksHidden=profile?.hidden_features?.["learning.books"]===true;
   const current=booksHidden&&tab==="books"?"languages":tab;
-  const tabsClass=booksHidden?"grid-cols-4":"grid-cols-4";
+  const tabsClass=booksHidden?"grid-cols-3":"grid-cols-4";
   return <div className="space-y-5 pb-24">
     <GlobalDateHeader/>
     <div>
