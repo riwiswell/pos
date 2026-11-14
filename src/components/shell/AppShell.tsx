@@ -201,6 +201,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     backgroundAttachment: "fixed",
   };
 
+  // Reuse the uploaded photo in the desktop sidebar's open areas.
+  // The navigation list itself keeps its own solid surface for legibility.
+  const sidebarStyle: CSSProperties | undefined = bgImageUrl
+    ? {
+        backgroundColor: "var(--sidebar)",
+        backgroundImage: `linear-gradient(color-mix(in oklab, var(--sidebar) 26%, transparent),color-mix(in oklab, var(--sidebar) 40%, transparent)),url(${bgImageUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : undefined;
+
 
   const renderMenuItem = (
     item: typeof menuItems[number],
@@ -268,13 +279,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background text-foreground" style={style}>
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border bg-sidebar md:flex",
+          "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border md:flex",
           collapsed ? "w-[80px]" : "w-[272px]",
         )}
+        style={sidebarStyle}
       >
         <div
           className={cn(
-            "flex h-16 items-center border-b border-sidebar-border px-4",
+            "flex h-16 items-center border-b border-sidebar-border bg-sidebar/35 px-4 backdrop-blur-sm",
             collapsed ? "justify-center" : "justify-between",
           )}
         >
@@ -293,7 +305,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
+        <nav className="flex flex-1 flex-col gap-2 overflow-y-auto bg-sidebar p-3">
           <div className="mb-1 flex justify-end">
             <Button type="button" size="icon" variant={menuEditing ? "secondary" : "ghost"} className="h-8 w-8"
               onClick={() => setMenuEditing((current) => !current)} aria-label="Opciones del menú" title="Opciones del menú" aria-pressed={menuEditing}>
@@ -303,7 +315,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {menuItems.map((item) => renderMenuItem(item))}
         </nav>
 
-        <div className="border-t border-sidebar-border p-3">
+        <div className="border-t border-sidebar-border bg-sidebar/35 p-3 backdrop-blur-sm">
           <ProfileBlock collapsed={collapsed} />
           <Button
             variant="ghost"
