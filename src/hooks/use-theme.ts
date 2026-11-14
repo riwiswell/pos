@@ -194,16 +194,28 @@ export function useTheme() {
   const changeSkin = useCallback((next: SkinId) => {
     if (!isSkinId(next)) return;
     const preferences = (profile?.notification_preferences ?? {}) as Record<string, unknown>;
+    const selectedSkin = BUILT_IN_SKINS.find((item) => item.id === next);
+    if (!selectedSkin) return;
+    const colors = selectedSkin.workspaceColor;
+
     setSkinState(next);
+    setWorkspaceColorState(colors[theme]);
     applySkin(next);
+    applyWorkspaceColor(colors[theme]);
     window.localStorage.setItem(SKIN_STORAGE_KEY, next);
+    window.localStorage.setItem(WORKSPACE_STORAGE_KEYS.light, colors.light);
+    window.localStorage.setItem(WORKSPACE_STORAGE_KEYS.dark, colors.dark);
+
+    const savedColors = readProfileWorkspaceColors(preferences);
     save.mutate({
+      accent_color: colors[theme],
       notification_preferences: {
         ...preferences,
         ui_skin: next,
+        ui_backgrounds: { ...(savedColors ?? {}), light: colors.light, dark: colors.dark },
       },
     });
-  }, [profile?.notification_preferences, save]);
+  }, [profile?.accent_color, profile?.notification_preferences, save, theme]);
 
   const changeWorkspaceColor = useCallback((next: string) => {
     if (!validColor(next)) return;
