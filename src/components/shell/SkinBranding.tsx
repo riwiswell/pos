@@ -25,7 +25,7 @@ function SkinMark({ skin }: { skin: SkinId }) {
   if (skin === "pixel") return <span className="skin-mark skin-mark--pixel">{Array.from({ length: 9 }, (_, index) => <i key={index} />)}</span>;
   if (skin === "winamp") return <span className="skin-mark skin-mark--retro">{Array.from({ length: 5 }, (_, index) => <i key={index} />)}</span>;
   if (skin === "nintendo") return <span className="skin-mark skin-mark--nintendo"><i /><b /></span>;
-  if (skin === "pokemon") return <span className="skin-mark skin-mark--pokemon">F1</span>;
+  if (skin === "pokemon") return <span className="skin-mark skin-mark--f1">F1</span>;
   if (skin === "resident-evil") return <span className="skin-mark skin-mark--resident">RE</span>;
   if (skin === "zelda") return <span className="skin-mark skin-mark--zelda"><i>▲</i><i>▲</i><i>▲</i><b>♥</b></span>;
   if (skin === "mario") return <span className="skin-mark skin-mark--mario">🍄</span>;

@@ -3,7 +3,7 @@ export type SkinId =
   | "star-wars" | "football" | "pixel" | "winamp"
   | "nintendo" | "pokemon" | "resident-evil" | "zelda" | "mario" | "chess";
 
-export type SkinCollection = "Base" | "Universos" | "Estilos";
+export type SkinCollection = "Base" | "Universos" | "Estilos" | "Deportes";
 
 export interface SkinDefinition {
   id: SkinId;
@@ -89,7 +89,7 @@ export const BUILT_IN_SKINS: SkinDefinition[] = [
     description: "Una identidad de competición: asfalto oscuro, rojo de carrera, líneas de salida, banderas a cuadros y detalles de telemetría.",
     glyph: "🏁", collection: "Deportes", brandTitle: "FORMULA 1", brandSubtitle: "RACE WEEKEND · GRAND PRIX",
     workspaceColor: { light: "#F3F4F6", dark: "#111318" },
-    preview: { background: "#43CEFD", sidebar: "#7ABF49", primary: "#F2CA52", accent: "#E0627E" },
+    preview: { background: "#17191F", sidebar: "#0B0D11", primary: "#D71920", accent: "#F5F5F2" },
   },
   {
     id: "resident-evil", name: "Resident Evil", tagline: "La noche no termina",

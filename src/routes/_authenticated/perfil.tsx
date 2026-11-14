@@ -333,7 +333,7 @@ function ProfilePage() {
 
       <section className="glass space-y-3 rounded-2xl p-4">
         <div>
-          <h2 className="font-semibold text-foreground">Biblioteca de skins</h2>
+          <h2 className="font-semibold text-foreground">Biblioteca de skins y emblemas</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Cambia la identidad visual completa: tipografía, paleta, superficies, controles, bordes y estilo de los paneles. Tus datos y funciones permanecen intactos.
           </p>
@@ -353,7 +353,7 @@ function ProfilePage() {
               )}
             >
               <div className={cn("skin-preview mb-3", `skin-preview--${option.id}`)}>
-                <SkinBranding skin={option.id} compact />
+                <SkinBranding skin={option.id} />
                 <div className="skin-preview__modules" aria-hidden="true">
                   <span style={{ backgroundColor: option.preview.primary }} />
                   <span style={{ backgroundColor: option.preview.accent }} />
@@ -375,7 +375,7 @@ function ProfilePage() {
           ))}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Cada universo tiene identidad visual propia. Son interpretaciones gráficas no oficiales; no se incluyen logotipos ni ilustraciones licenciadas. Cambiar de skin no modifica tus datos, módulos ni funciones.
+          Cada tarjeta muestra su emblema y nombre de marca, diseñados para reconocer su identidad visual. Son interpretaciones gráficas propias; no son logotipos oficiales ni incluyen material licenciado. Cambiar de skin no modifica tus datos, módulos ni funciones.
         </p>
       </section>
 
