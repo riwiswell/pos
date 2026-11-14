@@ -491,7 +491,7 @@ async function handleApi(request:Request,env:Env):Promise<Response|null>{
     const gameResponse=await fetch(archiveUrl,{headers});
     if(gameResponse.ok){const payload=await gameResponse.json() as any;if(Array.isArray(payload.games))games.push(...payload.games);}
    }
-   return json({profile,stats,archives,games},{200});
+   return json({profile,stats,archives,games},200);
   }catch(error){console.error("[chess] Chess.com PubAPI request failed",error);return json({error:"No fue posible conectar con Chess.com en este momento."},502)}
  }
  if(url.pathname==="/api/assistant/briefing")return handleAssistantBriefing(request,env);
