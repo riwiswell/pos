@@ -136,66 +136,159 @@ async function assistantReadTable(env:Env,authHeader:string,userId:string,spec:A
  if(!Array.isArray(parsed))return {table:spec.table,rows:[],unavailable:"Respuesta de datos inesperada."};
  return {table:spec.table,rows:parsed.map(row=>cleanAssistantValue(row))};
 }
-async function assistantContext(env:Env,request:Request,userId:string,message:string,history:Array<{role:"user"|"assistant";content:string}>,options:{excludeCompletedPlannerItems?:boolean}={}){
+const BRIEFING_TABLE_ORDER = [
+ "planner_items","medical_appointments","notification_jobs","alarms",
+ "work_items","life_goals","habits","habit_logs","journal_entries",
+ "work_sessions","relationships","relationship_interactions"
+] as const;
+const BRIEFING_TABLE_LIMITS:Record<string,number>={
+ planner_items:18,medical_appointments:10,notification_jobs:10,alarms:8,
+ work_items:12,life_goals:10,habits:12,habit_logs:14,journal_entries:8,
+ work_sessions:6,relationships:10,relationship_interactions:8
+};
+const BRIEFING_TABLE_FIELDS:Record<string,string[]>={
+ planner_items:["title","description","scheduled_on","start_time","end_time","due_on","priority","status","type","location"],
+ medical_appointments:["title","appointment_at","status","alarm_enabled","reminder_minutes","location","notes"],
+ notification_jobs:["title","body","fire_at","status","source_type"],
+ alarms:["title","description","alarm_at","repeat_rule","enabled","snoozed_until"],
+ work_items:["title","kind","status","project","client","target_date","minutes_worked","notes"],
+ life_goals:["title","area","status","progress","target_date","goal_type","notes"],
+ habits:["name","icon","kind","type","target","unit","active"],
+ habit_logs:["habit_id","date","completed","value","note"],
+ journal_entries:["type","title","content","entry_date","entry_time","mood","notes","items","capture_stage"],
+ work_sessions:["session_date","started_at","ended_at","status","target_minutes","title","notes","minutes"],
+ relationships:["name","relationship_type","birthday","anniversary","last_contact_on"],
+ relationship_interactions:["interaction_on","kind","type","title","notes"]
+};
+const BRIEFING_CONTEXT_CHAR_LIMIT=12000;
+const CHAT_CONTEXT_CHAR_LIMIT=16000;
+
+function compactBriefingCell(key:string,value:unknown):unknown{
+ if(value===null||typeof value==="number"||typeof value==="boolean")return value;
+ const maxLength=key==="content"?220:key==="description"||key==="notes"||key==="body"?150:180;
+ if(typeof value==="string")return value.replace(/\s+/g," ").trim().slice(0,maxLength);
+ if(Array.isArray(value))return value.slice(0,4).map(item=>
+  typeof item==="string"?item.replace(/\s+/g," ").trim().slice(0,70):item
+ );
+ return undefined;
+}
+function compactBriefingRow(table:string,row:any){
+ const fields=BRIEFING_TABLE_FIELDS[table]??[];
+ const compact:Record<string,unknown>={};
+ for(const field of fields){
+  if(!Object.prototype.hasOwnProperty.call(row,field))continue;
+  const value=compactBriefingCell(field,row[field]);
+  if(value!==undefined)compact[field]=value;
+ }
+ return compact;
+}
+function isBriefingRowRelevant(table:string,row:any,referenceDate?:string){
+ const status=String(row.status??"").toLowerCase();
+ const closed=new Set(["done","completed","cancelled","canceled","archived","deleted"]);
+ if(["planner_items","work_items","medical_appointments","notification_jobs"].includes(table)&&closed.has(status))return false;
+ if(table==="alarms"&&row.enabled===false)return false;
+ if(table==="habits"&&row.active===false)return false;
+ if(table==="life_goals"&&["completed","archived","cancelled","canceled"].includes(status))return false;
+ if(!referenceDate)return true;
+ const dateOf=(value:unknown)=>typeof value==="string"?value.slice(0,10):"";
+ const inRecentWindow=(value:unknown,days:number)=>{
+  const date=dateOf(value);
+  return !date||date>=addIsoDays(referenceDate,-days);
+ };
+ const withinFutureWindow=(value:unknown,days:number)=>{
+  const date=dateOf(value);
+  return !date||date<=addIsoDays(referenceDate,days);
+ };
+ if(table==="medical_appointments"&&!inRecentWindow(row.appointment_at,14))return false;
+ if(table==="medical_appointments"&&!withinFutureWindow(row.appointment_at,30))return false;
+ if(table==="notification_jobs"&&status&&status!=="pending")return false;
+ if(table==="journal_entries"&&!inRecentWindow(row.entry_date,14))return false;
+ if(table==="habit_logs"&&!inRecentWindow(row.date,14))return false;
+ if(table==="relationship_interactions"&&!inRecentWindow(row.interaction_on,60))return false;
+ if(table==="planner_items"&&!withinFutureWindow(row.due_on??row.scheduled_on,30))return false;
+ return true;
+}
+
+async function assistantContext(env:Env,request:Request,userId:string,message:string,history:Array<{role:"user"|"assistant";content:string}>,options:{excludeCompletedPlannerItems?:boolean;mode?:"briefing";referenceDate?:string}={}){
+ const briefingMode=options.mode==="briefing";
  const priorText=history.slice(-8).map(x=>x.content).join(" ");
  const combined=(message+" "+priorText).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("es");
  const allIntent=/todo personal os|toda la informacion|toda mi informacion|todos mis datos|que sabes de mi|resumen general|en general|mi vida completa|absolutamente todo/i.test(combined);
  const matchedGroups=allIntent?Object.keys(ASSISTANT_GROUP_PATTERNS):Object.entries(ASSISTANT_GROUP_PATTERNS).filter(([,patterns])=>patterns.some(pattern=>pattern.test(combined))).map(([group])=>group);
- const selected=new Set(["profile",...(matchedGroups.length?matchedGroups:Object.keys(ASSISTANT_GROUP_PATTERNS))]);
+ const selected=briefingMode
+  ?new Set(["planning","diary","work","life","habits","relationships"])
+  :new Set(["profile",...(matchedGroups.length?matchedGroups:Object.keys(ASSISTANT_GROUP_PATTERNS))]);
  const authHeader=request.headers.get("Authorization")??"";
- const specs=ASSISTANT_SOURCES.filter(spec=>selected.has(spec.group));
+ const specs=briefingMode
+  ?BRIEFING_TABLE_ORDER.map(table=>ASSISTANT_SOURCES.find(spec=>spec.table===table)).filter((spec):spec is AssistantSource=>Boolean(spec))
+  :ASSISTANT_SOURCES.filter(spec=>selected.has(spec.group));
  const broad=!matchedGroups.length||allIntent;
- const results=await Promise.all(specs.map(spec=>assistantReadTable(env,authHeader,userId,spec,broad&&spec.table!=="health_metrics"?6:35)));
- const rows=results.filter(r=>r.rows.length>0).map(r=>({
-  source:r.table,
-  rows:options.excludeCompletedPlannerItems&&r.table==="planner_items"
-   ?r.rows.filter((row:any)=>!["done","completed","cancelled","canceled"].includes(String(row.status??"").toLowerCase()))
-   :r.rows
- }));
+ const results=await Promise.all(specs.map(spec=>assistantReadTable(
+  env,authHeader,userId,spec,
+  briefingMode?(BRIEFING_TABLE_LIMITS[spec.table]??8):(broad&&spec.table!=="health_metrics"?6:35)
+ )));
+ const rows=results.filter(r=>r.rows.length>0).map(r=>{
+  let data=options.excludeCompletedPlannerItems&&r.table==="planner_items"
+   ?r.rows.filter((row:any)=>![ "done","completed","cancelled","canceled" ].includes(String(row.status??"").toLowerCase()))
+   :r.rows;
+  if(briefingMode){
+   data=data.filter((row:any)=>isBriefingRowRelevant(r.table,row,options.referenceDate))
+    .map((row:any)=>compactBriefingRow(r.table,row));
+  }
+  return {source:r.table,rows:data};
+ }).filter(entry=>entry.rows.length>0);
  const unavailable=results.filter(r=>r.unavailable).map(r=>({source:r.table,reason:r.unavailable}));
- let context="Fuentes consultadas (muestra de registros pertenecientes al usuario autenticado):\n";
+ const maxChars=briefingMode?BRIEFING_CONTEXT_CHAR_LIMIT:CHAT_CONTEXT_CHAR_LIMIT;
+ let context=briefingMode
+  ?"Contexto priorizado para el resumen del día; solo compromisos activos y registros recientes del usuario autenticado:\n"
+  :"Fuentes consultadas (muestra de registros pertenecientes al usuario autenticado):\n";
+ let contextTruncated=false;
  for(const entry of rows){
   for(const row of entry.rows){
    const line=entry.source+": "+JSON.stringify(row)+"\n";
-   if(context.length+line.length>61000)break;
+   if(context.length+line.length>maxChars){contextTruncated=true;break;}
    context+=line;
   }
-  if(context.length>61000)break;
+  if(contextTruncated)break;
  }
  if(unavailable.length)context+="\nFuentes no disponibles: "+unavailable.map(x=>x.source+" ("+x.reason+")").join("; ")+".";
- const profileRows=rows.find(entry=>entry.source==="profiles")?.rows??[];
- const sleepSchedule=(profileRows[0] as any)?.notification_preferences?.sleep_schedule;
- if(typeof sleepSchedule?.bedtime==="string"&&typeof sleepSchedule?.wake_time==="string"){
-  context+="\nHorario habitual de sueño definido por el usuario: acostarse "+sleepSchedule.bedtime+"; levantarse "+sleepSchedule.wake_time+". Es una meta de horario, no evidencia de cuánto durmió.";
- }
- const healthRows=rows.find(entry=>entry.source==="health_metrics")?.rows??[];
- if(selected.has("health")&&healthRows.length){
-  const today=bogotaDate(new Date());
-  const currentStart=addIsoDays(today,-6);
-  const previousStart=addIsoDays(today,-13);
-  const validSleepRows=healthRows.filter((row:any)=>typeof row.metric_date==="string"&&Number.isFinite(Number(row.sleep_hours))&&Number(row.sleep_hours)>0&&Number(row.sleep_hours)<=24);
-  const currentWeek=validSleepRows.filter((row:any)=>row.metric_date>=currentStart&&row.metric_date<=today);
-  const previousWeek=validSleepRows.filter((row:any)=>row.metric_date>=previousStart&&row.metric_date<currentStart);
-  const summarize=(entries:any[])=>{
-   const total=entries.reduce((sum,row)=>sum+Number(row.sleep_hours),0);
-   return {count:entries.length,total,average:entries.length?total/entries.length:0};
-  };
-  const current=summarize(currentWeek);
-  const previous=summarize(previousWeek);
-  const hours=(value:number)=>value.toLocaleString("es-CO",{maximumFractionDigits:1});
-  context+="\nComparación de descanso: periodo actual = últimos 7 días (desde "+currentStart+"); periodo anterior = los 7 días previos (desde "+previousStart+").";
-  if(current.count===7&&previous.count===7){
-   const difference=current.total-previous.total;
-   context+=" Hay 7 noches registradas en cada periodo. Actual: "+hours(current.total)+" h; anterior: "+hours(previous.total)+" h; diferencia: "+(difference>0?"+":"")+hours(difference)+" h semanales.";
-  }else if(current.count>=3&&previous.count>=3){
-   const difference=current.average-previous.average;
-   context+=" Promedio por noche: actual "+hours(current.average)+" h ("+current.count+" noches registradas); anterior "+hours(previous.average)+" h ("+previous.count+" noches registradas); diferencia "+(difference>0?"+":"")+hours(difference)+" h por noche. Los totales semanales no son comparables porque faltan registros en uno o ambos periodos.";
-  }else{
-   context+=" Registros disponibles: actual "+current.count+"/7 noches; periodo anterior "+previous.count+"/7. No hay suficientes noches para afirmar una tendencia semanal fiable.";
+ if(contextTruncated)context+="\nNota: contexto resumido; se priorizaron los registros más recientes y accionables.";
+ if(!briefingMode){
+  const profileRows=rows.find(entry=>entry.source==="profiles")?.rows??[];
+  const sleepSchedule=(profileRows[0] as any)?.notification_preferences?.sleep_schedule;
+  if(typeof sleepSchedule?.bedtime==="string"&&typeof sleepSchedule?.wake_time==="string"){
+   context+="\nHorario habitual de sueño definido por el usuario: acostarse "+sleepSchedule.bedtime+"; levantarse "+sleepSchedule.wake_time+". Es una meta de horario, no evidencia de cuánto durmió.";
+  }
+  const healthRows=rows.find(entry=>entry.source==="health_metrics")?.rows??[];
+  if(selected.has("health")&&healthRows.length){
+   const today=bogotaDate(new Date());
+   const currentStart=addIsoDays(today,-6);
+   const previousStart=addIsoDays(today,-13);
+   const validSleepRows=healthRows.filter((row:any)=>typeof row.metric_date==="string"&&Number.isFinite(Number(row.sleep_hours))&&Number(row.sleep_hours)>0&&Number(row.sleep_hours)<=24);
+   const currentWeek=validSleepRows.filter((row:any)=>row.metric_date>=currentStart&&row.metric_date<=today);
+   const previousWeek=validSleepRows.filter((row:any)=>row.metric_date>=previousStart&&row.metric_date<currentStart);
+   const summarize=(entries:any[])=>{
+    const total=entries.reduce((sum,row)=>sum+Number(row.sleep_hours),0);
+    return {count:entries.length,total,average:entries.length?total/entries.length:0};
+   };
+   const current=summarize(currentWeek);
+   const previous=summarize(previousWeek);
+   const hours=(value:number)=>value.toLocaleString("es-CO",{maximumFractionDigits:1});
+   context+="\nComparación de descanso: periodo actual = últimos 7 días (desde "+currentStart+"); periodo anterior = los 7 días previos (desde "+previousStart+").";
+   if(current.count===7&&previous.count===7){
+    const difference=current.total-previous.total;
+    context+=" Hay 7 noches registradas en cada periodo. Actual: "+hours(current.total)+" h; anterior: "+hours(previous.total)+" h; diferencia: "+(difference>0?"+":"")+hours(difference)+" h semanales.";
+   }else if(current.count>=3&&previous.count>=3){
+    const difference=current.average-previous.average;
+    context+=" Promedio por noche: actual "+hours(current.average)+" h ("+current.count+" noches registradas); anterior "+hours(previous.average)+" h ("+previous.count+" noches registradas); diferencia "+(difference>0?"+":"")+hours(difference)+" h por noche. Los totales semanales no son comparables porque faltan registros en uno o ambos periodos.";
+   }else{
+    context+=" Registros disponibles: actual "+current.count+"/7 noches; periodo anterior "+previous.count+"/7. No hay suficientes noches para afirmar una tendencia semanal fiable.";
+   }
   }
  }
  return context;
 }
+
 async function handleAssistantBriefing(request:Request,env:Env):Promise<Response>{
  if(request.method!=="POST")return json({error:"Método no permitido"},405);
  const authHeader=request.headers.get("Authorization");
@@ -212,7 +305,7 @@ async function handleAssistantBriefing(request:Request,env:Env):Promise<Response
  const targetDate=parsedRequestedDate&&!Number.isNaN(parsedRequestedDate.getTime())&&parsedRequestedDate.toISOString().slice(0,10)===requestedDate?requestedDate:todayISO;
  const prompt="Evalúa de forma proactiva mis pendientes para la fecha "+targetDate+". Revisa Agenda y Planeador (tareas, citas, eventos y vencimientos), recordatorios, Diario y notas, Trabajo y sesiones, metas y objetivos, Hábitos y relaciones. Detecta fechas vencidas o próximas, urgencias reales, compromisos de la fecha seleccionada y tareas que llevan tiempo sin avanzar. Sugiere como máximo una prioridad concreta y un siguiente paso pequeño. Si no hay nada que requiera atención especial, dilo con naturalidad. No inventes fechas, urgencias, relaciones causales ni tareas. No confundas una nota antigua con una tarea activa.";
  try{
-  const context=await assistantContext(env,request,user.id,prompt,[],{excludeCompletedPlannerItems:true});
+  const context=await assistantContext(env,request,user.id,prompt,[],{excludeCompletedPlannerItems:true,mode:"briefing",referenceDate:targetDate});
   const targetLabel=new Intl.DateTimeFormat("es-CO",{timeZone:"America/Bogota",dateStyle:"full"}).format(new Date(targetDate+"T12:00:00"));
   const system="Eres la inteligencia proactiva de Personal OS. Usa únicamente datos actuales del usuario autenticado. Ignora las tareas del Planeador con estado done, completed, cancelled o canceled. Nunca sugieras tareas completadas, canceladas o eliminadas, aunque aparezcan en notas. No inventes vencimientos ni urgencias. Responde en español con un máximo de 25 palabras y una o dos frases breves. No describas qué revisaste ni uses introducciones. Menciona como máximo una prioridad activa y un siguiente paso concreto. Si no hay una prioridad real, responde exactamente: No hay nada urgente para hoy. Puedes seguir con tus hábitos y compromisos programados.";
   const messages:Array<{role:ChatRole;content:string}>=[
