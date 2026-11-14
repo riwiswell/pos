@@ -88,8 +88,8 @@ export const BUILT_IN_SKINS: SkinDefinition[] = [
     id: "pokemon", name: "Pokémon", tagline: "Aventura clásica",
     description: "Inspirada en las primeras rutas de Kanto: cielo azul, césped, caminos de tierra, Poké Ball clásica y destellos amarillo Pikachu.",
     glyph: "⚡", collection: "Universos", brandTitle: "POKÉMON CLASSIC", brandSubtitle: "KANTO · ROUTE 01",
-    workspaceColor: { light: "#EAF4FB", dark: "#132A38" },
-    preview: { background: "#65B9E9", sidebar: "#245F43", primary: "#F1C83E", accent: "#E83E3B" },
+    workspaceColor: { light: "#EAF5FC", dark: "#172D42" },
+    preview: { background: "#43CEFD", sidebar: "#7ABF49", primary: "#F2CA52", accent: "#E0627E" },
   },
   {
     id: "resident-evil", name: "Resident Evil", tagline: "La noche no termina",
