@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Loader2, RefreshCw, Save, Upload } from "lucide-react";
+import { Download, Loader2, RefreshCw, Save, Upload, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,6 +101,21 @@ function ProfilePage() {
       }
     } catch {
       // The shared mutation reports the specific storage/validation error.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeBackground = async () => {
+    if (!background) return;
+    setBusy(true);
+    try {
+      // Clear the profile reference; the workspace then falls back to its selected color.
+      await save.mutateAsync({ background_url: null });
+      setBackground(null);
+      await profileQuery.refetch();
+    } catch {
+      // The shared mutation reports the specific persistence error.
     } finally {
       setBusy(false);
     }
@@ -262,6 +277,11 @@ function ProfilePage() {
             <Upload className="mr-1 h-4 w-4" /> Fondo
           </Button>
           <input ref={backgroundInput} type="file" accept="image/*" hidden onChange={(e) => { void pick(e.target.files?.[0], "background"); e.currentTarget.value = ""; }} />
+          {background && !background.startsWith("#") && (
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void removeBackground()}>
+              <X className="mr-1 h-4 w-4" /> Quitar fondo
+            </Button>
+          )}
           {backgroundUrl && <span className="self-center text-xs text-muted-foreground">Fondo aplicado</span>}
         </div>
         {backgroundUrl ? (
