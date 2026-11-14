@@ -40,6 +40,7 @@ import { usePlannerItems } from "@/hooks/use-planner";
 import { compareChronologically, shortTime } from "@/domain/planner";
 import { addDaysISO, greeting } from "@/lib/date";
 import { normalizeDashboardWidgets, normalizeHomeDashboardLayout } from "@/domain/dashboard";
+import { getLevelProgress } from "@/domain/gamification";
 import { useLGList } from "@/hooks/use-life-graph";
 import { useHydrationEntries } from "@/hooks/use-hydration";
 import { LifeActivityFeed } from "@/components/dashboard/LifeActivityFeed";
@@ -110,7 +111,7 @@ function HomePage() {
   const eventXpTotal = (gamificationEventsQuery.data ?? []).reduce((sum:number,event:any)=>sum+Math.max(0,Number(event.xp)||0),0);
   const gamificationXp = Math.max(Number(gamification?.xp ?? 0),eventXpTotal);
   const gamificationUnavailable = gamificationQuery.isError || gamificationEventsQuery.isError;
-  const gamificationLevel = Math.floor(gamificationXp / 200) + 1;
+  const { level: gamificationLevel, xpIntoLevel, xpRequiredForLevel } = getLevelProgress(gamificationXp);
   const activityDates = new Set((gamificationEventsQuery.data ?? []).map((event:any)=>{
     const timestamp = new Date(String(event.created_at ?? ""));
     return Number.isNaN(timestamp.getTime()) ? "" : new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).format(timestamp);
@@ -122,7 +123,7 @@ function HomePage() {
   const gamificationStreak = profileStreakActive ? Math.max(Number(gamification?.current_streak??0),derivedStreak) : derivedStreak;
   const activeChallenge = (challengesQuery.data ?? []).find((challenge: any) => challenge.status === "active");
   const connectionsQuery = useLGList("life_links");
-  const levelProgress = gamificationXp % 200;
+  const levelProgress = (xpIntoLevel / xpRequiredForLevel) * 100;
 
   const habits = habitsQuery.data ?? [];
   const logs = logsQuery.data ?? [];
@@ -230,7 +231,7 @@ function HomePage() {
               <div className="flex items-center gap-2 text-xs text-slate-300"><Trophy className="h-4 w-4 text-amber-300" /> Nivel personal</div>
               <p className="mt-2 text-xl font-semibold tabular-nums text-white">{gamificationQuery.isLoading || gamificationEventsQuery.isLoading ? "…" : gamificationUnavailable ? "—" : `Nv. ${gamificationLevel}`}</p>
               <p className="mt-0.5 text-[11px] text-slate-400">{gamificationUnavailable ? "No se pudo cargar XP" : `${gamificationXp.toLocaleString("es-CO")} XP · ${gamificationStreak} días de racha`}</p>
-              <Progress value={levelProgress/2} className="mt-2 h-1.5 bg-white/10"/>
+              <Progress value={levelProgress} className="mt-2 h-1.5 bg-white/10"/>
               <p className="mt-1 truncate text-[10px] text-slate-300">{connectionsQuery.isLoading ? "…" : `${connectionsQuery.data?.length ?? 0} conexiones activas`}{activeChallenge ? ` · Reto: ${activeChallenge.title} (${activeChallenge.progress}/${activeChallenge.target})` : ""}</p>
             </Link>
           </div>
