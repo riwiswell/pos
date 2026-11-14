@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useProfile, useProfileMutations } from "@/hooks/use-profile";
+import { BUILT_IN_SKINS, DEFAULT_SKIN_ID, isSkinId, type SkinId } from "@/domain/skins";
 
 export type ThemeName = "dark" | "light";
 
@@ -40,6 +41,7 @@ const DEFAULT_WORKSPACE_COLOR: Record<ThemeName, string> = {
 };
 
 const MODE_STORAGE_KEY = "personal-os:theme";
+const SKIN_STORAGE_KEY = "personal-os:skin";
 const LEGACY_COLOR_STORAGE_KEY = "personal-os:accent-color";
 const WORKSPACE_STORAGE_KEYS: Record<ThemeName, string> = {
   light: "personal-os:workspace-color:light",
@@ -57,6 +59,17 @@ function fromProfile(value: string | null | undefined): ThemeName | null {
 
 function normalizeColor(value: string | null | undefined): string | null {
   return validColor(value) ? value : null;
+}
+
+function readStoredSkin(): SkinId {
+  if (typeof window === "undefined") return DEFAULT_SKIN_ID;
+  const value = window.localStorage.getItem(SKIN_STORAGE_KEY);
+  return isSkinId(value) ? value : DEFAULT_SKIN_ID;
+}
+
+export function applySkin(skin: SkinId) {
+  if (typeof document === "undefined") return;
+  document.documentElement.dataset.skin = skin;
 }
 
 function readStoredMode(): ThemeName {
@@ -108,20 +121,28 @@ export function useTheme() {
   const { data: profile } = useProfile();
   const { save } = useProfileMutations();
   const [theme, setThemeState] = useState<ThemeName>("dark");
+  const [skin, setSkinState] = useState<SkinId>(DEFAULT_SKIN_ID);
   const [workspaceColor, setWorkspaceColorState] = useState(DEFAULT_WORKSPACE_COLOR.dark);
 
   useEffect(() => {
     const mode = readStoredMode();
     const color = readStoredWorkspaceColor(mode, true);
+    const selectedSkin = readStoredSkin();
     setThemeState(mode);
+    setSkinState(selectedSkin);
     setWorkspaceColorState(color);
     applyTheme(mode);
+    applySkin(selectedSkin);
     applyWorkspaceColor(color);
   }, []);
 
   useEffect(() => {
     if (!profile) return;
     const preferences = (profile.notification_preferences ?? {}) as Record<string, unknown>;
+    const selectedSkin = isSkinId(preferences.ui_skin) ? preferences.ui_skin : readStoredSkin();
+    setSkinState(selectedSkin);
+    applySkin(selectedSkin);
+    window.localStorage.setItem(SKIN_STORAGE_KEY, selectedSkin);
     const remoteMode = fromProfile(preferences.ui_mode as string | undefined)
       ?? fromProfile(profile.accent_color);
     const mode = remoteMode ?? theme;
@@ -170,6 +191,20 @@ export function useTheme() {
     });
   }, [profile?.accent_color, profile?.notification_preferences, save]);
 
+  const changeSkin = useCallback((next: SkinId) => {
+    if (!isSkinId(next)) return;
+    const preferences = (profile?.notification_preferences ?? {}) as Record<string, unknown>;
+    setSkinState(next);
+    applySkin(next);
+    window.localStorage.setItem(SKIN_STORAGE_KEY, next);
+    save.mutate({
+      notification_preferences: {
+        ...preferences,
+        ui_skin: next,
+      },
+    });
+  }, [profile?.notification_preferences, save]);
+
   const changeWorkspaceColor = useCallback((next: string) => {
     if (!validColor(next)) return;
     const preferences = (profile?.notification_preferences ?? {}) as Record<string, unknown>;
@@ -195,6 +230,9 @@ export function useTheme() {
   return {
     theme,
     setTheme: changeTheme,
+    skin,
+    setSkin: changeSkin,
+    skins: BUILT_IN_SKINS,
     workspaceColor,
     setWorkspaceColor: changeWorkspaceColor,
     workspaceColorOptions,

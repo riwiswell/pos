@@ -11,10 +11,15 @@ type LocationChoice = City | { id: "current"; label: string; latitude: number; l
 
 type WeatherResponse = {
   current?: {
+    time: string;
+    interval?: number;
     temperature_2m: number;
     apparent_temperature: number;
     relative_humidity_2m: number;
     precipitation: number;
+    rain?: number;
+    showers?: number;
+    cloud_cover?: number;
     weather_code: number;
     wind_speed_10m: number;
     is_day: number;
@@ -55,12 +60,27 @@ function readLocation(): LocationChoice {
   return CITIES[0];
 }
 
-function currentConditionCode(code:number,precipitation:number):number {
-  // Open-Meteo weather_code can describe modeled precipitation in the grid cell.
-  // If the current 15-minute observation reports effectively no precipitation,
-  // show the cloud condition instead of claiming it is raining at the user's location.
-  if ([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code) && precipitation <= 0.05) return 3;
-  return code;
+function currentConditionCode(current: NonNullable<WeatherResponse["current"]>):number {
+  const rainCodes = [51,53,55,56,57,61,63,65,66,67,80,81,82];
+  if (!rainCodes.includes(current.weather_code)) return current.weather_code;
+
+  // Open-Meteo's weather code can describe a modeled rainy condition even when
+  // the active precipitation interval is dry. Use the measured/modelled amount
+  // for this interval to avoid showing "Lluvia" for hours without rain.
+  const ageMinutes = current.time
+    ? Math.max(0, (Date.now() - new Date(current.time).getTime()) / 60000)
+    : 0;
+  const intervalRain = Math.max(
+    Number(current.rain ?? 0),
+    Number(current.showers ?? 0),
+    Number(current.precipitation ?? 0),
+  );
+  if (ageMinutes <= 90 && intervalRain >= 0.1) return current.weather_code;
+
+  const cloudCover = Number(current.cloud_cover ?? 100);
+  if (cloudCover <= 15) return current.is_day === 1 ? 0 : 0;
+  if (cloudCover <= 45) return 2;
+  return 3;
 }
 
 function weatherDescription(code: number) {
@@ -105,6 +125,7 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -114,7 +135,7 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
     const params = new URLSearchParams({
       latitude: String(location.latitude),
       longitude: String(location.longitude),
-      current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day",
+      current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,showers,cloud_cover,weather_code,wind_speed_10m,is_day",
       daily: "weather_code,precipitation_probability_max,temperature_2m_max,temperature_2m_min",
       forecast_days: planner ? "7" : "5",
       timezone: "auto",
@@ -138,7 +159,12 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
       active = false;
       controller.abort();
     };
-  }, [location]);
+  }, [location, planner, refreshKey]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setRefreshKey((value) => value + 1), 15 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const chooseCity = (id: string) => {
     const city = CITIES.find((item) => item.id === id);
@@ -175,7 +201,7 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
 
   const current = weather?.current;
   const rainChance = weather?.daily?.precipitation_probability_max?.[0];
-  const displayCode = current ? currentConditionCode(current.weather_code, current.precipitation) : 3;
+  const displayCode = current ? currentConditionCode(current) : 3;
   const mood = current ? weatherMood(displayCode, current.is_day === 1) : "neutral";
 
   return (
@@ -199,6 +225,9 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
             <option value="current" disabled>Mi ubicación</option>
             {CITIES.map((city) => <option key={city.id} value={city.id}>{city.label}</option>)}
           </select>
+          <Button type="button" size="icon" variant="outline" className="h-8 w-8" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Actualizar clima" title="Actualizar clima">
+            <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+          </Button>
           <Button type="button" size={compact ? "icon" : "sm"} variant="outline" className={compact ? "h-8 w-8" : planner ? "h-8 gap-1.5" : "h-9 gap-1.5"} onClick={useCurrentLocation} disabled={locating} aria-label="Usar mi ubicación actual" title="Usar mi ubicación actual">
             <LocateFixed className="h-3.5 w-3.5" />{!compact && (locating ? "Ubicando…" : "Dónde estoy")}
           </Button>
@@ -221,16 +250,16 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
                 <p className="break-words text-xs text-muted-foreground">{weatherDescription(displayCode)} · sensación {Math.round(current.apparent_temperature)}°</p>
               </div>
             </div>
-            <div className="min-w-0 rounded-xl bg-background/55 px-3 py-2"><p className="text-[10px] text-muted-foreground">Lluvia</p><p className="text-lg font-semibold tabular-nums">{rainChance ?? "—"}{rainChance == null ? "" : "%"}</p></div>
+            <div className="min-w-0 rounded-xl bg-background/55 px-3 py-2"><p className="text-[10px] text-muted-foreground">Prob. hoy</p><p className="text-lg font-semibold tabular-nums">{rainChance ?? "—"}{rainChance == null ? "" : "%"}</p></div>
             <div className="min-w-0 rounded-xl bg-background/55 px-3 py-2"><p className="text-[10px] text-muted-foreground">Humedad</p><p className="text-lg font-semibold tabular-nums">{Math.round(current.relative_humidity_2m)}%</p></div>
           </div>
         ) : (
           <div className={planner ? "mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-[1.2fr_1fr_1fr_1fr] sm:items-center" : "mt-5 grid grid-cols-2 gap-4 sm:grid-cols-[1.25fr_1fr_1fr_1fr] sm:items-center"}>
             <div className="col-span-2 flex items-center gap-3 sm:col-span-1">
-              <WeatherIcon code={current.weather_code} isDay={current.is_day === 1} small={planner} />
+              <WeatherIcon code={displayCode} isDay={current.is_day === 1} small={planner} />
               <div>
                 <p className={planner ? "text-3xl font-semibold tracking-tight tabular-nums" : "text-4xl font-semibold tracking-tight tabular-nums"}>{Math.round(current.temperature_2m)}°</p>
-                <p className="text-sm text-muted-foreground">{weatherDescription(current.weather_code)}</p>
+                <p className="text-sm text-muted-foreground">{weatherDescription(displayCode)}</p>
                 <p className="text-xs text-muted-foreground">Sensación {Math.round(current.apparent_temperature)}°</p>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { Activity, BookOpen, BriefcaseBusiness, HeartPulse, Link2, NotebookPen, Sparkles, Target, Users } from "lucide-react";
+import { Activity, Apple, BookOpen, BriefcaseBusiness, CalendarCheck2, CheckSquare, Clock3, Droplets, Flag, HeartPulse, Link2, NotebookPen, Pill, Repeat2, ShoppingCart, Sparkles, Target, Users, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Habit } from "@/domain/types";
 import { useHabits } from "@/hooks/use-habits";
@@ -25,14 +25,33 @@ type LifeConnection = {
 
 const DOMAIN: Record<string, { label: string; icon: typeof Activity; tone: string }> = {
   habit_logs: { label: "Hábitos", icon: Target, tone: "text-violet-400 bg-violet-500/10" },
+  routine_logs: { label: "Rutinas", icon: Repeat2, tone: "text-violet-400 bg-violet-500/10" },
+  routines: { label: "Rutinas", icon: Repeat2, tone: "text-violet-400 bg-violet-500/10" },
+  planner_items: { label: "Agenda", icon: CalendarCheck2, tone: "text-indigo-400 bg-indigo-500/10" },
   health_metrics: { label: "Salud", icon: HeartPulse, tone: "text-rose-400 bg-rose-500/10" },
+  hydration_entries: { label: "Hidratación", icon: Droplets, tone: "text-cyan-400 bg-cyan-500/10" },
+  nutrition_logs: { label: "Nutrición", icon: Apple, tone: "text-lime-400 bg-lime-500/10" },
+  medication_doses: { label: "Medicamentos", icon: Pill, tone: "text-rose-400 bg-rose-500/10" },
+  medical_appointments: { label: "Citas médicas", icon: CalendarCheck2, tone: "text-rose-400 bg-rose-500/10" },
+  menstrual_records: { label: "Salud", icon: HeartPulse, tone: "text-pink-400 bg-pink-500/10" },
+  menstrual_daily_logs: { label: "Salud", icon: HeartPulse, tone: "text-pink-400 bg-pink-500/10" },
   journal_entries: { label: "Diario", icon: NotebookPen, tone: "text-amber-400 bg-amber-500/10" },
   work_items: { label: "Trabajo", icon: BriefcaseBusiness, tone: "text-sky-400 bg-sky-500/10" },
   work_sessions: { label: "Trabajo", icon: BriefcaseBusiness, tone: "text-sky-400 bg-sky-500/10" },
   learning_sessions: { label: "Aprendizaje", icon: BookOpen, tone: "text-cyan-400 bg-cyan-500/10" },
   learning_items: { label: "Aprendizaje", icon: BookOpen, tone: "text-cyan-400 bg-cyan-500/10" },
+  learning_notes: { label: "Aprendizaje", icon: BookOpen, tone: "text-cyan-400 bg-cyan-500/10" },
   relationship_interactions: { label: "Relaciones", icon: Users, tone: "text-pink-400 bg-pink-500/10" },
   spiritual_entries: { label: "Espiritualidad", icon: Sparkles, tone: "text-amber-400 bg-amber-500/10" },
+  spiritual_goals: { label: "Espiritualidad", icon: Sparkles, tone: "text-amber-400 bg-amber-500/10" },
+  life_goals: { label: "Metas", icon: Flag, tone: "text-emerald-400 bg-emerald-500/10" },
+  checklists: { label: "Listas", icon: CheckSquare, tone: "text-teal-400 bg-teal-500/10" },
+  checklist_items: { label: "Listas", icon: CheckSquare, tone: "text-teal-400 bg-teal-500/10" },
+  bucket_list: { label: "Experiencias", icon: Flag, tone: "text-amber-400 bg-amber-500/10" },
+  finance_transactions: { label: "Finanzas", icon: Wallet, tone: "text-emerald-400 bg-emerald-500/10" },
+  shopping_lists: { label: "Compras", icon: ShoppingCart, tone: "text-orange-400 bg-orange-500/10" },
+  shopping_items: { label: "Compras", icon: ShoppingCart, tone: "text-orange-400 bg-orange-500/10" },
+  alarms: { label: "Alarmas", icon: Clock3, tone: "text-indigo-400 bg-indigo-500/10" },
 };
 
 const LINK_ENTITY_TYPE: Record<string, string> = {
@@ -88,19 +107,71 @@ function hasTypedConnection(event: LifeEvent, connections: LifeConnection[]) {
   );
 }
 
+function eventDomain(event: LifeEvent) {
+  const known = DOMAIN[event.entity_type ?? ""];
+  if (known) return known;
+  const fallback = (event.entity_type ?? "personal")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return { label: fallback || "Personal", icon: Activity, tone: "text-muted-foreground bg-muted" };
+}
+
+function eventIconGlyph(event: LifeEvent, habit?: Habit) {
+  const value = habit?.icon ?? event.payload?.icon ?? event.payload?.emoji;
+  return typeof value === "string" && value.length <= 8 && /\p{Extended_Pictographic}/u.test(value)
+    ? value
+    : null;
+}
+
+function EventGlyph({ event, habit, Icon, small = false }: {
+  event: LifeEvent;
+  habit?: Habit;
+  Icon: typeof Activity;
+  small?: boolean;
+}) {
+  const glyph = eventIconGlyph(event, habit);
+  if (glyph) return <span className={small ? "text-base leading-none" : "text-xl leading-none"}>{glyph}</span>;
+  return <Icon className={small ? "h-3.5 w-3.5" : "h-4 w-4"} />;
+}
+
 function eventTitle(event: LifeEvent, habit?: Habit) {
   const payload = event.payload ?? {};
-  if (event.entity_type === "habit_logs" && habit?.name?.trim()) return habit.name;
-  const title = payload.title ?? payload.name;
-  if (typeof title === "string" && title.trim()) return title;
-  const domain = DOMAIN[event.entity_type ?? ""];
-  if (event.entity_type === "habit_logs") return payload.completed === true || Number(payload.value ?? 0) > 0 ? "Progreso registrado" : "Registro actualizado";
-  if (event.entity_type === "health_metrics") return "Actualizaste tus datos de salud";
-  if (event.entity_type === "journal_entries") return "Escribiste en tu diario";
-  if (event.entity_type === "work_sessions") return payload.status === "completed" ? "Completaste una sesión de trabajo" : "Registraste una sesión de trabajo";
-  if (event.entity_type === "learning_sessions") return "Registraste una sesión de aprendizaje";
-  if (event.entity_type === "relationship_interactions") return "Registraste una interacción";
-  return domain ? "Actividad registrada" : "Nuevo acontecimiento";
+  if (event.entity_type === "habit_logs" && habit?.name?.trim()) {
+    if (habit.type === "counter") return `Registraste progreso en ${habit.name}`;
+    return payload.completed === true ? `Completaste ${habit.name}` : `Registraste ${habit.name}`;
+  }
+
+  const titleKeys = [
+    "title", "name", "activity_name", "habit_name", "routine_name",
+    "medication_name", "book_title", "relationship_name", "item_name", "subject",
+  ];
+  for (const key of titleKeys) {
+    const value = payload[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  const updated = event.event_type === "updated" || payload._operation === "UPDATE";
+  switch (event.entity_type) {
+    case "routine_logs": return payload.completed === true ? "Completaste una rutina" : "Registraste una rutina";
+    case "planner_items": return payload.status === "done" ? "Completaste una actividad de agenda" : "Registraste una actividad de agenda";
+    case "health_metrics": return updated ? "Actualizaste tus datos de salud" : "Registraste un dato de salud";
+    case "journal_entries": return "Escribiste en tu diario";
+    case "work_sessions": return payload.status === "completed" ? "Completaste una sesión de trabajo" : "Registraste una sesión de trabajo";
+    case "learning_sessions": return "Registraste una sesión de aprendizaje";
+    case "relationship_interactions": return "Registraste una interacción";
+    case "finance_transactions": return payload.type === "income" ? "Registraste un ingreso" : "Registraste un gasto";
+    case "medication_doses": return payload.status === "taken" ? "Registraste una toma de medicamento" : "Actualizaste una dosis";
+    case "hydration_entries": return "Registraste una bebida";
+    case "nutrition_logs": return "Registraste tu alimentación";
+    case "medical_appointments": return "Registraste una cita médica";
+    case "life_goals": return updated ? "Actualizaste una meta" : "Creaste una meta";
+    case "spiritual_entries": return "Registraste una actividad espiritual";
+    case "bucket_list": return "Añadiste una experiencia pendiente";
+    default: {
+      const domain = eventDomain(event);
+      return updated ? `Actualizaste: ${domain.label}` : `Registraste: ${domain.label}`;
+    }
+  }
 }
 function eventDetail(event: LifeEvent, habit?: Habit) {
   const payload = event.payload ?? {};
@@ -115,17 +186,33 @@ function eventDetail(event: LifeEvent, habit?: Habit) {
       const amount = `${value.toLocaleString("es-CO", { maximumFractionDigits: 2 })}${unitLabel}`;
       return target > 0 ? `${amount} / ${target.toLocaleString("es-CO")}${unitLabel}` : amount;
     }
-    return payload.completed === true ? "Completado" : "Marcado como pendiente";
+    return payload.completed === true ? "Marcado como completado" : "Registro de actividad";
   }
   if (event.entity_type === "health_metrics") {
     const parts: string[] = [];
     if (payload.water_liters != null) parts.push(`Agua: ${Number(payload.water_liters).toLocaleString("es-CO")} L`);
     if (payload.sleep_hours != null) parts.push(`Sueño: ${Number(payload.sleep_hours).toLocaleString("es-CO")} h`);
     if (payload.exercise_minutes != null) parts.push(`Actividad: ${Number(payload.exercise_minutes)} min`);
-    return parts.join(" · ") || "Seguimiento de salud";
+    if (payload.weight_kg != null) parts.push(`Peso: ${Number(payload.weight_kg).toLocaleString("es-CO")} kg`);
+    return parts.join(" · ") || "Dato de salud guardado";
   }
   if (event.entity_type === "work_sessions" && payload.minutes != null) return `${Number(payload.minutes)} minutos registrados`;
   if (event.entity_type === "learning_sessions" && payload.minutes != null) return `${Number(payload.minutes)} minutos de aprendizaje`;
+  if (event.entity_type === "planner_items") return payload.status === "done" ? "Tarea marcada como completada" : "Elemento añadido a la agenda";
+  if (event.entity_type === "routine_logs") return payload.completed === true ? "Rutina completada" : "Rutina registrada";
+  if (event.entity_type === "finance_transactions" && payload.amount != null) return `Valor: ${Number(payload.amount).toLocaleString("es-CO", { maximumFractionDigits: 2 })}`;
+  if (event.entity_type === "medication_doses") return payload.status === "taken" ? "Dosis marcada como tomada" : "Estado de dosis actualizado";
+  if (event.entity_type === "hydration_entries") {
+    const amount = payload.amount_ml ?? payload.volume_ml ?? payload.ml;
+    return amount != null ? `${Number(amount).toLocaleString("es-CO")} ml registrados` : "Bebida añadida al registro";
+  }
+  if (event.entity_type === "nutrition_logs") return "Registro de alimentación guardado";
+  if (event.entity_type === "journal_entries") return "Entrada guardada en el diario";
+  if (event.entity_type === "relationship_interactions") return "Interacción añadida al historial";
+  if (event.entity_type === "spiritual_entries") return "Registro añadido a Espiritualidad";
+  if (event.entity_type === "medical_appointments") return "Cita añadida al calendario";
+  const summary = payload.summary ?? payload.detail ?? payload.description;
+  if (typeof summary === "string" && summary.trim()) return summary.trim().slice(0, 120);
   return event.event_type === "updated" ? "Registro actualizado" : "Añadido a tu historial";
 }
 function eventTime(value: string) {
@@ -188,13 +275,13 @@ export function LifeActivityFeed({ date, connections, connectionsLoading }: { da
             <p className="text-xs text-muted-foreground">Todavía no hay actividad registrada para esta fecha.</p>
           ) : (
             previewEvents.map((event) => {
-              const domain = DOMAIN[event.entity_type ?? ""] ?? { label: "Personal", icon: Activity, tone: "text-muted-foreground bg-muted" };
+              const domain = eventDomain(event);
               const Icon = domain.icon;
               const habit = eventHabit(event, habitsById);
               return (
                 <div key={event.id} className="flex min-w-0 items-center gap-2.5">
                   <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${domain.tone}`}>
-                    {habit?.icon ? <span className="text-base leading-none">{habit.icon}</span> : <Icon className="h-3.5 w-3.5" />}
+                    <EventGlyph event={event} habit={habit} Icon={Icon} small />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-medium">{eventTitle(event, habit)}</p>
@@ -251,7 +338,7 @@ export function LifeActivityFeed({ date, connections, connectionsLoading }: { da
                     return (
                       <article key={event.id} className="flex min-w-0 items-start gap-3 py-3">
                         <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${domain.tone}`}>
-                          {habit?.icon ? <span className="text-lg leading-none">{habit.icon}</span> : <Icon className="h-4 w-4" />}
+                          <EventGlyph event={event} habit={habit} Icon={Icon} />
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex min-w-0 flex-wrap items-center gap-2">

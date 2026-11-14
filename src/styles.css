@@ -644,3 +644,248 @@
     animation: none !important;
   }
 }
+
+/* PERSONAL OS — Extensible skin packs. */
+html[data-skin] body {
+  font-family: var(--skin-font, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif);
+}
+
+/* LEGO: bright primary colors, firm surfaces and tactile controls. */
+html[data-skin="lego"] {
+  --background: #17243a;
+  --foreground: #fff9e8;
+  --surface: #21334b;
+  --surface-base: #21334b;
+  --surface-foreground: #fff9e8;
+  --card: #253a53;
+  --card-base: #253a53;
+  --card-foreground: #fff9e8;
+  --popover: #253a53;
+  --popover-foreground: #fff9e8;
+  --primary: #f02d32;
+  --primary-foreground: #ffffff;
+  --secondary: #0758bf;
+  --secondary-foreground: #ffffff;
+  --muted: #2b4059;
+  --muted-foreground: #d6dfec;
+  --accent: #f6c900;
+  --accent-foreground: #201b0b;
+  --border: #647b98;
+  --border-strong: #91a7c2;
+  --input: #8298b2;
+  --ring: #f6c900;
+  --sidebar: #064fae;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffd500;
+  --sidebar-primary-foreground: #1e2c40;
+  --sidebar-accent: #0d64d7;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #4b86cb;
+  --sidebar-ring: #ffd500;
+  --radius: 0.9rem;
+  --skin-font: "Trebuchet MS", "Arial Rounded MT Bold", sans-serif;
+  --shadow-glass: 0 4px 0 rgb(0 0 0 / 22%), 0 10px 22px -14px rgb(0 0 0 / 45%);
+}
+html.theme-light[data-skin="lego"] {
+  --background: #fff3c6;
+  --foreground: #2a2114;
+  --surface: #fff9e8;
+  --surface-base: #fff9e8;
+  --surface-foreground: #2a2114;
+  --card: #fffdf5;
+  --card-base: #fffdf5;
+  --card-foreground: #2a2114;
+  --popover: #fffdf5;
+  --popover-foreground: #2a2114;
+  --secondary: #e3efff;
+  --secondary-foreground: #123b6f;
+  --muted: #f4e8bf;
+  --muted-foreground: #685b43;
+  --accent: #ffe17a;
+  --accent-foreground: #3a2d0b;
+  --border: #d9c98f;
+  --border-strong: #bca768;
+  --input: #d1bf82;
+  --sidebar: #0758bf;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffd500;
+  --sidebar-primary-foreground: #1e2c40;
+  --sidebar-accent: #0d64d7;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #4b86cb;
+}
+html[data-skin="lego"] .glass {
+  border-width: 2px;
+  backdrop-filter: none;
+  box-shadow: var(--shadow-glass);
+}
+html[data-skin="lego"] .inicio-hero {
+  background: linear-gradient(135deg, #0758bf, #0877bd 54%, #f02d32) !important;
+  border: 3px solid #ffd500;
+  box-shadow: 0 5px 0 rgb(0 0 0 / 24%);
+}
+html[data-skin="lego"] .weather-card {
+  background: linear-gradient(135deg, #0758bf, #0877bd 60%, #e6a800);
+  border: 2px solid #ffd500;
+}
+
+/* DC Comics: cinematic navy, comic red and a restrained gold highlight. */
+html[data-skin="dc-comics"] {
+  --background: #071226;
+  --foreground: #f7f8fc;
+  --surface: #101f3b;
+  --surface-base: #101f3b;
+  --surface-foreground: #f7f8fc;
+  --card: #132746;
+  --card-base: #132746;
+  --card-foreground: #f7f8fc;
+  --popover: #132746;
+  --popover-foreground: #f7f8fc;
+  --primary: #e32636;
+  --primary-foreground: #ffffff;
+  --secondary: #174a91;
+  --secondary-foreground: #ffffff;
+  --muted: #1c3152;
+  --muted-foreground: #c1cbe0;
+  --accent: #f7c948;
+  --accent-foreground: #271d05;
+  --border: #304b73;
+  --border-strong: #58749b;
+  --input: #3c557a;
+  --ring: #f7c948;
+  --sidebar: #050d1c;
+  --sidebar-foreground: #f7f8fc;
+  --sidebar-primary: #f7c948;
+  --sidebar-primary-foreground: #171b24;
+  --sidebar-accent: #193660;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #263f66;
+  --sidebar-ring: #f7c948;
+  --radius: 0.55rem;
+  --skin-font: "Arial Narrow", Impact, sans-serif;
+  --shadow-glass: 0 12px 30px -18px rgb(0 0 0 / 72%);
+}
+html.theme-light[data-skin="dc-comics"] {
+  --background: #edf2fa;
+  --foreground: #13213b;
+  --surface: #f8faff;
+  --surface-base: #f8faff;
+  --surface-foreground: #13213b;
+  --card: #ffffff;
+  --card-base: #ffffff;
+  --card-foreground: #13213b;
+  --popover: #ffffff;
+  --popover-foreground: #13213b;
+  --secondary: #dce8f8;
+  --secondary-foreground: #183c70;
+  --muted: #e5ebf5;
+  --muted-foreground: #4c5d78;
+  --accent: #ffedb1;
+  --accent-foreground: #3e2e06;
+  --border: #c3d0e4;
+  --border-strong: #9aacc8;
+  --input: #b9c8df;
+  --sidebar: #10284b;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #f7c948;
+  --sidebar-primary-foreground: #171b24;
+  --sidebar-accent: #193660;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #38567f;
+}
+html[data-skin="dc-comics"] .glass {
+  border-color: color-mix(in oklab, var(--primary) 34%, var(--border));
+  box-shadow: var(--shadow-glass);
+}
+html[data-skin="dc-comics"] .inicio-hero {
+  background: linear-gradient(125deg, #050d1c 0%, #102d59 62%, #8e1724 100%) !important;
+  border: 1px solid #f7c948;
+}
+html[data-skin="dc-comics"] .weather-card {
+  background: linear-gradient(125deg, #0b1d3c, #174a91 58%, #8e1724);
+  border-color: #f7c948;
+}
+
+/* Winamp: compact metal panels, squared controls and acid-green highlights. */
+html[data-skin="winamp"] {
+  --background: #090d10;
+  --foreground: #e5e7eb;
+  --surface: #141a1f;
+  --surface-base: #141a1f;
+  --surface-foreground: #e5e7eb;
+  --card: #171f25;
+  --card-base: #171f25;
+  --card-foreground: #e5e7eb;
+  --popover: #171f25;
+  --popover-foreground: #e5e7eb;
+  --primary: #a3e635;
+  --primary-foreground: #10160b;
+  --secondary: #2b343c;
+  --secondary-foreground: #f3f4f6;
+  --muted: #222c33;
+  --muted-foreground: #aab5bd;
+  --accent: #39444d;
+  --accent-foreground: #f8fafc;
+  --border: #3d4b55;
+  --border-strong: #657681;
+  --input: #53636e;
+  --ring: #a3e635;
+  --sidebar: #080c0f;
+  --sidebar-foreground: #e5e7eb;
+  --sidebar-primary: #a3e635;
+  --sidebar-primary-foreground: #10160b;
+  --sidebar-accent: #202b32;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #303e47;
+  --sidebar-ring: #a3e635;
+  --radius: 0.28rem;
+  --skin-font: "Arial", "Segoe UI", sans-serif;
+  --shadow-glass: inset 0 1px 0 rgb(255 255 255 / 9%), 0 4px 12px rgb(0 0 0 / 42%);
+}
+html.theme-light[data-skin="winamp"] {
+  --background: #dce2e6;
+  --foreground: #151c20;
+  --surface: #edf1f3;
+  --surface-base: #edf1f3;
+  --surface-foreground: #151c20;
+  --card: #f7f9fa;
+  --card-base: #f7f9fa;
+  --card-foreground: #151c20;
+  --popover: #f7f9fa;
+  --popover-foreground: #151c20;
+  --secondary: #cbd4da;
+  --secondary-foreground: #1d292f;
+  --muted: #d4dce1;
+  --muted-foreground: #46535b;
+  --accent: #d8efb1;
+  --accent-foreground: #1b2a0d;
+  --border: #a6b2ba;
+  --border-strong: #87959e;
+  --input: #9baab3;
+  --sidebar: #1a252c;
+  --sidebar-foreground: #f1f5f7;
+  --sidebar-primary: #a3e635;
+  --sidebar-primary-foreground: #10160b;
+  --sidebar-accent: #2b3b45;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #46545e;
+}
+html[data-skin="winamp"] .glass {
+  border-radius: 0.28rem;
+  backdrop-filter: none;
+  box-shadow: var(--shadow-glass);
+}
+html[data-skin="winamp"] button,
+html[data-skin="winamp"] [role="button"] {
+  border-radius: 0.28rem;
+}
+html[data-skin="winamp"] .inicio-hero {
+  background: linear-gradient(180deg, #34434c, #12191f 54%, #080d11) !important;
+  border: 1px solid #71838f;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 16%), 0 9px 25px rgb(0 0 0 / 42%);
+}
+html[data-skin="winamp"] .weather-card {
+  background: linear-gradient(180deg, #384952, #1b282f 60%, #11191e);
+  border-color: #a3e635;
+}
+

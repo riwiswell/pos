@@ -55,7 +55,7 @@ function ProfilePage() {
   const { save, uploadMedia } = useProfileMutations();
   const help = useHelpEnabled();
   const setHelp = useSetHelpEnabled();
-  const { theme, setTheme, workspaceColor, setWorkspaceColor, workspaceColorOptions } = useTheme();
+  const { theme, setTheme, skin, setSkin, skins, workspaceColor, setWorkspaceColor, workspaceColorOptions } = useTheme();
 
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -328,6 +328,59 @@ function ProfilePage() {
           <span className="flex items-center gap-1 text-sm font-medium">Ayudas contextuales <HelpTip helpKey="settings.help" /></span>
           <Switch checked={help} onCheckedChange={(value) => setHelp.mutate(value)} />
         </div>
+      </section>
+
+      <section className="glass space-y-3 rounded-2xl p-4">
+        <div>
+          <h2 className="font-semibold text-foreground">Biblioteca de skins</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Cambia la identidad visual completa: tipografía, paleta, superficies, controles, bordes y estilo de los paneles. Tus datos y funciones permanecen intactos.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {skins.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setSkin(option.id)}
+              aria-pressed={skin === option.id}
+              className={cn(
+                "min-w-0 rounded-2xl border p-3 text-left transition-all",
+                skin === option.id
+                  ? "border-primary bg-primary/5 ring-2 ring-primary/25"
+                  : "border-border hover:border-primary/50",
+              )}
+            >
+              <div
+                className="mb-3 flex h-14 overflow-hidden rounded-xl border"
+                style={{ backgroundColor: option.preview.background, borderColor: option.preview.accent }}
+              >
+                <div className="w-[22%]" style={{ backgroundColor: option.preview.sidebar }} />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-2">
+                  <span className="h-2 w-2/3 rounded-full" style={{ backgroundColor: option.preview.primary }} />
+                  <div className="flex flex-1 gap-1">
+                    <span className="flex-1 rounded-md border" style={{ backgroundColor: option.preview.accent, borderColor: option.preview.sidebar }} />
+                    <span className="flex-1 rounded-md border" style={{ backgroundColor: option.preview.background, borderColor: option.preview.primary }} />
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="text-lg leading-none">{option.glyph}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{option.name}</span>
+                    <span className="block text-[10px] text-muted-foreground">{option.tagline}</span>
+                  </span>
+                </span>
+                {skin === option.id && <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">Activo</span>}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">{option.description}</p>
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Los paquetes iniciales son estilos nativos de Personal OS. La arquitectura permite añadir nuevos skins descargables sin cambiar los registros personales.
+        </p>
       </section>
 
       <section className="glass space-y-3 rounded-2xl p-4">
