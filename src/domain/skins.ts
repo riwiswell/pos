@@ -76,7 +76,7 @@ export const BUILT_IN_SKINS: SkinDefinition[] = [
     glyph: "▰", collection: "Estilos", brandTitle: "RETRO DIGITAL", brandSubtitle: "SYNC YOUR DAY",
     workspaceColor: { light: "#DCE2E6", dark: "#090D10" },
     preview: { background: "#101418", sidebar: "#090D10", primary: "#A3E635", accent: "#6B7280" },
-  },,
+  },
   {
     id: "nintendo", name: "Nintendo World", tagline: "Play your day",
     description: "Una consola convertida en espacio de juego: botones icónicos, paneles limpios y energía de Nintendo.",
