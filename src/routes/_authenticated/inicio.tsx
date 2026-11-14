@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
+import { useTheme } from "@/hooks/use-theme";
 import { useHabits, useLogs, useLogsRange, useHabitMutations } from "@/hooks/use-habits";
 import { useJournalEntriesByDate } from "@/hooks/use-journal";
 import { JOURNAL_META, entrySnippet, type JournalEntry } from "@/domain/journal";
@@ -74,6 +75,7 @@ function isDone(habit: Habit, log: HabitLog | undefined) {
 
 function HomePage() {
   const { date } = useGlobalDate();
+  const { skin } = useTheme();
   const { user } = useAuth();
   const profileQuery = useProfile();
   const dashboardWidgets = normalizeDashboardWidgets(profileQuery.data?.dashboard_widgets);
@@ -238,6 +240,11 @@ function HomePage() {
           </div>
           {homeLayout.visible.includes("weather") && (
             <div className="inicio-hero-weather space-y-3">
+              {skin === "pokemon" && (
+                <div className="inicio-theme-logo">
+                  <img src="/formula1-home.svg" alt="Fórmula 1 · Race Weekend · Grand Prix" />
+                </div>
+              )}
               <WeatherCard compact />
               {homeLayout.visible.includes("activity") && (
                 <div className="inicio-widget inicio-widget--activity" style={{ order: homeLayout.order.indexOf("activity") }}>
