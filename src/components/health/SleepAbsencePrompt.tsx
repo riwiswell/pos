@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { usePersonalDateList } from "@/hooks/use-personal-domains";
 import { useHealthMetricMutation } from "@/hooks/use-personal-domains";
 
 const LAST_ACTIVE_KEY = "pos:sleep-detection:last-active:v1";
@@ -37,6 +37,7 @@ export function SleepAbsencePrompt() {
   const [wakeTime, setWakeTime] = useState("");
   const [saving, setSaving] = useState(false);
   const saveMetric = useHealthMetricMutation();
+  const existingQuery = usePersonalDateList<{ notes: string | null }>("health_metrics", "metric_date", candidate ? localDate(candidate.end) : localDate(new Date()));
 
   useEffect(() => {
     const now = new Date();
@@ -111,12 +112,7 @@ export function SleepAbsencePrompt() {
     setSaving(true);
     try {
       const metricDate = localDate(candidate.end);
-      const { data: existing, error: readError } = await supabase
-        .from("health_metrics")
-        .select("notes")
-        .eq("metric_date", metricDate)
-        .maybeSingle();
-      if (readError) throw readError;
+      const existing = existingQuery.data?.[0] ?? null;
       const marker = "__POS_BODY_MEASURES__";
       let body: Record<string, unknown> = {};
       let notes = "";
