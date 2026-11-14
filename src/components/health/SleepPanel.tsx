@@ -126,12 +126,13 @@ export function SleepPanel() {
     });
   }, [profileQuery.data]);
 
-  const sessionDurations = [
-    sleepDurationHours(sleepDetails.bedtime, sleepDetails.wakeTime),
-    ...extraSessions.map((session) => sleepDurationHours(session.bedtime, session.wakeTime)),
-  ];
-  const calculatedHours = sessionDurations.every((value) => value !== null)
-    ? Math.round((sessionDurations.reduce((sum, value) => sum + (value ?? 0), 0)) * 100) / 100
+  const enteredSessions = [
+    { bedtime: sleepDetails.bedtime, wakeTime: sleepDetails.wakeTime },
+    ...extraSessions,
+  ].filter((session) => session.bedtime || session.wakeTime);
+  const sessionDurations = enteredSessions.map((session) => sleepDurationHours(session.bedtime, session.wakeTime));
+  const calculatedHours = sessionDurations.length > 0 && sessionDurations.every((value) => value !== null)
+    ? Math.round(sessionDurations.reduce((sum, value) => sum + (value ?? 0), 0) * 100) / 100
     : null;
   const hoursValue = calculatedHours ?? (manualHours.trim() ? Number(manualHours.replace(",", ".")) : null);
 
