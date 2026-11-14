@@ -287,11 +287,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div
           className={cn(
-            "flex h-20 items-center border-b border-sidebar-border bg-sidebar/35 backdrop-blur-sm",
-            collapsed ? "justify-center gap-1 px-2" : "justify-between px-4",
+            "flex min-h-[144px] items-center border-b border-sidebar-border bg-sidebar/35 py-3 backdrop-blur-sm",
+            collapsed
+              ? "flex-col justify-center gap-2 px-2"
+              : "justify-between px-4",
           )}
         >
-          <SkinBranding skin={skin} collapsed={collapsed} />
+          <SkinBranding skin={skin} collapsed={collapsed} sidebar />
           <Button
             variant="ghost"
             size="icon"
