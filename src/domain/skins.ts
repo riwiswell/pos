@@ -85,10 +85,10 @@ export const BUILT_IN_SKINS: SkinDefinition[] = [
     preview: { background: "#E9EDF2", sidebar: "#303A48", primary: "#E60012", accent: "#00A6E4" },
   },
   {
-    id: "pokemon", name: "Pokémon", tagline: "Aventura clásica",
-    description: "Inspirada en las primeras rutas de Kanto: cielo azul, césped, caminos de tierra, Poké Ball clásica y destellos amarillo Pikachu.",
-    glyph: "⚡", collection: "Universos", brandTitle: "POKÉMON CLASSIC", brandSubtitle: "KANTO · ROUTE 01",
-    workspaceColor: { light: "#EAF5FC", dark: "#172D42" },
+    id: "pokemon", name: "Fórmula 1", tagline: "Velocidad sin límites",
+    description: "Una identidad de competición: asfalto oscuro, rojo de carrera, líneas de salida, banderas a cuadros y detalles de telemetría.",
+    glyph: "🏁", collection: "Deportes", brandTitle: "FORMULA 1", brandSubtitle: "RACE WEEKEND · GRAND PRIX",
+    workspaceColor: { light: "#F3F4F6", dark: "#111318" },
     preview: { background: "#43CEFD", sidebar: "#7ABF49", primary: "#F2CA52", accent: "#E0627E" },
   },
   {
