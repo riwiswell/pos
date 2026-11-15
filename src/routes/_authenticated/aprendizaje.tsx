@@ -156,11 +156,11 @@ function LearningPage(){
   const tabsClass=booksHidden?"grid-cols-4":"grid-cols-5";
   return <div className="space-y-5 pb-24">
     <GlobalDateHeader/>
-    <div>
+    <div className="learning-page-heading">
       <h1 className="flex items-center gap-2 text-xl font-semibold">Aprendizaje <HelpTip helpKey="learning"/></h1>
       <p className="text-sm text-muted-foreground">Lecturas, idiomas, ajedrez y otros aprendizajes.</p>
     </div>
-    <div className={"grid "+tabsClass+" gap-1 rounded-xl border bg-muted/30 p-1"}>
+    <div className={"learning-page-tabs grid "+tabsClass+" gap-1 rounded-xl border bg-muted/30 p-1"}>
       {!booksHidden&&<button type="button" onClick={()=>setTab("books")} aria-pressed={current==="books"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="books"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Libros</button>}
       <button type="button" onClick={()=>setTab("movies")} aria-pressed={current==="movies"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="movies"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Películas</button>
       <button type="button" onClick={()=>setTab("languages")} aria-pressed={current==="languages"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="languages"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Idiomas</button>
