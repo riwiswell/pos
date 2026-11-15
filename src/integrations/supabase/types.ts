@@ -185,6 +185,7 @@ export type Database = {
           amount: number
           category_id: string | null
           cost_amount: number
+          cost_amount_manual: boolean
           counts_for_tithe: boolean
           external_id: string | null
           external_source: string | null
@@ -206,6 +207,7 @@ export type Database = {
           amount: number
           category_id?: string | null
           cost_amount?: number
+          cost_amount_manual?: boolean
           counts_for_tithe?: boolean
           external_id?: string | null
           external_source?: string | null
@@ -227,6 +229,7 @@ export type Database = {
           amount?: number
           category_id?: string | null
           cost_amount?: number
+          cost_amount_manual?: boolean
           counts_for_tithe?: boolean
           external_id?: string | null
           external_source?: string | null
