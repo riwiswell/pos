@@ -67,13 +67,13 @@ export function HabitInsightsPanel({ date }: { date: string }) {
   }
 
   return (
-    <section className="glass space-y-4 rounded-2xl p-4 sm:p-5">
+    <section className="glass space-y-4 rounded-2xl p-4 text-foreground sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><div className="flex items-center gap-2"><ChartNoAxesCombined className="h-4 w-4 text-primary"/><h2 className="font-semibold">Tu ritmo en 30 días</h2></div><p className="mt-1 text-xs text-muted-foreground">Constancia de hábitos y actividades registradas · hasta {date}</p></div>
-        <div className="rounded-xl bg-primary/10 px-3 py-2 text-right"><p className="text-2xl font-bold tabular-nums">{average}%</p><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Promedio diario</p></div>
+        <div className="rounded-xl bg-primary/10 px-3 py-2 text-right text-foreground"><p className="text-2xl font-bold tabular-nums">{average}%</p><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Promedio diario</p></div>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <div className="rounded-xl border bg-background/50 p-3"><CalendarCheck className="h-4 w-4 text-primary"/><p className="mt-2 text-xl font-semibold tabular-nums">{totalCompleted}</p><p className="text-[10px] text-muted-foreground">Hábitos completados</p></div>
+        <div className="rounded-xl border bg-background/50 p-3 text-foreground"><CalendarCheck className="h-4 w-4 text-primary"/><p className="mt-2 text-xl font-semibold tabular-nums text-foreground">{totalCompleted}</p><p className="text-[10px] text-muted-foreground">Hábitos completados</p></div>
         <div className="rounded-xl border bg-background/50 p-3"><Flame className="h-4 w-4 text-orange-400"/><p className="mt-2 text-xl font-semibold tabular-nums">{activeDays}/30</p><p className="text-[10px] text-muted-foreground">Días con avance</p></div>
         <div className="rounded-xl border bg-background/50 p-3"><Activity className="h-4 w-4 text-cyan-500"/><p className="mt-2 text-xl font-semibold tabular-nums">{activityCount}</p><p className="text-[10px] text-muted-foreground">Actividades registradas</p></div>
         <div className="rounded-xl border bg-background/50 p-3"><TrendingUp className="h-4 w-4 text-emerald-500"/><p className="mt-2 text-xl font-semibold tabular-nums">{bestDay?.percent ?? 0}%</p><p className="text-[10px] text-muted-foreground">Mejor día · {bestDay?.label ?? "—"}</p></div>
@@ -84,10 +84,10 @@ export function HabitInsightsPanel({ date }: { date: string }) {
             <defs>
               <linearGradient id="habit-trend-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b7cf6" stopOpacity={0.4}/><stop offset="95%" stopColor="#38bdf8" stopOpacity={0.02}/></linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))"/>
-            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd"/>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)"/>
+            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} interval="preserveStartEnd"/>
             <YAxis domain={[0,100]} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(value) => value + "%"}/>
-            <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} formatter={(value: number) => [value + "%", "Hábitos completados"]}/>
+            <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12, color: "var(--popover-foreground)" }} formatter={(value: number) => [value + "%", "Hábitos completados"]}/>
             <Area type="monotone" dataKey="percent" stroke="#8b7cf6" strokeWidth={2.5} fill="url(#habit-trend-fill)" activeDot={{ r: 4, strokeWidth: 0 }}/>
           </AreaChart>
         </ResponsiveContainer>
