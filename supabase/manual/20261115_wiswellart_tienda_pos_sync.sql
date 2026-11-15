@@ -9,7 +9,15 @@ revoke all on schema pos_bridge_private from public, anon, authenticated;
 
 alter table public.finance_transactions
   add column if not exists external_source text,
-  add column if not exists external_id text;
+  add column if not exists external_id text,
+  add column if not exists cost_amount_manual boolean not null default false;
+
+-- Preserve nonzero cost values previously adjusted by hand before this flag existed.
+update public.finance_transactions
+set cost_amount_manual=true
+where external_source='wiswellart_tienda'
+  and coalesce(cost_amount,0)<>0
+  and cost_amount_manual=false;
 
 create unique index if not exists finance_transactions_external_unique
   on public.finance_transactions(user_id,external_source,external_id)
@@ -102,6 +110,8 @@ declare
   v_external_id text;
   v_type text;
   v_amount numeric;
+  v_cost_amount numeric;
+  v_costing_complete boolean;
   v_method text;
   v_account_id uuid;
   v_category_id uuid;
@@ -157,6 +167,16 @@ begin
   v_amount := nullif(p_payload->>'amount','')::numeric;
   if v_amount is null or v_amount<=0 then raise exception 'El importe externo debe ser mayor que cero.'; end if;
 
+  v_cost_amount := nullif(p_payload->>'cost_amount','')::numeric;
+  v_costing_complete := lower(coalesce(p_payload->>'costing_complete','false'))='true';
+  if v_cost_amount is not null and v_cost_amount<0 then
+    raise exception 'El costo asociado externo no puede ser negativo.';
+  end if;
+  if v_type<>'income' then
+    v_cost_amount := null;
+    v_costing_complete := false;
+  end if;
+
   v_occurred_on := nullif(p_payload->>'occurred_on','')::date;
   if v_occurred_on is null then raise exception 'Falta la fecha del movimiento externo.'; end if;
 
@@ -172,13 +192,16 @@ begin
     v_note := concat_ws(' · ',v_note,'Medio de pago sin especificar');
   end if;
 
-  insert into public.finance_transactions(
-    user_id,type,amount,cost_amount,account_id,category_id,
+  insert into public.finance_transactions as current_row(
+    user_id,type,amount,cost_amount,cost_amount_manual,account_id,category_id,
     occurred_on,occurred_time,note,tags,counts_for_tithe,
     is_tithe_payment,external_source,external_id,updated_at
   )
   values (
-    v_config.user_id,v_type,v_amount,0,v_account_id,v_category_id,
+    v_config.user_id,v_type,v_amount,
+    case when v_type='income' and v_costing_complete then coalesce(v_cost_amount,0) else 0 end,
+    false,
+    v_account_id,v_category_id,
     v_occurred_on,null,v_note,array['WíswellArt Tienda'],
     (v_type='income'),false,'wiswellart_tienda',v_external_id,now()
   )
@@ -187,6 +210,13 @@ begin
   do update set
     type=excluded.type,
     amount=excluded.amount,
+    cost_amount=case
+      when current_row.cost_amount_manual=false
+        and v_type='income'
+        and v_costing_complete
+      then coalesce(v_cost_amount,current_row.cost_amount)
+      else current_row.cost_amount
+    end,
     account_id=excluded.account_id,
     category_id=excluded.category_id,
     occurred_on=excluded.occurred_on,
@@ -195,7 +225,9 @@ begin
 
   return jsonb_build_object(
     'ok',true,'operation','upsert','external_id',v_external_id,
-    'type',v_type,'amount',v_amount,'account_id',v_account_id,'category_id',v_category_id
+    'type',v_type,'amount',v_amount,'cost_amount',v_cost_amount,
+    'costing_complete',v_costing_complete,
+    'account_id',v_account_id,'category_id',v_category_id
   );
 end;
 $$;
