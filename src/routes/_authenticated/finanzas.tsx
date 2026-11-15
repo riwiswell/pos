@@ -642,11 +642,11 @@ function FinancePage() {
         <TabsContent value="historial" className="space-y-4">
           <section className="space-y-3">
             <div>
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <h2 className="flex items-center gap-2 text-xl font-semibold">
                 Historial de movimientos
                 <HelpTip helpKey="finance.history" text="Aquí sí puedes ver todo junto, ordenado cronológicamente, sin mezclarlo con el resumen." />
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-base text-muted-foreground">
                 Busca por nota, categoría o etiquetas dentro del período seleccionado.
               </p>
             </div>
