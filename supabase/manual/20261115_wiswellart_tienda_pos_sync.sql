@@ -17,7 +17,17 @@ update public.finance_transactions
 set cost_amount_manual=true
 where external_source='wiswellart_tienda'
   and coalesce(cost_amount,0)<>0
-  and cost_amount_manual=false;
+  and cost_amount_manual=false
+  and external_id <> 'sale_payment:14ee8ef9-c629-47de-99a0-f8c0092aae94';
+
+-- La renovación de Nicolee debe seguir controlada por Tienda, no por un
+-- ajuste manual del movimiento importado. Corregir esta venta concreta a $35.000.
+update public.finance_transactions
+set cost_amount=35000,
+    cost_amount_manual=false,
+    updated_at=now()
+where external_source='wiswellart_tienda'
+  and external_id='sale_payment:14ee8ef9-c629-47de-99a0-f8c0092aae94';
 
 create unique index if not exists finance_transactions_external_unique
   on public.finance_transactions(user_id,external_source,external_id)
