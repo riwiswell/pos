@@ -169,7 +169,10 @@ function CategoryExplorer({
               </div>
             </div>
           </div>
-          <p className="text-base font-semibold tabular-nums">
+          <p className={cn(
+            "text-base font-semibold tabular-nums",
+            type === "income" ? "text-success" : "text-destructive",
+          )}>
             {hideAmounts ? "••••" : formatMoney(selected?.total ?? 0)}
           </p>
         </div>
@@ -234,7 +237,10 @@ function CategoryExplorer({
                   {countLabel}
                 </span>
               </span>
-              <span className="text-right text-sm font-semibold tabular-nums">
+              <span className={cn(
+                "text-right text-sm font-semibold tabular-nums",
+                type === "income" ? "text-success" : "text-destructive",
+              )}>
                 {hideAmounts ? "••••" : formatMoney(row.total)}
               </span>
             </button>
@@ -460,7 +466,7 @@ function FinancePage() {
             </div>
             <div className="glass rounded-2xl p-3">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Gastos</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums">{money(expenses)}</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums text-destructive">{money(expenses)}</p>
             </div>
             <div className="glass rounded-2xl p-3">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Ingresos</p>
