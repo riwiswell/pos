@@ -67,11 +67,6 @@ export function CategoryDonut({
               <span className="shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
                 {total > 0 ? Math.round((slice.total / total) * 100) : 0}%
               </span>
-              <span
-                aria-hidden
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ backgroundColor: slice.color }}
-              />
               <span className="min-w-0 flex-1 truncate text-xs font-semibold" title={slice.name}>
                 {slice.name}
               </span>
