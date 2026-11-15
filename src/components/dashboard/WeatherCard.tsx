@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow,
-  CloudSun, Droplets, LocateFixed, MapPin, RefreshCw, Sun, Wind,
+  CloudSun, Droplets, MapPin, RefreshCw, Sun, Wind,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -101,7 +101,6 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [locating, setLocating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
