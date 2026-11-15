@@ -45,6 +45,7 @@ export function SkinBranding({
         {themeMark}
         {!collapsed && (
           <span className="skin-branding__copy">
+            {!compact && <em className="skin-branding__eyebrow">Tema</em>}
             <strong>{definition.brandTitle}</strong>
             {!compact && <small>{definition.brandSubtitle}</small>}
           </span>
