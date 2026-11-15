@@ -459,39 +459,31 @@ function FinancePage() {
             </div>
           </div>
 
-          <section
-            className="glass rounded-2xl border border-primary/25 bg-primary/[0.04] p-4 sm:p-5"
-            aria-label="Dinero disponible en tus cuentas"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Dinero disponible
-                </p>
-                <p className="mt-1 break-words text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
-                  {accounts.isLoading || balanceRows.isLoading || accounts.error || balanceRows.error ? "—" : money(total)}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Saldo combinado de las cuentas activas incluidas en tu balance.
-                </p>
-              </div>
-              <span
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"
-                aria-hidden="true"
-              >
-                <Wallet className="h-5 w-5" />
-              </span>
-            </div>
-          </section>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <section
+              className="glass flex min-h-[7.5rem] flex-col justify-center rounded-2xl border border-primary/25 bg-primary/[0.04] p-4"
+              aria-label="Dinero disponible en tus cuentas"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Dinero disponible
+              </p>
+              <p className="mt-1 break-words text-2xl font-bold tracking-tight tabular-nums sm:text-3xl">
+                {accounts.isLoading || balanceRows.isLoading || accounts.error || balanceRows.error ? "—" : money(total)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Total de tus cuentas
+              </p>
+            </section>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="glass rounded-2xl p-3">
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Gastos</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums text-destructive">{money(expenses)}</p>
-            </div>
-            <div className="glass rounded-2xl p-3">
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Ingresos</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums text-success">{money(income)}</p>
+            <div className="grid grid-rows-2 gap-2">
+              <div className="glass flex min-h-[3.6rem] flex-col justify-center rounded-2xl p-3">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Ingresos</p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums text-success">{money(income)}</p>
+              </div>
+              <div className="glass flex min-h-[3.6rem] flex-col justify-center rounded-2xl p-3">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Gastos</p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums text-destructive">{money(expenses)}</p>
+              </div>
             </div>
           </div>
 
