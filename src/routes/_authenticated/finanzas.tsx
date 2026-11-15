@@ -459,32 +459,32 @@ function FinancePage() {
             </div>
           </div>
 
-          <div className="grid min-h-[7.7rem] gap-2 sm:grid-cols-2 sm:items-stretch">
+          <div className="grid min-h-[6.55rem] gap-1.5 sm:grid-cols-2 sm:items-stretch">
             <section
-              className="glass h-full min-h-[7.7rem] rounded-2xl border border-primary/25 bg-primary/[0.04] p-4"
+              className="glass h-full min-h-[6.55rem] rounded-2xl border border-primary/25 bg-primary/[0.04] p-3"
               aria-label="Dinero disponible en tus cuentas"
             >
               <div className="flex h-full flex-col justify-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   Dinero disponible
                 </p>
-                <p className="mt-1 break-words text-2xl font-bold tracking-tight tabular-nums sm:text-3xl">
+                <p className="mt-0.5 break-words text-xl font-bold tracking-tight tabular-nums sm:text-2xl">
                   {accounts.isLoading || balanceRows.isLoading || accounts.error || balanceRows.error ? "—" : money(total)}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-0.5 text-[0.68rem] text-muted-foreground">
                   Total de tus cuentas
                 </p>
               </div>
             </section>
 
-            <div className="grid h-full min-h-[7.7rem] grid-rows-2 gap-2">
-              <div className="glass flex min-h-0 flex-col justify-center rounded-2xl p-3">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Ingresos</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums text-success">{money(income)}</p>
+            <div className="grid h-full min-h-[6.55rem] grid-rows-2 gap-1.5">
+              <div className="glass flex min-h-0 flex-col justify-center rounded-2xl p-2.5">
+                <p className="text-[0.68rem] uppercase tracking-wider text-muted-foreground">Ingresos</p>
+                <p className="mt-0 text-base font-semibold tabular-nums text-success">{money(income)}</p>
               </div>
-              <div className="glass flex min-h-0 flex-col justify-center rounded-2xl p-3">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Gastos</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums text-destructive">{money(expenses)}</p>
+              <div className="glass flex min-h-0 flex-col justify-center rounded-2xl p-2.5">
+                <p className="text-[0.68rem] uppercase tracking-wider text-muted-foreground">Gastos</p>
+                <p className="mt-0 text-base font-semibold tabular-nums text-destructive">{money(expenses)}</p>
               </div>
             </div>
           </div>
