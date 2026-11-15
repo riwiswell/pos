@@ -29,6 +29,32 @@ set cost_amount=35000,
 where external_source='wiswellart_tienda'
   and external_id='sale_payment:14ee8ef9-c629-47de-99a0-f8c0092aae94';
 
+-- Eliminar solo el registro manual duplicado escrito como
+-- "Mensualidad Nicolee noviembre". La venta importada se conserva
+-- porque tiene external_source='wiswellart_tienda' y no coincide.
+do $
+declare
+  v_manual_ids uuid[];
+begin
+  select array_agg(id)
+  into v_manual_ids
+  from public.finance_transactions
+  where user_id='524c4bcb-d521-4af2-97c7-032faa1a01f7'
+    and type='income'
+    and occurred_on='2026-11-13'::date
+    and account_id='d06c2bba-39f0-4c5a-92f9-ad3b4a29c7e7'
+    and category_id='a2b1f6f8-e594-4243-9e50-22dedcc239a9'
+    and external_source is null
+    and coalesce(note,'') ilike '%Mensualidad Nicolee noviembre%';
+
+  if cardinality(v_manual_ids)=1 then
+    delete from public.finance_transactions where id=v_manual_ids[1];
+  elsif cardinality(v_manual_ids)>1 then
+    raise exception 'Se encontraron varios movimientos manuales de Nicolee; no se eliminó ninguno para evitar borrar el registro equivocado.';
+  end if;
+end;
+$;
+
 create unique index if not exists finance_transactions_external_unique
   on public.finance_transactions(user_id,external_source,external_id)
   where external_source is not null and external_id is not null;
