@@ -40,56 +40,58 @@ export function SleepAbsencePrompt() {
   const existingQuery = usePersonalDateList<{ notes: string | null }>("health_metrics", "metric_date", candidate ? localDate(candidate.end) : localDate(new Date()));
 
   useEffect(() => {
-    const now = new Date();
-    try {
-      const raw = localStorage.getItem(LAST_ACTIVE_KEY);
-      const previous = raw ? new Date(Number(raw)) : null;
-      if (previous && Number.isFinite(previous.getTime())) {
-        const gapHours = (now.getTime() - previous.getTime()) / 3600000;
-        if (gapHours >= 4.5 && gapHours <= 14 && isNightStart(previous) && isMorningReturn(now)) {
-          setCandidate({ start: previous, end: now });
-          setBedtime(localTime(previous));
-          setWakeTime(localTime(now));
-        }
-      }
-      localStorage.setItem(LAST_ACTIVE_KEY, String(now.getTime()));
-    } catch {
-      // If browser storage is unavailable, skip detection without interrupting POS.
-    }
-
-    const markActive = () => {
+    const checkAbsence = () => {
       const now = new Date();
       try {
         const raw = localStorage.getItem(LAST_ACTIVE_KEY);
-        const previous = raw ? new Date(Number(raw)) : null;
-        if (previous && Number.isFinite(previous.getTime())) {
-          const gapHours = (now.getTime() - previous.getTime()) / 3600000;
-          if (gapHours >= 4.5 && gapHours <= 14 && isNightStart(previous) && isMorningReturn(now)) {
+        const previousTimestamp = raw ? Number(raw) : NaN;
+
+        if (Number.isFinite(previousTimestamp) && previousTimestamp > 0) {
+          const previous = new Date(previousTimestamp);
+          const gapHours = (now.getTime() - previousTimestamp) / 3600000;
+
+          // Ask about any long absence, regardless of the hour at which it began.
+          // The user confirms the interval; POS never records sleep automatically.
+          if (gapHours >= 4.5 && gapHours <= 24) {
             setCandidate((current) => current ?? { start: previous, end: now });
             setBedtime(localTime(previous));
             setWakeTime(localTime(now));
           }
         }
+
         localStorage.setItem(LAST_ACTIVE_KEY, String(now.getTime()));
       } catch {
-        // Browser storage can be unavailable; never interrupt POS.
+        // If browser storage is unavailable, skip detection without interrupting POS.
       }
     };
+
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") markActive();
-      else markActive();
+      if (document.visibilityState === "hidden") {
+        // Save the moment the app was left. Do not overwrite it later on pagehide:
+        // mobile browsers may fire page lifecycle events only after suspending a tab.
+        try {
+          localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
+        } catch {
+          // Browser storage can be unavailable.
+        }
+      } else {
+        checkAbsence();
+      }
     };
-    window.addEventListener("pointerdown", markActive, { passive: true });
-    window.addEventListener("keydown", markActive);
-    window.addEventListener("touchstart", markActive, { passive: true });
+
+    checkAbsence();
+    window.addEventListener("pointerdown", checkAbsence, { passive: true });
+    window.addEventListener("keydown", checkAbsence);
+    window.addEventListener("touchstart", checkAbsence, { passive: true });
+    window.addEventListener("focus", checkAbsence);
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", markActive);
+
     return () => {
-      window.removeEventListener("pointerdown", markActive);
-      window.removeEventListener("keydown", markActive);
-      window.removeEventListener("touchstart", markActive);
+      window.removeEventListener("pointerdown", checkAbsence);
+      window.removeEventListener("keydown", checkAbsence);
+      window.removeEventListener("touchstart", checkAbsence);
+      window.removeEventListener("focus", checkAbsence);
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", markActive);
     };
   }, []);
 
@@ -97,7 +99,8 @@ export function SleepAbsencePrompt() {
 
   const confirmSleep = async () => {
     if (!candidate || saving) return;
-    if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(bedtime) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(wakeTime) || bedtime === wakeTime) {
+    const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+    if (!timePattern.test(bedtime) || !timePattern.test(wakeTime) || bedtime === wakeTime) {
       toast.error("Revisa las horas de acostarte y levantarte.");
       return;
     }
