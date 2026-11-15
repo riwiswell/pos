@@ -80,13 +80,13 @@ export function HabitInsightsPanel({ date }: { date: string }) {
       </div>
       <div className="h-52 w-full sm:h-60">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 2, bottom: 8 }}>
             <defs>
               <linearGradient id="habit-trend-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b7cf6" stopOpacity={0.4}/><stop offset="95%" stopColor="#38bdf8" stopOpacity={0.02}/></linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)"/>
             <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} interval="preserveStartEnd"/>
-            <YAxis domain={[0,100]} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(value) => value + "%"}/>
+            <YAxis width={42} domain={[0,100]} ticks={[0,25,50,75,100]} tickLine={false} axisLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: "var(--foreground)" }} tickFormatter={(value) => value + "%"}/>
             <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12, color: "var(--popover-foreground)" }} formatter={(value: number) => [value + "%", "Hábitos completados"]}/>
             <Area type="monotone" dataKey="percent" stroke="#8b7cf6" strokeWidth={2.5} fill="url(#habit-trend-fill)" activeDot={{ r: 4, strokeWidth: 0 }}/>
           </AreaChart>
