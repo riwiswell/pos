@@ -1,8 +1,11 @@
+-- Ejecutar SOLO en el proyecto Supabase de POS: eutrhjvdyrakrxmjemut.
+-- No ejecutar en la base nueva cuyo ID comienza por z.
+-- Esta integración importa movimientos futuros; no hace backfill histórico.
 begin;
 
 create extension if not exists pgcrypto with schema extensions;
-create schema if not exists private;
-revoke all on schema private from public, anon, authenticated;
+create schema if not exists pos_bridge_private;
+revoke all on schema pos_bridge_private from public, anon, authenticated;
 
 alter table public.finance_transactions
   add column if not exists external_source text,
@@ -12,7 +15,7 @@ create unique index if not exists finance_transactions_external_unique
   on public.finance_transactions(user_id,external_source,external_id)
   where external_source is not null and external_id is not null;
 
-create table if not exists private.wiswellart_tienda_sync_config (
+create table if not exists pos_bridge_private.wiswellart_tienda_sync_config (
   singleton boolean primary key default true check (singleton),
   active boolean not null default true,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -22,7 +25,7 @@ create table if not exists private.wiswellart_tienda_sync_config (
   updated_at timestamptz not null default now()
 );
 
-create table if not exists private.wiswellart_tienda_payment_accounts (
+create table if not exists pos_bridge_private.wiswellart_tienda_payment_accounts (
   payment_method_key text primary key,
   account_id uuid not null references public.finance_accounts(id) on delete restrict
 );
@@ -56,7 +59,7 @@ begin
 end;
 $$;
 
-insert into private.wiswellart_tienda_sync_config(
+insert into pos_bridge_private.wiswellart_tienda_sync_config(
   singleton,active,user_id,income_category_id,expense_category_id,shared_secret_hash,updated_at
 )
 values (
@@ -75,7 +78,7 @@ set active=excluded.active,
     shared_secret_hash=excluded.shared_secret_hash,
     updated_at=now();
 
-insert into private.wiswellart_tienda_payment_accounts(payment_method_key,account_id)
+insert into pos_bridge_private.wiswellart_tienda_payment_accounts(payment_method_key,account_id)
 values
   ('efectivo','d06c2bba-39f0-4c5a-92f9-ad3b4a29c7e7'),
   ('nequi','098114a2-53d2-45c7-8a48-c2c17f61d793'),
@@ -93,7 +96,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_config private.wiswellart_tienda_sync_config%rowtype;
+  v_config pos_bridge_private.wiswellart_tienda_sync_config%rowtype;
   v_entity_type text;
   v_operation text;
   v_raw_id text;
@@ -108,7 +111,7 @@ declare
   v_deleted integer;
 begin
   select * into v_config
-  from private.wiswellart_tienda_sync_config
+  from pos_bridge_private.wiswellart_tienda_sync_config
   where singleton=true and active=true;
 
   if not found then
@@ -129,7 +132,7 @@ begin
   v_operation := p_payload->>'operation';
   v_raw_id := nullif(trim(p_payload->>'external_id'),'');
   if v_raw_id is null then raise exception 'Falta el identificador externo del movimiento.'; end if;
-  if v_entity_type not in ('sale_payment','expense') then raise exception 'Tipo de evento externo no permitido.'; end if;
+  if v_entity_type is null or v_entity_type not in ('sale_payment','expense') then raise exception 'Tipo de evento externo no permitido.'; end if;
 
   v_external_id := v_entity_type || ':' || v_raw_id;
 
@@ -142,7 +145,7 @@ begin
     return jsonb_build_object('ok',true,'operation','delete','deleted',v_deleted,'external_id',v_external_id);
   end if;
 
-  if v_operation<>'upsert' then raise exception 'Operación externa no permitida.'; end if;
+  if v_operation is null or v_operation<>'upsert' then raise exception 'Operación externa no permitida.'; end if;
 
   if v_entity_type='sale_payment' then
     v_type := 'income';
@@ -160,7 +163,7 @@ begin
 
   v_method := lower(trim(coalesce(p_payload->>'payment_method','')));
   select account_id into v_account_id
-  from private.wiswellart_tienda_payment_accounts
+  from pos_bridge_private.wiswellart_tienda_payment_accounts
   where payment_method_key=v_method;
 
   v_note := nullif(trim(p_payload->>'note'),'');
