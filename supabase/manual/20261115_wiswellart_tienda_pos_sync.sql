@@ -55,6 +55,25 @@ begin
 end;
 $cleanup$;
 
+-- Borrar el movimiento importado de la venta de prueba cancelada.
+-- Se limita al ID externo exacto para no tocar otras ventas.
+do $cleanup_test_sale$
+declare
+  v_deleted integer;
+begin
+  delete from public.finance_transactions
+  where user_id='524c4bcb-d521-4af2-97c7-032faa1a01f7'
+    and type='income'
+    and occurred_on='2026-11-15'::date
+    and amount=30000
+    and external_source='wiswellart_tienda'
+    and external_id='sale_payment:9e632ba7-c646-431d-b02d-5e44a6ddbea5';
+
+  get diagnostics v_deleted = row_count;
+  raise notice 'Movimiento de prueba WA-V-20261115-DFC5DD eliminado: % fila(s).', v_deleted;
+end;
+$cleanup_test_sale$;
+
 create unique index if not exists finance_transactions_external_unique
   on public.finance_transactions(user_id,external_source,external_id)
   where external_source is not null and external_id is not null;
@@ -177,7 +196,7 @@ begin
   v_operation := p_payload->>'operation';
   v_raw_id := nullif(trim(p_payload->>'external_id'),'');
   if v_raw_id is null then raise exception 'Falta el identificador externo del movimiento.'; end if;
-  if v_entity_type is null or v_entity_type not in ('sale_payment','expense') then raise exception 'Tipo de evento externo no permitido.'; end if;
+  if v_entity_type is null or v_entity_type not in ('sale_payment','expense','expense_payment') then raise exception 'Tipo de evento externo no permitido.'; end if;
 
   v_external_id := v_entity_type || ':' || v_raw_id;
 
