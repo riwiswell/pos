@@ -466,7 +466,7 @@ function FinancePage() {
             </div>
           </div>
 
-          <div className="grid min-h-[6.55rem] gap-1.5 sm:grid-cols-2 sm:items-stretch">
+          <div className="grid min-h-[6.55rem] grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-1.5 sm:grid-cols-2 sm:items-stretch">
             <section
               className="glass h-full min-h-[6.55rem] rounded-2xl border border-primary/25 bg-primary/[0.04] p-3"
               aria-label="Dinero disponible en tus cuentas"
