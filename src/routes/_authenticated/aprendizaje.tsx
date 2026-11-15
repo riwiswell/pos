@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen,Check,ChevronDown,ChevronUp,Clock,FileText,ImagePlus,NotebookPen,Pencil,Plus,Save,Trash2,X } from "lucide-react";
+import { BookOpen,Check,ChevronDown,ChevronUp,Clock,FileText,ImagePlus,NotebookPen,Pencil,Plus,Save,Search,Trash2,X } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor";
 import { SafeRichText } from "@/components/common/SafeRichText";
@@ -11,6 +11,8 @@ import { BibleChapterProgressSummary, BibleReadingPanel } from "@/components/lea
 import { usePrivatePhotos } from "@/hooks/use-private-photos";
 import { privateMediaService } from "@/services/private-media.service";
 import { todayISO } from "@/lib/date";
+import { lookupLearningCover } from "@/services/learning-cover.service";
+import { MoviesLibrary } from "@/components/learning/MoviesLibrary";
 export const Route=createFileRoute("/_authenticated/aprendizaje")({component:LearningPage});
 const LANGS=[
  {code:"en",name:"Inglés",variants:[["en-US","Estados Unidos","🇺🇸"],["en-GB","Reino Unido","🇬🇧"]]},
@@ -151,7 +153,7 @@ function LearningPage(){
   const{data:profile}=useProfile();
   const booksHidden=profile?.hidden_features?.["learning.books"]===true;
   const current=booksHidden&&tab==="books"?"languages":tab;
-  const tabsClass=booksHidden?"grid-cols-3":"grid-cols-4";
+  const tabsClass=booksHidden?"grid-cols-4":"grid-cols-5";
   return <div className="space-y-5 pb-24">
     <GlobalDateHeader/>
     <div>
@@ -160,11 +162,12 @@ function LearningPage(){
     </div>
     <div className={"grid "+tabsClass+" gap-1 rounded-xl border bg-muted/30 p-1"}>
       {!booksHidden&&<button type="button" onClick={()=>setTab("books")} aria-pressed={current==="books"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="books"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Libros</button>}
+      <button type="button" onClick={()=>setTab("movies")} aria-pressed={current==="movies"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="movies"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Películas</button>
       <button type="button" onClick={()=>setTab("languages")} aria-pressed={current==="languages"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="languages"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Idiomas</button>
       <button type="button" onClick={()=>setTab("chess")} aria-pressed={current==="chess"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="chess"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>♟ Ajedrez</button>
       <button type="button" onClick={()=>setTab("other")} aria-pressed={current==="other"} className={"rounded-lg px-2 py-2 text-sm font-medium transition "+(current==="other"?"bg-background shadow-sm":"text-muted-foreground hover:text-foreground")}>Otros</button>
     </div>
-    {current==="books"?<Books/>:current==="languages"?<Languages/>:current==="chess"?<ChessDashboard/>:<OtherLearning mode="resources"/>}
+    {current==="books"?<Books/>:current==="movies"?<MoviesLibrary/>:current==="languages"?<Languages/>:current==="chess"?<ChessDashboard/>:<OtherLearning mode="resources"/>}
   </div>;
 }
 export function VideoGamesLibrary(){return <OtherLearning mode="games"/>;}
@@ -192,13 +195,14 @@ function Books(){
   const[targetPages,setTargetPages]=useState("");
   const books=sortLearningItems((q.data||[]).filter((x:any)=>x.kind==="book"),sessions.data||[],sort);
   const deleteBook=async(book:any)=>{
-    if(book.cover_path)await privateMediaService.removePhoto(String(book.cover_path)).catch(()=>undefined);
+    if(book.cover_path&&!/^https?:\/\//i.test(String(book.cover_path)))await privateMediaService.removePhoto(String(book.cover_path)).catch(()=>undefined);
     await m.remove.mutateAsync(book.id);
   };
   const addBook=async()=>{
     if(!title.trim())return;
     const parsedYear=Number(publicationYear);
     if(publicationYear.trim()&&(!Number.isInteger(parsedYear)||parsedYear<0||parsedYear>3000)){toast.error("El año debe ser un número entero válido.");return;}
+    const coverPath=await lookupLearningCover({kind:"book",title:title.trim(),author:author.trim()||undefined});
     await m.create.mutateAsync({
       user_id:user?.id,
       title:title.trim(),
@@ -207,6 +211,7 @@ function Books(){
       kind:"book",
       total_pages:Number(pages)>0?Number(pages):null,
       target_pages:Number(targetPages)>0?Number(targetPages):null,
+      cover_path:coverPath,
       current_page:0,
       progress:0,
     });
@@ -216,7 +221,7 @@ function Books(){
     setPages("");
     setTargetPages("");
     setAdding(false);
-    toast.success("Libro agregado a tu biblioteca.");
+    toast.success(coverPath?"Libro agregado con portada sugerida.":"Libro agregado. No encontré portada; puedes subirla desde la ficha.");
   };
   return <section className="space-y-3">
     {(q.isError||notes.isError)&&<ErrorState message={q.error instanceof Error?q.error.message:notes.error instanceof Error?notes.error.message:"No se pudieron cargar libros y notas."}/>}
@@ -287,10 +292,12 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
   const[editingSummary,setEditingSummary]=useState(false);
   const[addingNote,setAddingNote]=useState(false);
   const[uploadingCover,setUploadingCover]=useState(false);
+  const[findingCover,setFindingCover]=useState(false);
   const coverInput=useRef<HTMLInputElement>(null);
   const mine=notes;
-  const coverQuery=usePrivatePhotos(coverPath?[coverPath]:[],Boolean(coverPath));
-  const coverUrl=coverQuery.data?.find(item=>item.path===coverPath)?.url;
+  const remoteCover=Boolean(coverPath&&/^https?:\/\//i.test(coverPath));
+  const coverQuery=usePrivatePhotos(coverPath&&!remoteCover?[coverPath]:[],Boolean(coverPath&&!remoteCover));
+  const coverUrl=remoteCover?coverPath:coverQuery.data?.find(item=>item.path===coverPath)?.url;
   const pageValue=Math.max(0,Number(page)||0);
   const progress=total?Math.min(100,Math.max(0,pageValue/total*100)):Number(book.progress)||0;
   const remain=Math.max(0,total-pageValue);
@@ -316,7 +323,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
         const detail=error&&typeof error==="object"&&"message" in error?String((error as any).message):"No se pudo guardar la referencia de la portada.";
         throw new Error(detail);
       }
-      if(coverPath&&coverPath!==nextPath)await privateMediaService.removePhoto(coverPath).catch(()=>undefined);
+      if(coverPath&&!remoteCover&&coverPath!==nextPath)await privateMediaService.removePhoto(coverPath).catch(()=>undefined);
       toast.success("Portada actualizada.");
     }catch(error){
       const detail=error&&typeof error==="object"&&"message" in error?String((error as any).message):"No se pudo subir la portada. Revisa el permiso de almacenamiento e inténtalo de nuevo.";
@@ -381,6 +388,16 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
       setCompletionSaving(false);
     }
   };
+  const findCover=async()=>{
+    setFindingCover(true);
+    try{
+      const cover=await lookupLearningCover({kind:"book",title:newTitle.trim()||book.title,author:newAuthor.trim()||book.author||undefined});
+      if(!cover){toast.info("No encontré una portada para este libro.");return;}
+      await onSave({cover_path:cover});
+      toast.success("Portada sugerida actualizada.");
+    }catch(error){toast.error(error instanceof Error?error.message:"No se pudo buscar la portada.");}
+    finally{setFindingCover(false);}
+  };
   const saveDetails=async()=>{
     if(!newTitle.trim()){toast.error("El título no puede quedar vacío.");return;}
     const parsedTotal=Number(newTotal);
@@ -425,7 +442,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
                 <span className="text-[8px] uppercase tracking-[.18em] opacity-65">Mi biblioteca</span>
               </div>}
         </div>
-        {!coverPath&&<button type="button" onClick={()=>coverInput.current?.click()} disabled={uploadingCover} aria-label="Agregar portada" title="Agregar portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow transition hover:bg-accent disabled:opacity-50"><ImagePlus className="h-3.5 w-3.5"/></button>}
+        <button type="button" onClick={()=>coverInput.current?.click()} disabled={uploadingCover} aria-label="Agregar o cambiar portada" title="Agregar o cambiar portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow transition hover:bg-accent disabled:opacity-50"><ImagePlus className="h-3.5 w-3.5"/></button>
         <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={uploadCover}/>
       </div>
       <div className="min-w-0 flex-1 space-y-2">
@@ -455,7 +472,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
     </div>
 
     {panel==="details"&&!isBible&&<div className="space-y-2 border-t bg-muted/20 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-semibold">Editando la ficha de este libro</p><p className="text-xs text-muted-foreground">Modificas su título, autor, año, páginas, meta de lectura y portada. Esto no cambia las páginas que llevas leídas.</p></div><Button size="sm" type="button" variant="outline" onClick={()=>coverInput.current?.click()} disabled={uploadingCover}><ImagePlus className="mr-1 h-3.5 w-3.5"/>{uploadingCover?"Subiendo…":coverPath?"Cambiar portada":"Agregar portada"}</Button></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-semibold">Editando la ficha de este libro</p><p className="text-xs text-muted-foreground">Modificas su título, autor, año, páginas, meta de lectura y portada. Esto no cambia las páginas que llevas leídas.</p></div><div className="flex flex-wrap gap-1"><Button size="sm" type="button" variant="outline" onClick={()=>void findCover()} disabled={findingCover}><Search className="mr-1 h-3.5 w-3.5"/>{findingCover?"Buscando…":"Buscar portada"}</Button><Button size="sm" type="button" variant="outline" onClick={()=>coverInput.current?.click()} disabled={uploadingCover}><ImagePlus className="mr-1 h-3.5 w-3.5"/>{uploadingCover?"Subiendo…":coverPath?"Subir / cambiar":"Subir portada"}</Button></div></div>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.3fr_1fr_110px_130px_130px_auto]">
         <Input aria-label="Título" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/>
         <Input aria-label="Autor" placeholder="Autor" value={newAuthor} onChange={e=>setNewAuthor(e.target.value)}/>
@@ -553,6 +570,7 @@ function plainTextFromRichValue(value: unknown): string {
 
 function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onUpdateSession,onUpdateLegacyTotal,onCompleteGame,hasCompletionReward,minutesPlayed=0,sessionCount=0,recentSessions=[],sessionHistory=[]}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;onRecordSession:(minutes:number,sessionDate?:string,source?:string,progress?:number)=>Promise<unknown>;onUpdateSession:(id:string,patch:Record<string,unknown>)=>Promise<unknown>;onUpdateLegacyTotal:(minutes:number)=>Promise<unknown>;onCompleteGame:()=>Promise<unknown>;hasCompletionReward:boolean;minutesPlayed?:number;sessionCount?:number;recentSessions?:any[];sessionHistory?:any[]}){
   const[uploading,setUploading]=useState(false);
+  const[findingCover,setFindingCover]=useState(false);
   const[recording,setRecording]=useState(false);
   const[sessionMinutes,setSessionMinutes]=useState("30");
   const[sessionDate,setSessionDate]=useState(todayISO());
@@ -618,8 +636,19 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
     finally{setSavingSession(false);}
   };
   const path=item.cover_path?String(item.cover_path):null;
-  const photoQuery=usePrivatePhotos(path?[path]:[],Boolean(path));
-  const photoUrl=photoQuery.data?.find(photo=>photo.path===path)?.url;
+  const remoteCover=Boolean(path&&/^https?:\/\//i.test(path));
+  const photoQuery=usePrivatePhotos(path&&!remoteCover?[path]:[],Boolean(path&&!remoteCover));
+  const photoUrl=remoteCover?path:photoQuery.data?.find(photo=>photo.path===path)?.url;
+  const findGameCover=async()=>{
+    setFindingCover(true);
+    try{
+      const cover=await lookupLearningCover({kind:"game",title:item.title});
+      if(!cover){toast.info("No encontré una carátula fiable para este videojuego.");return;}
+      await onSaveCover(cover);
+      toast.success("Carátula sugerida actualizada.");
+    }catch(error){toast.error(error instanceof Error?error.message:"No se pudo buscar la carátula.");}
+    finally{setFindingCover(false);}
+  };
   const upload=async(event:React.ChangeEvent<HTMLInputElement>)=>{
     const element=event.currentTarget;
     const file=element.files?.[0];
@@ -628,7 +657,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
     try{
       const nextPath=await privateMediaService.uploadPhoto(file);
       try{await onSaveCover(nextPath);}catch(error){await privateMediaService.removePhoto(nextPath).catch(()=>undefined);throw error;}
-      if(path&&path!==nextPath)await privateMediaService.removePhoto(path).catch(()=>undefined);
+      if(path&&!remoteCover&&path!==nextPath)await privateMediaService.removePhoto(path).catch(()=>undefined);
       toast.success("Portada actualizada.");
     }catch(error){
       const detail=error&&typeof error==="object"&&"message" in error?String((error as any).message):"No se pudo guardar la portada.";
@@ -643,7 +672,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
             <span className="text-2xl">{kindIcon(item.kind)}</span><span className="line-clamp-4 break-words text-[10px] font-semibold leading-tight">{item.title}</span>
           </div>}
       </div>
-      {!path&&<button type="button" onClick={()=>input.current?.click()} disabled={uploading} aria-label="Agregar portada" title="Agregar portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow hover:bg-accent disabled:opacity-50"><ImagePlus className="h-3.5 w-3.5"/></button>}
+      <button type="button" onClick={()=>input.current?.click()} disabled={uploading} aria-label="Agregar o cambiar portada" title="Agregar o cambiar portada" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border bg-background text-foreground shadow hover:bg-accent disabled:opacity-50"><ImagePlus className="h-3.5 w-3.5"/></button>
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={upload}/>
     </div>
     <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
@@ -742,7 +771,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
       </div>}{isGame&&<div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           {hasCompletionReward?<span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">🏆 Juego terminado · +20 XP registrados</span>:<Button size="sm" variant="outline" disabled={savingGameCompletion} onClick={async()=>{if(!window.confirm("¿Confirmas que terminaste \""+item.title+"\"?"))return;setSavingGameCompletion(true);try{await onCompleteGame();toast.success("¡Videojuego terminado! +20 XP y trofeo desbloqueado.");}catch(error){toast.error(error instanceof Error?error.message:"No se pudo registrar el final del juego.");}finally{setSavingGameCompletion(false);}}}>{savingGameCompletion?"Guardando…":"🏆 Terminé este videojuego · +20 XP"}</Button>}
         </div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{plainTextFromRichValue(item.notes)}</p>}</div>
-      <div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
+      <div className="flex flex-wrap gap-1">{isGame&&!photoUrl&&<Button size="sm" variant="outline" disabled={findingCover} onClick={()=>void findGameCover()}><Search className="mr-1 h-3.5 w-3.5"/>{findingCover?"Buscando…":"Buscar carátula"}</Button>}<Button size="sm" variant="outline" onClick={onEdit}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={"Eliminar "+item.title} onClick={()=>void onDelete()}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
     </div>
   </article>;
 }
@@ -779,12 +808,16 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     const cleanNotes=plainTextFromRichValue(notes);
     const parsedMinutes=hoursInputToMinutes(gameMinutes);
     if(isGame&&(parsedMinutes===null||parsedMinutes>1000000)){toast.error("Escribe un tiempo válido en horas (por ejemplo, 10,1).");return;}
+    const existingItem=editingId?(q.data||[]).find((item:any)=>item.id===editingId):null;
+    let coverPath=existingItem?.cover_path??null;
+    if(isGame&&!coverPath)coverPath=await lookupLearningCover({kind:"game",title:title.trim()});
+    const coverPatch=isGame&&!existingItem?.cover_path?{cover_path:coverPath}:{};
     if(editingId){
-      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:cleanNotes||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined,minutes_total:isGame?parsedMinutes!:undefined,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null}});
+      await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:cleanNotes||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined,minutes_total:isGame?parsedMinutes!:undefined,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null,...coverPatch}});
       toast.success("Elemento actualizado.");
     }else{
-      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:cleanNotes||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:0,minutes_total:isGame?parsedMinutes!:0,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null});
-      toast.success("Elemento agregado.");
+      await m.create.mutateAsync({user_id:user?.id,title:title.trim(),kind,notes:cleanNotes||null,status:"active",goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:0,minutes_total:isGame?parsedMinutes!:0,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null,...coverPatch});
+      toast.success(isGame&&coverPath?"Videojuego agregado con carátula sugerida.":"Elemento agregado.");
     }
     resetForm();
   };
@@ -868,7 +901,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
             await m.update.mutateAsync({id:item.id,patch:{progress:100,status:"completed",completed_on:todayISO()}});
             await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:todayISO(),minutes:0,activity_type:"game_completion",notes:"Videojuego terminado: "+item.title});
           }}
-          onDelete={async()=>{if(item.cover_path)await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}}
+          onDelete={async()=>{if(item.cover_path&&!/^https?:\/\//i.test(String(item.cover_path)))await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}}
           onSaveCover={(cover_path:string)=>m.update.mutateAsync({id:item.id,patch:{cover_path}})}
         />;
       })}
