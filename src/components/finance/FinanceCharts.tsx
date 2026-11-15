@@ -70,15 +70,15 @@ export function CategoryDonut({
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: slice.color }}
                 />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium" title={slice.name}>
+                <span className="shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
+                  {total > 0 ? Math.round((slice.total / total) * 100) : 0}%
+                </span>
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold" title={slice.name}>
                   {slice.name}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-1 pl-4 text-[11px] leading-4 tabular-nums">
-                <span className="shrink-0 text-muted-foreground">
-                  {total > 0 ? Math.round((slice.total / total) * 100) : 0}%
-                </span>
-                <span className="shrink-0 font-medium">{money(slice.total)}</span>
+              <div className="pl-5 text-[11px] leading-4 tabular-nums text-muted-foreground">
+                {money(slice.total)}
               </div>
             </li>
           ))}
@@ -108,21 +108,21 @@ export function DailyBars({ data, hideAmounts }: { data: DailyPoint[]; hideAmoun
       <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
         Evolución del período
       </p>
-      <div className="h-48 w-full sm:h-56">
+      <div className="h-40 w-full sm:h-44">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} barGap={2}>
             <XAxis
               dataKey="label"
               tickLine={false}
               axisLine={false}
-              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+              tick={{ fontSize: 12, fontWeight: 600, fill: "var(--muted-foreground)" }}
               interval="preserveStartEnd"
             />
             <Tooltip
-              cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+              cursor={{ fill: "var(--muted)", fillOpacity: 0.4 }}
               contentStyle={{
-                background: "hsl(var(--popover))",
-                border: "1px solid hsl(var(--border))",
+                background: "var(--popover)",
+                border: "1px solid var(--border)",
                 borderRadius: 12,
                 fontSize: 14,
               }}
