@@ -20,7 +20,7 @@ export function CategoryDonut({
   if (slices.length === 0) {
     return (
       <div className="glass rounded-2xl p-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
         </p>
         <p className="text-sm text-muted-foreground">
@@ -32,7 +32,7 @@ export function CategoryDonut({
 
   return (
     <div className="glass rounded-2xl p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </p>
 
@@ -56,8 +56,8 @@ export function CategoryDonut({
             </PieChart>
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</span>
-            <span className="text-sm font-semibold tabular-nums">{money(total)}</span>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">Total</span>
+            <span className="text-base font-semibold tabular-nums">{money(total)}</span>
           </div>
         </div>
 
@@ -69,11 +69,11 @@ export function CategoryDonut({
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: slice.color }}
               />
-              <span className="min-w-0 flex-1 truncate">{slice.name}</span>
-              <span className="shrink-0 tabular-nums text-muted-foreground">
+              <span className="min-w-0 flex-1 truncate text-[13px]">{slice.name}</span>
+              <span className="shrink-0 tabular-nums text-[13px] text-muted-foreground">
                 {total > 0 ? Math.round((slice.total / total) * 100) : 0}%
               </span>
-              <span className="shrink-0 tabular-nums">{money(slice.total)}</span>
+              <span className="shrink-0 tabular-nums text-[13px]">{money(slice.total)}</span>
             </li>
           ))}
         </ul>
@@ -87,7 +87,7 @@ export function DailyBars({ data, hideAmounts }: { data: DailyPoint[]; hideAmoun
   if (data.length === 0) {
     return (
       <div className="glass rounded-2xl p-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Evolución del período
         </p>
         <p className="text-sm text-muted-foreground">Aún no hay movimientos en este período.</p>
@@ -99,7 +99,7 @@ export function DailyBars({ data, hideAmounts }: { data: DailyPoint[]; hideAmoun
 
   return (
     <div className="glass rounded-2xl p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
         Evolución del período
       </p>
       <div className="h-48 w-full sm:h-56">
@@ -109,7 +109,7 @@ export function DailyBars({ data, hideAmounts }: { data: DailyPoint[]; hideAmoun
               dataKey="label"
               tickLine={false}
               axisLine={false}
-              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
               interval="preserveStartEnd"
             />
             <Tooltip
@@ -118,7 +118,7 @@ export function DailyBars({ data, hideAmounts }: { data: DailyPoint[]; hideAmoun
                 background: "hsl(var(--popover))",
                 border: "1px solid hsl(var(--border))",
                 borderRadius: 12,
-                fontSize: 12,
+                fontSize: 14,
               }}
               formatter={(value: number, name) => [
                 hideAmounts ? "••••" : formatMoney(value),
