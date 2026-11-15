@@ -90,7 +90,7 @@ export function TransactionDetail({
                 ? "text-success"
                 : isTransfer
                   ? "text-muted-foreground"
-                  : "text-foreground",
+                  : "text-destructive",
             )}
           >
             {isTransfer ? "" : transaction.type === "income" ? "+" : "−"}
