@@ -3,7 +3,7 @@ import { lazy, Suspense, useMemo, useState } from "react";
 const CategoryDonut = lazy(() => import("@/components/finance/FinanceCharts").then((module) => ({ default: module.CategoryDonut })));
 const DailyBars = lazy(() => import("@/components/finance/FinanceCharts").then((module) => ({ default: module.DailyBars })));
 const FinanceAdvancedPanel = lazy(() => import("@/components/finance/FinanceAdvancedPanel").then((module) => ({ default: module.FinanceAdvancedPanel })));
-import { ArrowLeft, Eye, EyeOff, Plus, Search, Settings2, Tags } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Plus, Search, Settings2, Tags, Wallet } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
@@ -459,11 +459,32 @@ function FinancePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div className="glass rounded-2xl p-3">
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Balance</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums">{money(total)}</p>
+          <section
+            className="glass rounded-2xl border border-primary/25 bg-primary/[0.04] p-4 sm:p-5"
+            aria-label="Dinero disponible en tus cuentas"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Dinero disponible
+                </p>
+                <p className="mt-1 break-words text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
+                  {accounts.isLoading || balanceRows.isLoading || accounts.error || balanceRows.error ? "—" : money(total)}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Saldo combinado de las cuentas activas incluidas en tu balance.
+                </p>
+              </div>
+              <span
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+                aria-hidden="true"
+              >
+                <Wallet className="h-5 w-5" />
+              </span>
             </div>
+          </section>
+
+          <div className="grid grid-cols-2 gap-2">
             <div className="glass rounded-2xl p-3">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Gastos</p>
               <p className="mt-1 text-lg font-semibold tabular-nums text-destructive">{money(expenses)}</p>
