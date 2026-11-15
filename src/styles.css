@@ -1382,3 +1382,42 @@ aside > div:first-child {
     height: 1.875rem;
   }
 }
+
+
+/* LEGO small brand mark: use a recognisable wordmark tile, not the 🧱 emoji. */
+.skin-branding__theme-mark--lego {
+  width: 2rem;
+  height: 1.55rem;
+  box-sizing: border-box;
+  border: 2px solid #ffd500;
+  border-radius: .48rem;
+  background: #d71920;
+  color: #fff;
+  font-family: "Arial Black", "Fredoka", sans-serif;
+  font-size: .82rem;
+  font-weight: 1000;
+  letter-spacing: -.12em;
+  line-height: 1;
+  text-shadow: 0 1px 0 #7e1010, 1px 0 0 #f5c400, -1px 0 0 #f5c400;
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 18%), 0 1px 3px rgb(0 0 0 / 22%);
+}
+.skin-branding--compact .skin-branding__theme-mark--lego {
+  width: 1.4rem;
+  height: 1.12rem;
+  border-width: 1.5px;
+  border-radius: .32rem;
+  font-size: .58rem;
+}
+.skin-branding--sidebar.skin-branding--collapsed .skin-branding__theme-mark--lego {
+  width: 1.45rem;
+  height: 1.15rem;
+  border-radius: .32rem;
+  font-size: .62rem;
+}
+.skin-preview .skin-branding__theme-mark--lego {
+  width: 1.2rem;
+  height: 1.05rem;
+  border-width: 1px;
+  border-radius: .25rem;
+  font-size: .49rem;
+}
