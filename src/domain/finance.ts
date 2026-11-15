@@ -103,6 +103,8 @@ export interface TransactionInput {
   type: TransactionType;
   amount: number;
   cost_amount: number;
+  /** True only when the user explicitly overrides an imported/source cost. */
+  cost_amount_manual?: boolean;
   account_id: string | null;
   transfer_account_id: string | null;
   category_id: string | null;
