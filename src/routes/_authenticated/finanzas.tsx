@@ -272,6 +272,7 @@ function FinancePage() {
   const [selectedExpenseCategory, setSelectedExpenseCategory] = useState<string | null>(null);
   const [selectedIncomeCategory, setSelectedIncomeCategory] = useState<string | null>(null);
   const [historySearch, setHistorySearch] = useState("");
+  const [historyAccountId, setHistoryAccountId] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FinanceTransaction | null>(null);
   const [deleting, setDeleting] = useState<FinanceTransaction | null>(null);
@@ -333,8 +334,14 @@ function FinancePage() {
 
   const historyVisible = useMemo(() => {
     const needle = historySearch.trim().toLocaleLowerCase();
-    if (!needle) return list;
     return list.filter((tx) => {
+      const matchesAccount =
+        historyAccountId === "all" ||
+        tx.account_id === historyAccountId ||
+        (tx.type === "transfer" && tx.transfer_account_id === historyAccountId);
+      if (!matchesAccount) return false;
+      if (!needle) return true;
+
       const categoryName = tx.category_id
         ? categoryMeta.get(tx.category_id)?.name ?? ""
         : "sin categoria";
@@ -348,7 +355,7 @@ function FinancePage() {
         .toLocaleLowerCase();
       return haystack.includes(needle);
     });
-  }, [list, historySearch, categoryMeta]);
+  }, [list, historySearch, historyAccountId, categoryMeta]);
 
   const tithe =
     settings.data && titheHistory.data
@@ -651,15 +658,32 @@ function FinancePage() {
               </p>
             </div>
 
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={historySearch}
-                onChange={(event) => setHistorySearch(event.target.value)}
-                placeholder="Buscar, por ejemplo: pan"
-                aria-label="Buscar en el historial"
-                className="h-11 pl-9"
-              />
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,15rem)]">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={historySearch}
+                  onChange={(event) => setHistorySearch(event.target.value)}
+                  placeholder="Buscar, por ejemplo: pan"
+                  aria-label="Buscar en el historial"
+                  className="h-11 pl-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="history-account-filter" className="sr-only">Filtrar por cuenta</label>
+                <select
+                  id="history-account-filter"
+                  value={historyAccountId}
+                  onChange={(event) => setHistoryAccountId(event.target.value)}
+                  aria-label="Filtrar movimientos por cuenta"
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="all">Todas las cuentas</option>
+                  {accountList.map((account) => (
+                    <option key={account.id} value={account.id}>{account.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -684,10 +708,10 @@ function FinancePage() {
             <ErrorState message="No pudimos cargar tu historial." />
           ) : historyVisible.length === 0 ? (
             <EmptyState
-              title={historySearch ? "No encontramos coincidencias" : "Sin movimientos en este período"}
+              title={historySearch || historyAccountId !== "all" ? "No encontramos movimientos" : "Sin movimientos en este período"}
               description={
-                historySearch
-                  ? "Prueba con otra palabra o cambia el período."
+                historySearch || historyAccountId !== "all"
+                  ? "Prueba con otra búsqueda, elige otra cuenta o cambia el período."
                   : "Registra tu primer gasto o ingreso."
               }
             />
