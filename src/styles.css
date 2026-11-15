@@ -1469,3 +1469,14 @@ aside > div:first-child {
   letter-spacing: .13em;
   white-space: normal;
 }
+
+
+/* Nintendo World dark mode: readable ink on its intentionally light home-menu cards.
+   Keep page-level headings white on the dark canvas; only correct semantic foreground
+   utilities placed inside light card surfaces. */
+html.dark[data-skin="nintendo"] .glass .text-foreground,
+html.dark[data-skin="nintendo"] .glass [class*="text-foreground/"],
+html.dark[data-skin="nintendo"] .bg-card .text-foreground,
+html.dark[data-skin="nintendo"] .bg-card [class*="text-foreground/"] {
+  color: var(--card-foreground) !important;
+}
