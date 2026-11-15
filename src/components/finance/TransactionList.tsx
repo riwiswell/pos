@@ -116,7 +116,7 @@ export function TransactionList({
                               ? "text-success"
                               : isTransfer
                                 ? "text-muted-foreground"
-                                : "text-foreground",
+                                : "text-destructive",
                           )}
                         >
                           {isTransfer ? "" : tx.type === "income" ? "+" : "−"}
