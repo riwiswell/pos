@@ -32,7 +32,7 @@ where external_source='wiswellart_tienda'
 -- Eliminar solo el registro manual duplicado escrito como
 -- "Mensualidad Nicolee noviembre". La venta importada se conserva
 -- porque tiene external_source='wiswellart_tienda' y no coincide.
-do $
+do $cleanup$
 declare
   v_manual_ids uuid[];
 begin
@@ -53,7 +53,7 @@ begin
     raise exception 'Se encontraron varios movimientos manuales de Nicolee; no se eliminó ninguno para evitar borrar el registro equivocado.';
   end if;
 end;
-$;
+$cleanup$;
 
 create unique index if not exists finance_transactions_external_unique
   on public.finance_transactions(user_id,external_source,external_id)
