@@ -18,7 +18,9 @@ export function SkinBranding({
   const themeMark =
     skin === "pokemon" ? (
       <span className="skin-mark skin-mark--f1" aria-label="Fórmula 1">F1</span>
-    ) : skin === "classic" ? null : (
+    ) : skin === "classic" ? null : skin === "lego" ? (
+      <span className="skin-branding__theme-mark skin-branding__theme-mark--lego" aria-label="LEGO">LEGO</span>
+    ) : (
       <span className={cn("skin-branding__theme-mark", `skin-branding__theme-mark--${skin}`)} aria-hidden="true">
         {definition.glyph}
       </span>
