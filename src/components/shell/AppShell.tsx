@@ -278,7 +278,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground" style={style}>\n      <SleepAbsencePrompt />
+    <div className="min-h-screen bg-background text-foreground" style={style}>
+      <SleepAbsencePrompt />
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border md:flex",
