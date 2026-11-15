@@ -1507,3 +1507,44 @@ html.dark[data-skin="nintendo"] .bg-card [class*="text-foreground/"] {
     flex: 0 0 6.375rem !important;
   }
 }
+
+
+/* DC Comics: keep the subtle halftone texture behind content, not competing with labels. */
+html[data-skin="dc-comics"] .app-shell-main {
+  background-image:
+    radial-gradient(ellipse at 84% 2%, rgb(42 74 125 / 27%), transparent 24rem),
+    radial-gradient(rgb(213 220 238 / 18%) .65px, transparent .9px);
+  background-size: auto, 10px 10px;
+}
+html[data-skin="dc-comics"] .learning-page-heading {
+  padding: .8rem 1rem;
+  border: 1px solid rgb(91 120 164 / 38%);
+  border-left: 3px solid #F7C948;
+  border-radius: .85rem;
+  background: linear-gradient(112deg, rgb(11 26 48 / 97%), rgb(14 27 49 / 96%));
+  box-shadow: 0 10px 24px -18px rgb(0 0 0 / 80%);
+}
+html[data-skin="dc-comics"] .learning-page-heading h1 {
+  color: #FFFFFF;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 45%);
+}
+html[data-skin="dc-comics"] .learning-page-heading p {
+  color: #D7E1F0;
+}
+html[data-skin="dc-comics"] .learning-page-tabs {
+  border-color: #405A80;
+  background: #0A172B;
+  box-shadow: 0 8px 20px -17px rgb(0 0 0 / 90%);
+}
+html[data-skin="dc-comics"] .learning-page-tabs button {
+  color: #D9E3F2;
+}
+html[data-skin="dc-comics"] .learning-page-tabs button[aria-pressed="true"] {
+  background: #F7C948 !important;
+  color: #172238 !important;
+  box-shadow: 0 2px 0 rgb(0 0 0 / 22%);
+}
+html[data-skin="dc-comics"] .learning-page-tabs button[aria-pressed="false"]:hover {
+  background: #19365D;
+  color: #FFFFFF;
+}
