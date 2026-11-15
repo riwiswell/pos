@@ -473,8 +473,126 @@ async function syncHydrationJobs(env:Env,userId:string,input?:unknown) {
  return {enabled:true,scheduled:jobs.length,pushRequired:false};
 }
 
+
+function normalizeCoverTitle(value:string){
+ return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+}
+function safeCoverUrl(value:unknown):string|null{
+ if(typeof value!=="string"||!value.trim())return null;
+ try{const url=new URL(value.trim());if(url.protocol!=="https:"&&url.protocol!=="http:")return null;url.protocol="https:";return url.toString()}catch{return null}
+}
+async function lookupSteamStoreCover(title:string):Promise<string|null>{
+ const searchUrl=new URL("https://store.steampowered.com/api/storesearch/");
+ searchUrl.searchParams.set("term",title);searchUrl.searchParams.set("l","english");searchUrl.searchParams.set("cc","us");
+ const searchResponse=await fetch(searchUrl.toString(),{headers:{Accept:"application/json","User-Agent":"PersonalOS/1.0"}});
+ if(!searchResponse.ok)return null;
+ const searchData=await searchResponse.json() as {items?:Array<{id?:number;name?:string; tiny_image?:string}>};
+ const wanted=normalizeCoverTitle(title);
+ const candidates=(searchData.items??[]).filter(item=>item.id&&item.name);
+ const ranked=candidates.map(item=>{
+  const name=normalizeCoverTitle(item.name??"");
+  const score=name===wanted?0:name.startsWith(wanted+" ")?1:name.includes(wanted)?2:99;
+  return {item,score};
+ }).filter(row=>row.score<99).sort((a,b)=>a.score-b.score);
+ const match=ranked[0]?.item;
+ if(!match?.id)return null;
+ const detailUrl=new URL("https://store.steampowered.com/api/appdetails/");
+ detailUrl.searchParams.set("appids",String(match.id));detailUrl.searchParams.set("cc","us");detailUrl.searchParams.set("l","english");
+ const detailResponse=await fetch(detailUrl.toString(),{headers:{Accept:"application/json","User-Agent":"PersonalOS/1.0"}});
+ if(detailResponse.ok){
+  const detail=await detailResponse.json() as Record<string,{success?:boolean;data?:any}>;
+  const data=detail[String(match.id)]?.data;
+  const libraryCapsule=data?.library_assets?.library_capsule;
+  const libraryImage=typeof libraryCapsule==="string"?libraryCapsule:libraryCapsule?.image;
+  const cover=safeCoverUrl(libraryImage)||safeCoverUrl(data?.capsule_image)||safeCoverUrl(data?.capsule_imagev5)||safeCoverUrl(data?.header_image);
+  if(cover)return cover;
+ }
+ return safeCoverUrl(match.tiny_image);
+}
+async function lookupGoogleBooksCover(title:string,author?:string):Promise<string|null>{
+ const url=new URL("https://www.googleapis.com/books/v1/volumes");
+ const terms=["intitle:"+title,author?.trim()?"inauthor:"+author.trim():""].filter(Boolean);
+ url.searchParams.set("q",terms.join(" "));url.searchParams.set("maxResults","10");url.searchParams.set("projection","lite");
+ const response=await fetch(url.toString(),{headers:{Accept:"application/json"}});
+ if(!response.ok)return null;
+ const payload=await response.json() as {items?:Array<{volumeInfo?:{title?:string;imageLinks?:Record<string,string>}}>};
+ const wanted=normalizeCoverTitle(title);
+ const ranked=(payload.items??[]).map(item=>{
+  const name=normalizeCoverTitle(item.volumeInfo?.title??"");
+  return {item,score:name===wanted?0:name.startsWith(wanted+" ")?1:name.includes(wanted)?2:99};
+ }).filter(row=>row.score<99).sort((a,b)=>a.score-b.score);
+ const images=ranked[0]?.item.volumeInfo?.imageLinks;
+ return safeCoverUrl(images?.extraLarge||images?.large||images?.medium||images?.small||images?.thumbnail||images?.smallThumbnail);
+}
+async function lookupWikipediaCover(title:string,kind:"movie"|"game"):Promise<string|null>{
+ const attempts=kind==="movie"?[
+  {lang:"en",query:title+" film"},
+  {lang:"es",query:title+" película"}
+ ]:[
+  {lang:"en",query:title+" video game"},
+  {lang:"es",query:title+" videojuego"}
+ ];
+ for(const attempt of attempts){
+  const api="https://"+attempt.lang+".wikipedia.org/w/api.php";
+  const searchUrl=new URL(api);
+  searchUrl.searchParams.set("action","query");searchUrl.searchParams.set("list","search");
+  searchUrl.searchParams.set("srsearch",attempt.query);searchUrl.searchParams.set("srnamespace","0");
+  searchUrl.searchParams.set("srlimit","10");searchUrl.searchParams.set("format","json");searchUrl.searchParams.set("origin","*");
+  const searchResponse=await fetch(searchUrl.toString(),{headers:{Accept:"application/json","User-Agent":"PersonalOS/1.0"}});
+  if(!searchResponse.ok)continue;
+  const searchData=await searchResponse.json() as {query?:{search?:Array<{title?:string}>}};
+  const wanted=normalizeCoverTitle(title);
+  const ranked=(searchData.query?.search??[]).map(page=>{
+   const pageTitle=page.title??"";
+   const plain=normalizeCoverTitle(pageTitle.replace(/\([^)]*(film|pel[ií]cula|video game|videojuego)[^)]*\)/gi,""));
+   const candidate=normalizeCoverTitle(pageTitle);
+   const relevant=kind==="movie"?/(film|pel[ií]cula)/i.test(pageTitle):/(video game|videojuego)/i.test(pageTitle);
+   const score=plain===wanted?0:candidate===wanted?1:candidate.startsWith(wanted+" ")?2:candidate.includes(wanted)?3:99;
+   return {page,score:score+(relevant?0:4)};
+  }).filter(row=>row.score<8).sort((a,b)=>a.score-b.score);
+  const titles=ranked.slice(0,5).map(row=>row.page.title).filter(Boolean);
+  if(!titles.length)continue;
+  const imageUrl=new URL(api);
+  imageUrl.searchParams.set("action","query");imageUrl.searchParams.set("prop","pageimages");
+  imageUrl.searchParams.set("titles",titles.join("|"));imageUrl.searchParams.set("piprop","thumbnail");
+  imageUrl.searchParams.set("pithumbsize","800");imageUrl.searchParams.set("format","json");imageUrl.searchParams.set("origin","*");
+  const imageResponse=await fetch(imageUrl.toString(),{headers:{Accept:"application/json","User-Agent":"PersonalOS/1.0"}});
+  if(!imageResponse.ok)continue;
+  const imageData=await imageResponse.json() as {query?:{pages?:Record<string,{title?:string;thumbnail?:{source?:string}}>}};
+  const pages=Object.values(imageData.query?.pages??{});
+  for(const rankedPage of ranked){
+   const page=pages.find(item=>item.title===rankedPage.page.title);
+   const image=safeCoverUrl(page?.thumbnail?.source);
+   if(image)return image;
+  }
+ }
+ return null;
+}
+async function handleLearningCover(request:Request):Promise<Response>{
+ if(request.method!=="GET")return json({error:"Método no permitido"},405);
+ const url=new URL(request.url);
+ const kind=url.searchParams.get("kind");
+ const title=(url.searchParams.get("title")??"").trim().slice(0,180);
+ const author=(url.searchParams.get("author")??"").trim().slice(0,120);
+ if(!["movie","game","book"].includes(kind??""))return json({error:"Tipo de portada no válido.",coverUrl:null},400);
+ if(!title)return json({error:"Escribe un título.",coverUrl:null},400);
+ try{
+  let coverUrl:string|null=null;
+  if(kind==="movie")coverUrl=await lookupWikipediaCover(title,"movie");
+  else if(kind==="game")coverUrl=await lookupSteamStoreCover(title)||await lookupWikipediaCover(title,"game");
+  else coverUrl=await lookupGoogleBooksCover(title,author);
+  return new Response(JSON.stringify({coverUrl,source:kind==="game"&&coverUrl?"steam-or-wikipedia":kind==="book"?"google-books":"wikipedia"}),{
+   status:200,headers:{"content-type":"application/json;charset=utf-8","cache-control":"public, max-age=1800, s-maxage=21600"}
+  });
+ }catch(error){
+  console.error("[learning-cover] lookup failed",kind,title,error instanceof Error?error.message:"unknown error");
+  return json({coverUrl:null,error:"No se pudo consultar la fuente de portadas."},502);
+ }
+}
+
 async function handleApi(request:Request,env:Env):Promise<Response|null>{
  const url=new URL(request.url);
+ if(url.pathname==="/api/learning-cover")return handleLearningCover(request);
  if(url.pathname==="/api/chess/profile"&&request.method==="GET"){
   const username="ricardowiswell";
   const headers={Accept:"application/json","User-Agent":"POS-Personal-OS/1.0 (contact: riwiswell@gmail.com)"};
