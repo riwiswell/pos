@@ -53,6 +53,8 @@ export interface FinanceTransaction {
   type: TransactionType;
   amount: number;
   cost_amount: number;
+  /** True only when the user explicitly overrides an imported/source cost. */
+  cost_amount_manual?: boolean;
   account_id: string | null;
   /** Destination account for transfers. Null for expenses and incomes. */
   transfer_account_id: string | null;
