@@ -1422,12 +1422,12 @@ aside > div:first-child {
   font-size: .49rem;
 }
 
-/* Sidebar theme identity: larger mark and a clear three-line hierarchy. */
+/* Sidebar theme identity: larger mark at left, three-line copy at right. */
 .skin-branding--sidebar .skin-branding__identity {
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: .28rem;
+  gap: .65rem;
 }
 .skin-branding--sidebar .skin-branding__theme-mark,
 .skin-branding--sidebar .skin-mark--f1 {
@@ -1442,9 +1442,10 @@ aside > div:first-child {
   border-width: 2px;
 }
 .skin-branding--sidebar .skin-branding__copy {
-  align-items: center;
+  align-items: flex-start;
   gap: .18rem;
-  text-align: center;
+  min-width: 0;
+  text-align: left;
 }
 .skin-branding--sidebar .skin-branding__eyebrow {
   color: color-mix(in oklab, var(--sidebar-foreground) 72%, transparent);
