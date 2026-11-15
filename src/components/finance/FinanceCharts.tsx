@@ -61,19 +61,25 @@ export function CategoryDonut({
           </div>
         </div>
 
-        <ul className="min-w-0 flex-1 max-h-44 overflow-y-auto space-y-1.5 pr-1">
+        <ul className="grid min-w-0 flex-1 grid-cols-2 content-start gap-x-3 gap-y-2 overflow-y-auto pr-1 max-h-44 sm:h-32 sm:max-h-32">
           {slices.map((slice) => (
-            <li key={slice.categoryId ?? "none"} className="flex items-center gap-2 text-xs">
-              <span
-                aria-hidden
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: slice.color }}
-              />
-              <span className="min-w-0 flex-1 truncate text-[13px]">{slice.name}</span>
-              <span className="shrink-0 tabular-nums text-[13px] text-muted-foreground">
-                {total > 0 ? Math.round((slice.total / total) * 100) : 0}%
-              </span>
-              <span className="shrink-0 tabular-nums text-[13px]">{money(slice.total)}</span>
+            <li key={slice.categoryId ?? "none"} className="min-w-0 space-y-0.5">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span
+                  aria-hidden
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: slice.color }}
+                />
+                <span className="min-w-0 flex-1 truncate text-xs font-medium" title={slice.name}>
+                  {slice.name}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-1 pl-4 text-xs tabular-nums">
+                <span className="shrink-0 text-muted-foreground">
+                  {total > 0 ? Math.round((slice.total / total) * 100) : 0}%
+                </span>
+                <span className="shrink-0 font-medium">{money(slice.total)}</span>
+              </div>
             </li>
           ))}
         </ul>
