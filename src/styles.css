@@ -1480,3 +1480,30 @@ html.dark[data-skin="nintendo"] .bg-card .text-foreground,
 html.dark[data-skin="nintendo"] .bg-card [class*="text-foreground/"] {
   color: var(--card-foreground) !important;
 }
+
+/* POS logo: reduce the expanded sidebar mark by 25%, without changing theme marks. */
+.skin-branding--sidebar:not(.skin-branding--compact):not(.skin-branding--collapsed) .skin-branding__symbol--personal {
+  width: 7.05rem !important;
+  height: 7.05rem !important;
+  min-width: 7.05rem !important;
+  min-height: 7.05rem !important;
+  flex: 0 0 7.05rem !important;
+}
+
+.skin-branding--sidebar.skin-branding--collapsed .skin-branding__symbol--personal {
+  width: 3.34rem !important;
+  height: 3.34rem !important;
+  min-width: 3.34rem !important;
+  min-height: 3.34rem !important;
+  flex: 0 0 3.34rem !important;
+}
+
+@media (max-height: 720px) {
+  .skin-branding--sidebar:not(.skin-branding--compact):not(.skin-branding--collapsed) .skin-branding__symbol--personal {
+    width: 6.375rem !important;
+    height: 6.375rem !important;
+    min-width: 6.375rem !important;
+    min-height: 6.375rem !important;
+    flex: 0 0 6.375rem !important;
+  }
+}
