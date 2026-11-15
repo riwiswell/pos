@@ -30,7 +30,6 @@ create table if not exists pos_bridge_private.wiswellart_tienda_payment_accounts
   account_id uuid not null references public.finance_accounts(id) on delete restrict
 );
 
-revoke all on all tables in schema private from public, anon, authenticated;
 
 do $$
 declare
