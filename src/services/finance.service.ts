@@ -257,9 +257,11 @@ export const financeService = {
 
   async createTransaction(input: TransactionInput): Promise<FinanceTransaction> {
     const user_id = await currentUserId();
+    const payload = normalizeTitheFlags(input);
+    if (!payload.cost_amount_manual) delete payload.cost_amount_manual;
     const { data, error } = await supabase
       .from("finance_transactions")
-      .insert({ ...normalizeTitheFlags(input), user_id })
+      .insert({ ...payload, user_id })
       .select()
       .single();
     if (error) throw error;
@@ -267,9 +269,11 @@ export const financeService = {
   },
 
   async updateTransaction(id: string, patch: Partial<TransactionInput>) {
+    const payload = normalizeTitheFlags(patch);
+    if (!payload.cost_amount_manual) delete payload.cost_amount_manual;
     const { error } = await supabase
       .from("finance_transactions")
-      .update(normalizeTitheFlags(patch))
+      .update(payload)
       .eq("id", id);
     if (error) throw error;
   },
