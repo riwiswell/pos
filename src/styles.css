@@ -1421,3 +1421,50 @@ aside > div:first-child {
   border-radius: .25rem;
   font-size: .49rem;
 }
+
+/* Sidebar theme identity: larger mark and a clear three-line hierarchy. */
+.skin-branding--sidebar .skin-branding__identity {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .28rem;
+}
+.skin-branding--sidebar .skin-branding__theme-mark,
+.skin-branding--sidebar .skin-mark--f1 {
+  width: 2.67rem;
+  height: 2.07rem;
+  font-size: 1.08rem;
+}
+.skin-branding--sidebar .skin-branding__theme-mark--lego {
+  width: 2.67rem;
+  height: 2.07rem;
+  font-size: 1.08rem;
+  border-width: 2px;
+}
+.skin-branding--sidebar .skin-branding__copy {
+  align-items: center;
+  gap: .18rem;
+  text-align: center;
+}
+.skin-branding--sidebar .skin-branding__eyebrow {
+  color: color-mix(in oklab, var(--sidebar-foreground) 72%, transparent);
+  font-size: .62rem;
+  font-style: normal;
+  font-weight: 750;
+  letter-spacing: .16em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.skin-branding--sidebar .skin-branding__copy strong {
+  max-width: 100%;
+  overflow: visible;
+  font-size: .78rem;
+  letter-spacing: .055em;
+  text-overflow: clip;
+  white-space: normal;
+}
+.skin-branding--sidebar .skin-branding__copy small {
+  font-size: .53rem;
+  letter-spacing: .13em;
+  white-space: normal;
+}
