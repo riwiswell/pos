@@ -24,13 +24,6 @@ type WeatherResponse = {
     wind_speed_10m: number;
     is_day: number;
   };
-  daily?: {
-    time?: string[];
-    weather_code?: number[];
-    precipitation_probability_max?: number[];
-    temperature_2m_max?: number[];
-    temperature_2m_min?: number[];
-  };
 };
 
 const CITIES: City[] = [
@@ -43,22 +36,6 @@ const CITIES: City[] = [
 ];
 
 const STORAGE_KEY = "personal-os:weather-location";
-
-function readLocation(): LocationChoice {
-  if (typeof window === "undefined") return CITIES[0];
-  try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved) as LocationChoice;
-      if (parsed.id === "current" && Number.isFinite(parsed.latitude) && Number.isFinite(parsed.longitude)) return parsed;
-      const city = CITIES.find((item) => item.id === parsed.id);
-      if (city) return city;
-    }
-  } catch {
-    // Ignore malformed local preferences and use the safe default.
-  }
-  return CITIES[0];
-}
 
 function currentConditionCode(current: NonNullable<WeatherResponse["current"]>):number {
   const rainCodes = [51,53,55,56,57,61,63,65,66,67,80,81,82];
@@ -120,7 +97,7 @@ function WeatherIcon({ code, isDay, small = false }: { code: number; isDay: bool
 }
 
 export function WeatherCard({ compact = false, planner = false }: { compact?: boolean; planner?: boolean } = {}) {
-  const [location, setLocation] = useState<LocationChoice>(readLocation);
+  const [location, setLocation] = useState<LocationChoice>(CITIES[0]);
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,8 +113,6 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
       latitude: String(location.latitude),
       longitude: String(location.longitude),
       current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,showers,cloud_cover,weather_code,wind_speed_10m,is_day",
-      daily: "weather_code,precipitation_probability_max,temperature_2m_max,temperature_2m_min",
-      forecast_days: planner ? "7" : "5",
       timezone: "auto",
     });
     fetch("https://api.open-meteo.com/v1/forecast?" + params.toString(), { signal: controller.signal })
@@ -162,45 +137,24 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
   }, [location, planner, refreshKey]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setRefreshKey((value) => value + 1), 15 * 60 * 1000);
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const current: LocationChoice = { id: "current", label: "Mi ubicación", latitude: position.coords.latitude, longitude: position.coords.longitude };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+        setLocation(current);
+      },
+      () => { /* Keep Buenaventura as the default when location permission is unavailable. */ },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 15 * 60 * 1000 },
+    );
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setRefreshKey((value) => value + 1), 5 * 60 * 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const chooseCity = (id: string) => {
-    const city = CITIES.find((item) => item.id === id);
-    if (!city) return;
-    setLocation(city);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(city));
-  };
-
-  const useCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setError("Este dispositivo no permite consultar la ubicación.");
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const current: LocationChoice = {
-          id: "current",
-          label: "Mi ubicación",
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-        setLocation(current);
-        setLocating(false);
-      },
-      () => {
-        setError("No se pudo obtener la ubicación. Revisa el permiso del navegador o elige una ciudad.");
-        setLocating(false);
-      },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 15 * 60 * 1000 },
-    );
-  };
-
   const current = weather?.current;
-  const rainChance = weather?.daily?.precipitation_probability_max?.[0];
   const displayCode = current ? currentConditionCode(current) : 3;
   const mood = current ? weatherMood(displayCode, current.is_day === 1) : "neutral";
 
@@ -215,21 +169,10 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
             <p className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{location.label}</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            aria-label="Ciudad para consultar el clima"
-            className={`max-w-[150px] rounded-lg border border-input bg-background px-2 text-xs ${planner ? "h-8" : "h-9"}`}
-            value={location.id === "current" ? "current" : location.id}
-            onChange={(event) => chooseCity(event.target.value)}
-          >
-            <option value="current" disabled>Mi ubicación</option>
-            {CITIES.map((city) => <option key={city.id} value={city.id}>{city.label}</option>)}
-          </select>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Ubicación automática</span>
           <Button type="button" size="icon" variant="outline" className="h-8 w-8" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Actualizar clima" title="Actualizar clima">
             <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
-          </Button>
-          <Button type="button" size={compact ? "icon" : "sm"} variant="outline" className={compact ? "h-8 w-8" : planner ? "h-8 gap-1.5" : "h-9 gap-1.5"} onClick={useCurrentLocation} disabled={locating} aria-label="Usar mi ubicación actual" title="Usar mi ubicación actual">
-            <LocateFixed className="h-3.5 w-3.5" />{!compact && (locating ? "Ubicando…" : "Dónde estoy")}
           </Button>
         </div>
       </div>
@@ -250,7 +193,7 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
                 <p className="break-words text-xs text-muted-foreground">{weatherDescription(displayCode)} · sensación {Math.round(current.apparent_temperature)}°</p>
               </div>
             </div>
-            <div className="min-w-0 rounded-xl bg-background/55 px-3 py-2"><p className="text-[10px] text-muted-foreground">Prob. hoy</p><p className="text-lg font-semibold tabular-nums">{rainChance ?? "—"}{rainChance == null ? "" : "%"}</p></div>
+            <div className="min-w-0 rounded-xl bg-background/55 px-3 py-2"><p className="text-[10px] text-muted-foreground">Lluvia ahora</p><p className="text-lg font-semibold tabular-nums">{Number(current.precipitation).toFixed(1)} <span className="text-xs font-normal">mm</span></p></div>
             <div className="min-w-0 rounded-xl bg-background/55 px-3 py-2"><p className="text-[10px] text-muted-foreground">Humedad</p><p className="text-lg font-semibold tabular-nums">{Math.round(current.relative_humidity_2m)}%</p></div>
           </div>
         ) : (
@@ -264,8 +207,8 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
               </div>
             </div>
             <div className={planner ? "rounded-xl bg-background/55 p-2" : "rounded-xl bg-background/55 p-3"}>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Droplets className="h-3.5 w-3.5" />Prob. de lluvia</div>
-              <p className="mt-1 text-xl font-semibold tabular-nums">{rainChance ?? "—"}{rainChance == null ? "" : "%"}</p>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Droplets className="h-3.5 w-3.5" />Lluvia ahora</div>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{Number(current.precipitation).toFixed(1)} <span className="text-xs font-normal">mm</span></p>
             </div>
             <div className={planner ? "rounded-xl bg-background/55 p-2" : "rounded-xl bg-background/55 p-3"}>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wind className="h-3.5 w-3.5" />Viento</div>
@@ -277,30 +220,7 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
             </div>
           </div>
         )) : null}
-      {!compact && weather?.daily?.time && (
-        <div className={planner ? "mt-3 grid grid-cols-7 gap-1 border-t border-border/70 pt-3" : "mt-5 grid grid-cols-5 gap-2 border-t border-border/70 pt-4"}>
-          {weather.daily.time.map((day, index) => (
-            <div key={day} className={planner ? "min-w-0 rounded-lg bg-background/45 px-0.5 py-1.5 text-center" : "min-w-0 rounded-xl bg-background/45 px-1.5 py-2 text-center"}>
-              <p className="text-[10px] capitalize text-muted-foreground">
-                {index === 0 ? "Hoy" : new Intl.DateTimeFormat("es-CO", { weekday: "short" }).format(new Date(day + "T12:00:00"))}
-              </p>
-              <p className="my-1 text-base" aria-label={weatherDescription(weather.daily?.weather_code?.[index] ?? 0)}>
-                {([0, 1, 2].includes(weather.daily?.weather_code?.[index] ?? -1) ? "🌤️" :
-                  [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99].includes(weather.daily?.weather_code?.[index] ?? -1) ? "🌧️" :
-                  [71, 73, 75, 77, 85, 86].includes(weather.daily?.weather_code?.[index] ?? -1) ? "❄️" :
-                  [45, 48].includes(weather.daily?.weather_code?.[index] ?? -1) ? "🌫️" : "☁️")}
-              </p>
-              <p className="text-xs font-semibold tabular-nums">
-                {Math.round(weather.daily?.temperature_2m_max?.[index] ?? 0)}° <span className="font-normal text-muted-foreground">{Math.round(weather.daily?.temperature_2m_min?.[index] ?? 0)}°</span>
-              </p>
-              <p className="mt-1 text-[10px] text-muted-foreground tabular-nums">
-                {weather.daily?.precipitation_probability_max?.[index] ?? "—"}%
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-      {!compact && <p className={planner ? "mt-3 border-t border-border/70 pt-2 text-[10px] text-muted-foreground" : "mt-4 border-t border-border/70 pt-3 text-[11px] text-muted-foreground"}>Datos meteorológicos de Open-Meteo. La ubicación del dispositivo solo se consulta cuando pulsas «Dónde estoy».</p>}
+      {!compact && <p className={planner ? "mt-3 border-t border-border/70 pt-2 text-[10px] text-muted-foreground" : "mt-4 border-t border-border/70 pt-3 text-[11px] text-muted-foreground"}>Condiciones actuales estimadas por Open-Meteo. La ubicación se detecta automáticamente; si no autorizas el acceso, se usa Buenaventura.</p>}
       </div>
     </section>
   );
