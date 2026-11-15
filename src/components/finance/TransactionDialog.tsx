@@ -68,6 +68,7 @@ function emptyInput(date: string, accountId: string | null): TransactionInput {
     type: "expense",
     amount: 0,
     cost_amount: 0,
+    cost_amount_manual: false,
     account_id: accountId,
     transfer_account_id: null,
     category_id: null,
@@ -112,6 +113,7 @@ export function TransactionDialog({
         type: transaction.type,
         amount: Number(transaction.amount),
         cost_amount: Number(transaction.cost_amount),
+        cost_amount_manual: Boolean(transaction.cost_amount_manual),
         account_id: transaction.account_id,
         transfer_account_id: transaction.transfer_account_id ?? null,
         category_id: transaction.category_id,
@@ -502,7 +504,7 @@ export function TransactionDialog({
                 <Label className="text-xs">Costo asociado (opcional)</Label>
                 <AmountInput
                   value={form.cost_amount}
-                  onChange={(cost_amount) => setForm((prev) => ({ ...prev, cost_amount }))}
+                  onChange={(cost_amount) => setForm((prev) => ({ ...prev, cost_amount, cost_amount_manual: true }))}
                 />
                 <p className="text-xs text-muted-foreground">
                   Se usa para calcular la ganancia real del ingreso.
