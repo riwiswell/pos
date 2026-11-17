@@ -1,4 +1,4 @@
-import { BookOpen, BriefcaseBusiness, Gamepad2, HeartHandshake, HeartPulse, Home, Trophy, User, Wallet, Church, ListTodo, Languages } from "lucide-react";
+import { BookOpen, Heart, BriefcaseBusiness, Gamepad2, HeartHandshake, HeartPulse, Home, Trophy, User, Wallet, Church, ListTodo, Languages } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface NavItem {
@@ -19,6 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/salud", label: "Salud", icon: HeartPulse, key: "salud", helpKey: "health" },
   { to: "/finanzas", label: "Finanzas", icon: Wallet, key: "finanzas", helpKey: "finance" },
   { to: "/diario", label: "Diario", icon: BookOpen, key: "diario", helpKey: "journal" },
+  { to: "/emociones", label: "Emociones", icon: Heart, key: "emociones", helpKey: "life" },
   { to: "/vida", label: "Vida", icon: ListTodo, key: "vida", helpKey: "life" },
   { to: "/aprendizaje", label: "Aprendizaje", icon: Languages, key: "aprendizaje", helpKey: "learning" },
   { to: "/videojuegos", label: "Videojuegos", icon: Gamepad2, key: "videojuegos", helpKey: "learning" },
