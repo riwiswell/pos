@@ -47,10 +47,11 @@ export function UniversalCapture() {
   function choose(next: CaptureKind) {
     if (["finance", "health", "habit", "relationship", "planning"].includes(next)) {
       setOpen(false);
-      const destinations: Record<string, "/finanzas" | "/salud" | "/organizacion" | "/relaciones"> = {
+      const destinations: Partial<Record<CaptureKind, "/finanzas" | "/salud" | "/organizacion" | "/relaciones">> = {
         finance: "/finanzas", health: "/salud", habit: "/organizacion", relationship: "/relaciones", planning: "/organizacion",
       };
-      void navigate({ to: destinations[next] });
+      const destination = destinations[next];
+      if (destination) void navigate({ to: destination });
       return;
     }
     setKind(next);
@@ -60,7 +61,7 @@ export function UniversalCapture() {
     if (!kind || !["thought", "idea", "gratitude", "emotion", "dream", "memory"].includes(kind)) return;
     if (kind === "emotion" && !emotion) { toast.error("Selecciona una emoción."); return; }
     if (!content.trim()) { toast.error("Escribe algo antes de guardar."); return; }
-    const entryType = kind === "emotion" ? "reflection" : kind;
+    const entryType = (kind === "emotion" ? "reflection" : kind) as JournalEntryInput["type"];
     const input: JournalEntryInput = {
       type: entryType,
       title: kind === "emotion" ? "Emoción · " + emotion : title.trim() || null,
