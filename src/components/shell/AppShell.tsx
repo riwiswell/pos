@@ -181,8 +181,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         ? hiddenModules.filter((item) => item !== "organizacion" && !LEGACY_ORGANIZATION_KEYS.includes(item))
         : Array.from(new Set([...hiddenModules, "organizacion"]))
       : visible
-        ? hiddenModules.filter((item) => item !== key)
-        : Array.from(new Set([...hiddenModules, key]));
+        ? hiddenModules.filter((item) => item !== key && !(LEGACY_ORGANIZATION_KEYS.includes(key) && item === "organizacion"))
+        : Array.from(new Set([...hiddenModules.filter((item) => item !== "organizacion"), key]));
     void persistMenu(allItems.map((item) => item.key), hidden);
   };
 
@@ -203,7 +203,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       ),
     );
     setExpandedDesktopGroup(activeGroup?.key ?? null);
-  }, [pathname]);
+  }, [pathname, routeSearch.tab]);
 
   const background = profile?.background_url ?? null;
   // Only uploaded images are custom backgrounds. A legacy hex value in
