@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { HelpTip } from "@/components/common/HelpTip";
 import { PersonalAssistant } from "@/components/assistant/PersonalAssistant";
-import { NAV_ITEMS } from "@/components/shell/nav-items";
+import { DESKTOP_NAV_GROUPS, NAV_ITEMS, type NavItem } from "@/components/shell/nav-items";
 import { useAuth } from "@/hooks/use-auth";
 import { profileKeys, useProfile, useProfileMediaUrl } from "@/hooks/use-profile";
 import { profileService } from "@/services/profile.service";
@@ -26,10 +26,13 @@ import { UniversalCapture } from "@/components/common/UniversalCapture";
 const STORAGE_KEY = "personal-os:sidebar-collapsed";
 const LEGACY_ORGANIZATION_KEYS = ["habitos", "planeador", "trabajo"];
 function isMenuModuleHidden(key: string, hidden: string[]) {
-  return hidden.includes(key) || (
-    key === "organizacion" &&
-    LEGACY_ORGANIZATION_KEYS.every((legacyKey) => hidden.includes(legacyKey))
-  );
+  if (key === "organizacion") {
+    return hidden.includes("organizacion") || LEGACY_ORGANIZATION_KEYS.every((legacyKey) => hidden.includes(legacyKey));
+  }
+  if (LEGACY_ORGANIZATION_KEYS.includes(key)) {
+    return hidden.includes("organizacion") || hidden.includes(key) || LEGACY_ORGANIZATION_KEYS.every((legacyKey) => hidden.includes(legacyKey));
+  }
+  return hidden.includes(key);
 }
 
 function useCollapsed() {
@@ -125,6 +128,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const menuSaveSequence = useRef(0);
   const menuSaveQueue = useRef<Promise<void>>(Promise.resolve());
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const routeSearch = useRouterState({ select: (state) => state.location.search as Record<string, unknown> });
+  const [expandedDesktopGroup, setExpandedDesktopGroup] = useState<string | null>(null);
   const signOut = useSignOut();
   const { data: profile } = useProfile();
   const { user } = useAuth();
@@ -190,6 +195,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
 
+  useEffect(() => {
+    const activeGroup = DESKTOP_NAV_GROUPS.find((group) =>
+      group.items.some((item) =>
+        pathname.startsWith(item.to) &&
+        (!item.search || (routeSearch.tab ?? "habitos") === item.search.tab),
+      ),
+    );
+    setExpandedDesktopGroup(activeGroup?.key ?? null);
+  }, [pathname]);
+
   const background = profile?.background_url ?? null;
   // Only uploaded images are custom backgrounds. A legacy hex value in
   // background_url must never override the color selected in the profile.
@@ -217,15 +232,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 
   const renderMenuItem = (
-    item: typeof menuItems[number],
-    options: { forceExpanded?: boolean; onNavigate?: () => void; hideHelp?: boolean } = {},
+    item: NavItem,
+    options: { forceExpanded?: boolean; onNavigate?: () => void; hideHelp?: boolean; reorderable?: boolean } = {},
   ) => {
     const visible = !isMenuModuleHidden(item.key, hiddenModules);
     const expanded = options.forceExpanded ?? !collapsed;
+    const canReorder = options.reorderable !== false && orderedItems.some((entry) => entry.key === item.key);
+    const isActive = pathname.startsWith(item.to) &&
+      (!item.search || (routeSearch.tab ?? "habitos") === item.search.tab);
     return (
       <div key={item.key} data-sidebar-item-key={item.key}
         className={cn("flex min-w-0 items-center gap-1 rounded-xl transition-colors", !visible && "opacity-55", draggingKey === item.key && "opacity-45", dragTarget === item.key && "bg-sidebar-accent ring-2 ring-sidebar-primary/60")}>
-        {expanded && <button type="button" aria-label={"Arrastrar para reordenar " + item.label} title="Arrastra para cambiar de posición"
+        {expanded && canReorder && <button type="button" aria-label={"Arrastrar para reordenar " + item.label} title="Arrastra para cambiar de posición"
           className="flex h-7 w-4 shrink-0 touch-none cursor-grab items-center justify-center rounded text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-primary active:cursor-grabbing"
           onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
             if (event.button !== 0) return;
@@ -263,9 +281,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           }}>
           <GripVertical className="h-4 w-4" />
         </button>}
-        <Link to={item.to} search={(p: Record<string, unknown>) => p} title={item.label}
+        <Link to={item.to} search={(p: Record<string, unknown>) => ({ ...p, ...item.search })} title={item.label}
           onClick={options.onNavigate}
-          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", !expanded && "flex-none justify-center px-0", pathname.startsWith(item.to) && "bg-sidebar-accent")}>
+          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", !expanded && "flex-none justify-center px-0", isActive && "bg-sidebar-accent")}>
           <item.icon className="h-4 w-4 shrink-0" />
           {expanded && <span className="truncate">{item.label}</span>}
         </Link>
@@ -306,14 +324,48 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
 
-        <nav className="sidebar-nav flex min-h-0 flex-1 flex-col gap-1 overflow-hidden bg-sidebar p-2">
-          <div className="mb-1 flex justify-end">
+        <nav aria-label="Navegación de escritorio" className="sidebar-nav flex min-h-0 flex-1 flex-col gap-1 overflow-hidden bg-sidebar p-2">
+          <div className="mb-1 flex items-center justify-between">
+            {!collapsed && <span className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/55">Espacios</span>}
             <Button type="button" size="icon" variant={menuEditing ? "secondary" : "ghost"} className="h-8 w-8"
               onClick={() => setMenuEditing((current) => !current)} aria-label="Opciones del menú" title="Opciones del menú" aria-pressed={menuEditing}>
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </div>
-          {menuItems.map((item) => renderMenuItem(item))}
+          {renderMenuItem(NAV_ITEMS.find((item) => item.key === "inicio")!, { reorderable: false })}
+          {DESKTOP_NAV_GROUPS.map((group) => {
+            const groupItems = group.items.filter((item) => menuEditing || !isMenuModuleHidden(item.key, hiddenModules));
+            if (groupItems.length === 0) return null;
+            const expanded = expandedDesktopGroup === group.key;
+            const active = group.items.some((item) =>
+              pathname.startsWith(item.to) &&
+              (!item.search || (routeSearch.tab ?? "habitos") === item.search.tab),
+            );
+            return (
+              <section key={group.key} className="min-w-0">
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  aria-controls={"desktop-nav-group-" + group.key}
+                  title={group.label}
+                  onClick={() => setExpandedDesktopGroup((current) => current === group.key ? null : group.key)}
+                  className={cn(
+                    "flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                    active && "text-sidebar-primary",
+                    collapsed && "justify-center px-0",
+                  )}
+                >
+                  <group.icon className="h-4 w-4 shrink-0" />
+                  {!collapsed && <><span className="min-w-0 flex-1 truncate">{group.label}</span><ChevronDown className={cn("h-3.5 w-3.5 shrink-0 transition-transform", expanded && "rotate-180")} /></>}
+                </button>
+                {expanded && (
+                  <div id={"desktop-nav-group-" + group.key} className="ml-2 flex min-w-0 flex-col gap-0.5 border-l border-sidebar-border pl-1">
+                    {groupItems.map((item) => renderMenuItem(item, { reorderable: false, hideHelp: true }))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </nav>
 
         <div className="border-t border-sidebar-border bg-sidebar/35 p-3 backdrop-blur-sm">
