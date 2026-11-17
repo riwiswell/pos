@@ -83,11 +83,13 @@
   --accent: oklch(0.3 0.018 264);
   --accent-foreground: oklch(0.98 0.003 260);
 
-  --destructive: oklch(0.63 0.19 22);
+  --destructive: oklch(0.55 0.19 22);
   --destructive-foreground: oklch(0.98 0.003 260);
 
   --success: oklch(0.72 0.14 155);
   --success-foreground: oklch(0.18 0.02 160);
+  --chart-income: oklch(0.78 0.14 155);
+  --chart-expense: oklch(0.72 0.18 22);
 
   --border: oklch(1 0 0 / 10%);
   --border-strong: oklch(1 0 0 / 18%);
@@ -147,6 +149,8 @@
 
   --success: oklch(0.53 0.13 155);
   --success-foreground: oklch(0.99 0.003 255);
+  --chart-income: oklch(0.48 0.14 155);
+  --chart-expense: oklch(0.52 0.18 22);
 
   --border: oklch(0.34 0.018 65 / 12%);
   --border-strong: oklch(0.34 0.018 65 / 22%);
@@ -1547,4 +1551,17 @@ html[data-skin="dc-comics"] .learning-page-tabs button[aria-pressed="true"] {
 html[data-skin="dc-comics"] .learning-page-tabs button[aria-pressed="false"]:hover {
   background: #19365D;
   color: #FFFFFF;
+}
+
+
+/* Respect reduced-motion preferences across dashboard and weather effects. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
