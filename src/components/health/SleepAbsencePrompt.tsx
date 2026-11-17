@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MoonStar } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ function durationLabel(start: Date, end: Date) {
 
 export function SleepAbsencePrompt() {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
+  const candidateRef = useRef<Candidate | null>(null);
   const [bedtime, setBedtime] = useState("");
   const [wakeTime, setWakeTime] = useState("");
   const [saving, setSaving] = useState(false);
@@ -52,8 +53,10 @@ export function SleepAbsencePrompt() {
 
           // Ask about any long absence, regardless of the hour at which it began.
           // The user confirms the interval; POS never records sleep automatically.
-          if (gapHours >= 4.5 && gapHours <= 24) {
-            setCandidate((current) => current ?? { start: previous, end: now });
+          if (gapHours >= 4.5 && gapHours <= 24 && !candidateRef.current) {
+            const nextCandidate = { start: previous, end: now };
+            candidateRef.current = nextCandidate;
+            setCandidate(nextCandidate);
             setBedtime(localTime(previous));
             setWakeTime(localTime(now));
           }
@@ -95,7 +98,7 @@ export function SleepAbsencePrompt() {
     };
   }, []);
 
-  const dismiss = () => setCandidate(null);
+  const dismiss = () => { candidateRef.current = null; setCandidate(null); };
 
   const confirmSleep = async () => {
     if (!candidate || saving) return;
