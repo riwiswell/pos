@@ -1600,5 +1600,7 @@ html.theme-light[data-skin="chess"] {
 }
 html.theme-light[data-skin="mario"] {
   --primary: #D71920;
+  --secondary: #D7EDFF;
+  --secondary-foreground: #14578A;
   --sidebar-accent: #145D8C;
 }
