@@ -124,8 +124,8 @@ export function DailyBars({ data, hideAmounts }: { data: DailyPoint[]; hideAmoun
                 name === "expense" ? "Gastos" : "Ingresos",
               ]}
             />
-            <Bar dataKey="income" fill="#34d399" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="expense" fill="#f87171" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="income" fill="var(--chart-income)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="expense" fill="var(--chart-expense)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Plus, X, Heart, Lightbulb, MessageSquareText, Sparkles, BookOpen, Wallet, Activity, Users, ListChecks, Save } from "lucide-react";
+import { Plus, X, Heart, Lightbulb, MessageSquareText, Sparkles, BookOpen, Bookmark, Wallet, Activity, Users, ListChecks, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useJournalMutations } from "@/hooks/use-journal";
 import type { JournalEntryInput } from "@/domain/journal";
+import { EMOTIONS } from "@/domain/emotions";
 import { toast } from "sonner";
 
 type CaptureKind = "thought" | "idea" | "gratitude" | "emotion" | "dream" | "memory" | "finance" | "health" | "habit" | "relationship" | "planning";
@@ -19,14 +20,13 @@ const CAPTURE_OPTIONS = [
   { kind: "emotion" as const, label: "Estado emocional", description: "Registrar cómo te sientes.", icon: Heart },
   { kind: "gratitude" as const, label: "Gratitud", description: "Anotar algo que agradeces.", icon: Sparkles },
   { kind: "dream" as const, label: "Sueño", description: "Guardar un sueño que recuerdes.", icon: BookOpen },
+  { kind: "memory" as const, label: "Recuerdo", description: "Guardar un recuerdo importante.", icon: Bookmark },
   { kind: "finance" as const, label: "Movimiento financiero", description: "Ir al registro de ingresos y gastos.", icon: Wallet },
   { kind: "health" as const, label: "Dato de salud", description: "Registrar una medición o dato.", icon: Activity },
   { kind: "habit" as const, label: "Hábito o actividad", description: "Abrir el registro de hábitos.", icon: ListChecks },
   { kind: "relationship" as const, label: "Interacción", description: "Registrar algo relacionado con una persona.", icon: Users },
   { kind: "planning" as const, label: "Tarea o pendiente", description: "Abrir organización y planificación.", icon: Plus },
 ];
-
-const EMOTION_OPTIONS = ["Alegría", "Calma", "Amor", "Gratitud", "Ilusión", "Tristeza", "Ansiedad", "Miedo", "Enojo", "Frustración", "Cansancio", "Soledad"];
 
 export function UniversalCapture() {
   const navigate = useNavigate();
@@ -60,12 +60,12 @@ export function UniversalCapture() {
   function save() {
     if (!kind || !["thought", "idea", "gratitude", "emotion", "dream", "memory"].includes(kind)) return;
     if (kind === "emotion" && !emotion) { toast.error("Selecciona una emoción."); return; }
-    if (!content.trim()) { toast.error("Escribe algo antes de guardar."); return; }
+    if (kind !== "emotion" && !content.trim()) { toast.error("Escribe algo antes de guardar."); return; }
     const entryType = (kind === "emotion" ? "reflection" : kind) as JournalEntryInput["type"];
     const input: JournalEntryInput = {
       type: entryType,
       title: kind === "emotion" ? "Emoción · " + emotion : title.trim() || null,
-      content: content.trim(),
+      content: content.trim() || "Registro emocional.",
       entry_date: date,
       entry_time: new Date().toTimeString().slice(0, 5),
       mood: kind === "emotion" ? emotion : null,
@@ -112,10 +112,10 @@ export function UniversalCapture() {
                 <Button type="button" variant="ghost" size="sm" onClick={() => setKind(null)}><X className="mr-1 h-3.5 w-3.5" />Cambiar</Button>
               </div>
               {kind !== "emotion" && kind !== "gratitude" && <div className="space-y-1.5"><Label>Título (opcional)</Label><Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ponle un nombre…" /></div>}
-              {kind === "emotion" && <div className="space-y-2"><Label>¿Cómo te sientes?</Label><div className="grid grid-cols-3 gap-2">{EMOTION_OPTIONS.map((value) => <button key={value} type="button" onClick={() => setEmotion(value)} className={"rounded-lg border p-2 text-sm " + (emotion === value ? "border-primary bg-primary/10 font-semibold" : "border-border")}>{value}</button>)}</div><Label>Intensidad: {intensity}/5</Label><Input type="range" min="1" max="5" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /></div>}
+              {kind === "emotion" && <div className="space-y-2"><Label>¿Cómo te sientes?</Label><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{EMOTIONS.map((option) => <button key={option.label} type="button" aria-pressed={emotion === option.label} onClick={() => setEmotion(option.label)} className={"flex items-center gap-2 rounded-lg border p-2 text-left text-sm " + option.tone + (emotion === option.label ? " ring-2 ring-primary ring-offset-2 ring-offset-background" : "")}><span aria-hidden="true">{option.emoji}</span><span>{option.label}</span></button>)}</div><Label>Intensidad: {intensity}/5</Label><Input type="range" min="1" max="5" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /></div>}
               {kind === "gratitude" && <p className="text-xs text-muted-foreground">Puedes escribir varios motivos, uno por línea.</p>}
               <div className="space-y-1.5"><Label>{kind === "emotion" ? "Contexto (opcional)" : kind === "gratitude" ? "¿Qué agradeces?" : "Contenido"}</Label><Textarea value={content} onChange={(event) => setContent(event.target.value)} rows={4} placeholder="Escribe aquí…" /></div>
-              <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => { setKind(null); setContent(""); setTitle(""); }}>Atrás</Button><Button type="button" onClick={save} disabled={saving || !content.trim() || (kind === "emotion" && !emotion)}><Save className="mr-2 h-4 w-4" />{saving ? "Guardando…" : "Guardar"}</Button></div>
+              <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => { setKind(null); setContent(""); setTitle(""); }}>Atrás</Button><Button type="button" onClick={save} disabled={saving || (kind !== "emotion" && !content.trim()) || (kind === "emotion" && !emotion)}><Save className="mr-2 h-4 w-4" />{saving ? "Guardando…" : "Guardar"}</Button></div>
             </div>
           )}
         </DialogContent>

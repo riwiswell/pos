@@ -83,11 +83,13 @@
   --accent: oklch(0.3 0.018 264);
   --accent-foreground: oklch(0.98 0.003 260);
 
-  --destructive: oklch(0.63 0.19 22);
+  --destructive: oklch(0.55 0.19 22);
   --destructive-foreground: oklch(0.98 0.003 260);
 
   --success: oklch(0.72 0.14 155);
   --success-foreground: oklch(0.18 0.02 160);
+  --chart-income: oklch(0.78 0.14 155);
+  --chart-expense: oklch(0.72 0.18 22);
 
   --border: oklch(1 0 0 / 10%);
   --border-strong: oklch(1 0 0 / 18%);
@@ -147,6 +149,8 @@
 
   --success: oklch(0.53 0.13 155);
   --success-foreground: oklch(0.99 0.003 255);
+  --chart-income: oklch(0.48 0.14 155);
+  --chart-expense: oklch(0.52 0.18 22);
 
   --border: oklch(0.34 0.018 65 / 12%);
   --border-strong: oklch(0.34 0.018 65 / 22%);
@@ -1547,4 +1551,88 @@ html[data-skin="dc-comics"] .learning-page-tabs button[aria-pressed="true"] {
 html[data-skin="dc-comics"] .learning-page-tabs button[aria-pressed="false"]:hover {
   background: #19365D;
   color: #FFFFFF;
+}
+
+
+/* Respect reduced-motion preferences across dashboard and weather effects. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* Contrast corrections for built-in skins (WCAG AA text / 3:1 chart graphics). */
+html[data-skin="marvel"] {
+  --primary: #D71920;
+  --sidebar-primary-foreground: #C8102E;
+}
+html.theme-light[data-skin="marvel"] {
+  --primary: #D71920;
+}
+html[data-skin="nintendo"] {
+  --secondary-foreground: #123044;
+  --sidebar-primary-foreground: #123044;
+  --chart-income: #15803D;
+  --chart-expense: #B91C1C;
+}
+html[data-skin="mario"] {
+  --primary: #D71920;
+  --secondary: #0B5CAD;
+  --chart-income: #15803D;
+  --chart-expense: #B91C1C;
+}
+html.theme-light[data-skin="dc-comics"],
+html.theme-light[data-skin="resident-evil"] {
+  --chart-income: #34d399;
+  --chart-expense: #f87171;
+}
+html.theme-light[data-skin="zelda"] {
+  --muted-foreground: #5E5945;
+}
+html.theme-light[data-skin="chess"] {
+  --muted-foreground: #6C5946;
+}
+html.theme-light[data-skin="mario"] {
+  --primary: #D71920;
+  --secondary: #D7EDFF;
+  --secondary-foreground: #14578A;
+  --sidebar-accent: #145D8C;
+}
+
+
+/* Keep the entire desktop menu visible on short screens: compact the brand, never add scrolling. */
+@media (min-width: 768px) and (max-height: 760px) {
+  .sidebar-branding-header {
+    height: 136px !important;
+    min-height: 136px !important;
+    gap: 0.25rem !important;
+  }
+  .sidebar-branding-header .skin-branding--sidebar {
+    gap: 0.25rem;
+  }
+  .sidebar-branding-header .skin-branding__symbol--personal {
+    width: 5.8rem !important;
+    height: 5.8rem !important;
+    flex-basis: 5.8rem !important;
+  }
+  .sidebar-nav a {
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+  }
+  .sidebar-nav section > button {
+    height: 1.75rem !important;
+  }
+  .sidebar-nav > div:first-child {
+    margin-bottom: 0 !important;
+  }
+  .sidebar-nav > div:first-child button {
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+  }
 }

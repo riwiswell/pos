@@ -633,7 +633,7 @@ function CycleProfile({
                   aria-label={date + (isRed ? ", día registrado de período" : isForecast ? ", predicción de período" : "") + (hasLog ? ", con registro diario" : "")}
                   className={[
                     "relative aspect-square rounded-lg text-xs font-medium transition",
-                    isRed ? "bg-rose-500 text-white hover:bg-rose-600" : isForecast ? "bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:hover:bg-rose-900/70" : "text-muted-foreground hover:bg-muted",
+                    isRed ? "bg-destructive text-destructive-foreground hover:opacity-90" : isForecast ? "bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:hover:bg-rose-900/70" : "text-muted-foreground hover:bg-muted",
                     canStartHere ? "outline outline-1 outline-offset-1 outline-rose-300" : "",
                     isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "",
                     isToday ? "outline outline-1 outline-offset-1 outline-primary" : "",
@@ -647,7 +647,7 @@ function CycleProfile({
             })}
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-rose-500" /> Días registrados</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-destructive" /> Días registrados</span>
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-rose-100 ring-1 ring-rose-200 dark:bg-rose-950/50 dark:ring-rose-900" /> Predicción</span>
             <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> Día seleccionado</span>
             <span className="inline-flex items-center gap-1.5">• Punto blanco: registro diario guardado</span>
