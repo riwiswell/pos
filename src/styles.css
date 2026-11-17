@@ -1565,3 +1565,40 @@ html[data-skin="dc-comics"] .learning-page-tabs button[aria-pressed="false"]:hov
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Contrast corrections for built-in skins (WCAG AA text / 3:1 chart graphics). */
+html[data-skin="marvel"] {
+  --primary: #D71920;
+  --sidebar-primary-foreground: #C8102E;
+}
+html.theme-light[data-skin="marvel"] {
+  --primary: #D71920;
+}
+html[data-skin="nintendo"] {
+  --secondary-foreground: #123044;
+  --sidebar-primary-foreground: #123044;
+  --chart-income: #15803D;
+  --chart-expense: #B91C1C;
+}
+html[data-skin="mario"] {
+  --primary: #D71920;
+  --secondary: #0B5CAD;
+  --chart-income: #15803D;
+  --chart-expense: #B91C1C;
+}
+html.theme-light[data-skin="dc-comics"],
+html.theme-light[data-skin="resident-evil"] {
+  --chart-income: #34d399;
+  --chart-expense: #f87171;
+}
+html.theme-light[data-skin="zelda"] {
+  --muted-foreground: #5E5945;
+}
+html.theme-light[data-skin="chess"] {
+  --muted-foreground: #6C5946;
+}
+html.theme-light[data-skin="mario"] {
+  --primary: #D71920;
+  --sidebar-accent: #145D8C;
+}
