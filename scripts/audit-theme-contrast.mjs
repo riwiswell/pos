@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const css = fs.readFileSync(path.join(root, "src/styles.css"), "utf8");
+const skinSource = fs.readFileSync(path.join(root, "src/domain/skins.ts"), "utf8");
 
 function blockFor(selector) {
   const start = css.indexOf(selector + " {");
@@ -20,15 +21,37 @@ function blockFor(selector) {
   throw new Error("Unclosed CSS block: " + selector);
 }
 
+function parseColor(value) {
+  const oklch = value.match(/oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/i);
+  if (oklch) return { oklch: [Number(oklch[1]), Number(oklch[2]), Number(oklch[3])] };
+  const hex = value.match(/^#([\da-f]{3}|[\da-f]{6})$/i);
+  if (hex) {
+    let digits = hex[1];
+    if (digits.length === 3) digits = [...digits].map((digit) => digit + digit).join("");
+    return { rgb: [0, 2, 4].map((index) => parseInt(digits.slice(index, index + 2), 16) / 255) };
+  }
+  return null;
+}
+
 function tokensFrom(block) {
   const tokens = {};
-  for (const match of block.matchAll(/--([\w-]+):\s*oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/g)) {
-    tokens[match[1]] = [Number(match[2]), Number(match[3]), Number(match[4])];
+  for (const match of block.matchAll(/--([\w-]+):\s*([^;]+);/g)) {
+    const color = parseColor(match[2].trim());
+    if (color) tokens[match[1]] = color;
   }
   return tokens;
 }
 
-function oklchToRgb([L, C, hue]) {
+function rulesFrom(source) {
+  return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
+    selectors: match[1].replace(/\/\*[\s\S]*?\*\//g, "").trim().split(",").map((selector) => selector.trim()),
+    body: match[2],
+  }));
+}
+
+function toRgb(color) {
+  if (color.rgb) return color.rgb;
+  const [L, C, hue] = color.oklch;
   const h = hue * Math.PI / 180;
   const a = C * Math.cos(h);
   const b = C * Math.sin(h);
@@ -51,15 +74,15 @@ function oklchToRgb([L, C, hue]) {
   });
 }
 
-function luminance(rgb) {
-  const linear = rgb.map((value) => value <= 0.04045
+function luminance(color) {
+  const linear = toRgb(color).map((value) => value <= 0.04045
     ? value / 12.92
     : Math.pow((value + 0.055) / 1.055, 2.4));
   return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
 }
 
 function contrast(a, b) {
-  const values = [luminance(oklchToRgb(a)), luminance(oklchToRgb(b))].sort((x, y) => y - x);
+  const values = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (values[0] + 0.05) / (values[1] + 0.05);
 }
 
@@ -81,26 +104,43 @@ const pairs = [
   ["finance expense chart", "chart-expense", "card", 3],
 ];
 
+const rules = rulesFrom(css);
+const skinIds = [...skinSource.matchAll(/id:\s*"([^"]+)"/g)].map((match) => match[1]);
 let failures = 0;
-for (const [name, selector] of [["oscuro", ":root"], ["claro", ".theme-light"]]) {
-  const tokens = tokensFrom(blockFor(selector));
-  console.log("\nTema " + name + ":");
-  for (const [label, foreground, background, minimum] of pairs) {
-    if (!tokens[foreground] || !tokens[background]) {
-      console.error("  FALTA TOKEN: " + label);
-      failures += 1;
-      continue;
+let checks = 0;
+
+for (const [mode, baseSelector] of [["oscuro", ":root"], ["claro", ".theme-light"]]) {
+  const baseTokens = tokensFrom(blockFor(baseSelector));
+  for (const skin of skinIds) {
+    const tokens = { ...baseTokens };
+    for (const rule of rules) {
+      const applies = rule.selectors.some((selector) =>
+        selector === 'html[data-skin="' + skin + '"]' ||
+        (mode === "claro" && selector === 'html.theme-light[data-skin="' + skin + '"]'),
+      );
+      if (applies) Object.assign(tokens, tokensFrom(rule.body));
     }
-    const ratio = contrast(tokens[foreground], tokens[background]);
-    const passed = ratio >= minimum;
-    console.log("  " + (passed ? "OK " : "FALLO ") + label + ": " + ratio.toFixed(2) + ":1 (mín. " + minimum + ":1)");
-    if (!passed) failures += 1;
+    const skinFailures = [];
+    for (const [label, foreground, background, minimum] of pairs) {
+      checks += 1;
+      if (!tokens[foreground] || !tokens[background]) {
+        skinFailures.push(label + ": falta un token");
+        continue;
+      }
+      const ratio = contrast(tokens[foreground], tokens[background]);
+      if (ratio < minimum) skinFailures.push(label + ": " + ratio.toFixed(2) + ":1 (mín. " + minimum + ":1)");
+    }
+    if (skinFailures.length) {
+      failures += skinFailures.length;
+      console.error("FALLO · " + skin + " · " + mode + ": " + skinFailures.join("; "));
+    }
   }
 }
 
+console.log("Comprobaciones: " + checks + " pares de contraste en " + skinIds.length + " skins y ambos temas.");
 if (failures) {
-  console.error("\nAuditoría de contraste fallida: " + failures + " problema(s).");
+  console.error("Auditoría de contraste fallida: " + failures + " problema(s).");
   process.exitCode = 1;
 } else {
-  console.log("\nAuditoría de contraste aprobada para ambos temas.");
+  console.log("Auditoría de contraste aprobada: todos los pares cumplen WCAG AA para texto y 3:1 para gráficos.");
 }
