@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { SkinBranding } from "@/components/shell/SkinBranding";
 import { SleepAbsencePrompt } from "@/components/health/SleepAbsencePrompt";
+import { UniversalCapture } from "@/components/common/UniversalCapture";
 
 const STORAGE_KEY = "personal-os:sidebar-collapsed";
 const LEGACY_ORGANIZATION_KEYS = ["habitos", "planeador", "trabajo"];
@@ -423,6 +424,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>}
         </SheetContent>
       </Sheet>
+      <UniversalCapture />
       <PersonalAssistant />
     </div>
   );
