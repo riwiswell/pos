@@ -649,7 +649,7 @@ export function SleepPanel() {
                             </div>
                           )}
                         </div>;
-                      })})}
+                      })}
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
