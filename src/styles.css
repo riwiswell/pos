@@ -1894,3 +1894,27 @@ html.theme-light[data-skin="mario"] {
     margin-top: 0;
   }
 }
+
+
+/* Sleep history chart colors are explicit colors, not HSL token fragments.
+   LEGO uses its signature yellow; other skins retain a clear cool accent. */
+:root {
+  --chart-bar: #79d6d8;
+}
+html[data-skin="lego"] {
+  --chart-bar: #ffd500;
+}
+html[data-skin="dc-comics"] { --chart-bar: #e32636; }
+html[data-skin="marvel"] { --chart-bar: #ed1d24; }
+html[data-skin="star-wars"] { --chart-bar: #e8c45a; }
+html[data-skin="football"] { --chart-bar: #22a45a; }
+html[data-skin="pixel"] { --chart-bar: #82b84a; }
+html[data-skin="winamp"] { --chart-bar: #a3e635; }
+html[data-skin="nintendo"] { --chart-bar: #e60012; }
+html[data-skin="pokemon"] { --chart-bar: #d71920; }
+html[data-skin="resident-evil"] { --chart-bar: #87354d; }
+html[data-skin="zelda"] { --chart-bar: #b99a4d; }
+html[data-skin="mario"] { --chart-bar: #ef3340; }
+html[data-skin="chess"] { --chart-bar: #805238; }
+html[data-skin="lumen"] { --chart-bar: #5d9fc9; }
+html[data-skin="orchid"] { --chart-bar: #9c76a7; }
