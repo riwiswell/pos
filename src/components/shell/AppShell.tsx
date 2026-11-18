@@ -272,7 +272,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </button>}
         <Link to={item.to} search={(p: Record<string, unknown>) => ({ ...p, ...item.search })} title={item.label}
           onClick={options.onNavigate}
-          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", options.compact && "h-[30px] py-1", !expanded && "flex-none justify-center px-0", isActive && "bg-sidebar-accent")}>
+          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", options.compact && "h-[28px] py-1", !expanded && "flex-none justify-center px-0", isActive && "bg-sidebar-accent")}>
           <item.icon className="h-4 w-4 shrink-0" />
           {expanded && <span className="truncate">{item.label}</span>}
         </Link>
@@ -298,7 +298,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div
           className={cn(
             "sidebar-branding-header relative flex shrink-0 flex-col items-center justify-start gap-2 border-b border-sidebar-border bg-sidebar/35 px-4 pb-2 pt-2 backdrop-blur-sm",
-            collapsed ? "h-[136px] min-h-[136px]" : "h-[150px] min-h-[150px]",
+            collapsed ? "h-[136px] min-h-[136px]" : "h-[136px] min-h-[136px]",
           )}
         >
           <SkinBranding skin={skin} collapsed={collapsed} sidebar />
