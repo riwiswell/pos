@@ -100,6 +100,19 @@ export function useMedicationMutations() {
     },
     onError,
   });
+  const adjustStock = useMutation({
+    mutationFn: (v: { medicationId: string; countedQuantity: number }) =>
+      medicationsService.adjustStock(v.medicationId, v.countedQuantity),
+    onSuccess: (result) => {
+      refresh();
+      toast.success(
+        result.delta === 0
+          ? "El conteo coincide. No fue necesario ajustar."
+          : `Inventario conciliado: ${result.previous} → ${result.counted} unidades.`,
+      );
+    },
+    onError,
+  });
   const setStatus = useMutation({
     mutationFn: (v: { id: string; status: DoseStatus; water?: number; takenAt?: string }) =>
       medicationsService.setStatus(v.id, v.status, v.status === "taken" ? (v.water ?? lastWater()) : undefined, v.takenAt),
@@ -115,5 +128,5 @@ export function useMedicationMutations() {
     onError,
   });
 
-  return { create, update, remove, addStock, setStatus, setWater };
+  return { create, update, remove, addStock, adjustStock, setStatus, setWater };
 }
