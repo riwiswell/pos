@@ -20,8 +20,8 @@ export interface NavGroup {
 export const NAV_ITEMS: NavItem[] = [
   { to: "/inicio", label: "Inicio", icon: Home, key: "inicio", helpKey: "dashboard" },
   { to: "/organizacion", label: "Organización", icon: BriefcaseBusiness, key: "organizacion", helpKey: "habits" },
-  { to: "/salud", label: "Salud", icon: HeartPulse, key: "salud", helpKey: "health" },
   { to: "/finanzas", label: "Finanzas", icon: Wallet, key: "finanzas", helpKey: "finance" },
+  { to: "/salud", label: "Salud", icon: HeartPulse, key: "salud", helpKey: "health" },
   { to: "/diario", label: "Diario", icon: BookOpen, key: "diario", helpKey: "journal" },
   { to: "/emociones", label: "Emociones", icon: Heart, key: "emociones", helpKey: "life" },
   { to: "/vida", label: "Vida", icon: ListTodo, key: "vida", helpKey: "life" },
