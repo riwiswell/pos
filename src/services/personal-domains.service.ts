@@ -122,6 +122,96 @@ export const personalDomainsService={
   if(error)throw error;
   return data;
  },
+ async updateSleepSession(metricDate:string,sessionId:string,replacement:SleepSessionWrite){
+  if(sleepDateTimeMinutes(metricDate,"00:00")===null||typeof sessionId!=="string"||!sessionId.trim())throw new Error("No se identificó correctamente el periodo que quieres editar.");
+  if(!replacement||replacement.id!==sessionId||![ "sleep","nap" ].includes(replacement.kind))throw new Error("Los datos del periodo no son válidos.");
+  const start=sleepDateTimeMinutes(replacement.startDate,replacement.bedtime),end=sleepDateTimeMinutes(replacement.endDate,replacement.wakeTime);
+  if(start===null||end===null||end<=start||end-start>24*60)throw new Error("Revisa las fechas y horas: el periodo debe durar más de 0 y como máximo 24 horas.");
+  const {data:{user},error:authError}=await supabase.auth.getUser();
+  if(authError||!user)throw authError??new Error("No hay sesión activa");
+  const dates=Array.from(new Set([metricDate,replacement.startDate]));
+  const {data:rows,error:readError}=await db.from("health_metrics").select("*").eq("user_id",user.id).in("metric_date",dates);
+  if(readError)throw readError;
+  const rowsByDate=new Map<string,any>();
+  for(const row of rows??[])rowsByDate.set(row.metric_date,row);
+  const original=rowsByDate.get(metricDate);
+  if(!original)throw new Error("No se encontró el registro original. Actualiza el historial e inténtalo de nuevo.");
+  const readSleepRow=(row:any,date:string)=>{
+   const rawNotes=typeof row?.notes==="string"?row.notes:"";
+   let body:Record<string,unknown>={},userNotes=rawNotes,sleep:Record<string,any>={};
+   if(rawNotes){try{const decoded=JSON.parse(rawNotes);if(decoded?.marker==="__POS_BODY_MEASURES__"){
+    body=decoded.body&&typeof decoded.body==="object"?decoded.body:{};
+    userNotes=typeof decoded.notes==="string"?decoded.notes:"";
+    sleep=decoded.sleep&&typeof decoded.sleep==="object"?decoded.sleep:{};
+   }}catch{}}
+   return {body,userNotes,sleep,sessions:normalizeStoredSleepSessions(sleep,date)};
+  };
+  const buildPatch=(data:{body:Record<string,unknown>;userNotes:string;sleep:Record<string,any>},sessions:SleepSessionWrite[],manualFallback=0)=>{
+   const storedManual=Number(data.sleep.manualHours);
+   const manualHours=Number.isFinite(storedManual)&&storedManual>0?storedManual:manualFallback;
+   const minutes=sessions.reduce((sum,item)=>{
+    const a=sleepDateTimeMinutes(item.startDate,item.bedtime)??0,b=sleepDateTimeMinutes(item.endDate,item.wakeTime)??a;
+    return sum+Math.max(0,b-a);
+   },0);
+   const totalHours=Math.round((minutes/60+manualHours)*100)/100;
+   if(totalHours>24)throw new Error("El total de sueño de ese día supera las 24 horas. Revisa los periodos antes de continuar.");
+   const first=sessions[0];
+   const nextSleep={...data.sleep,bedtime:first?.bedtime??null,wakeTime:first?.wakeTime??null,manualHours:manualHours>0?manualHours:null,sessions};
+   return {sleep_hours:totalHours>0?totalHours:null,notes:JSON.stringify({marker:"__POS_BODY_MEASURES__",body:data.body,notes:data.userNotes,sleep:nextSleep})};
+  };
+  const originalData=readSleepRow(original,metricDate);
+  const previous=originalData.sessions;
+  const matched=previous.find(item=>item.id===sessionId)??previous.find((item,index)=>{
+   const legacyPrefix=`legacy-${metricDate}-${index}`;
+   return sessionId===legacyPrefix||sessionId.startsWith(legacyPrefix+"-")||(sessionId===`legacy-${metricDate}-main`&&index===0);
+  });
+  if(!matched)throw new Error("Ese periodo ya no está en el historial. Actualiza la lista e inténtalo de nuevo.");
+  const edited:SleepSessionWrite={...replacement,id:matched.id};
+  if(replacement.startDate===metricDate){
+   const sessions=previous.map(item=>item.id===matched.id?edited:item);
+   const patch=buildPatch(originalData,sessions);
+   const {data,error}=await db.from("health_metrics").update(patch).eq("id",original.id).eq("user_id",user.id).select("*").single();
+   if(error)throw error;
+   return data;
+  }
+  const destination=rowsByDate.get(replacement.startDate);
+  const destinationData=destination?readSleepRow(destination,replacement.startDate):{body:{},userNotes:"",sleep:{},sessions:[] as SleepSessionWrite[]};
+  const sourceSessions=previous.filter(item=>item.id!==matched.id);
+  const targetSessions=[...destinationData.sessions.filter(item=>item.id!==matched.id),edited];
+  const targetFallback=destinationData.sessions.length===0&&destination?.sleep_hours!=null?Math.max(0,Number(destination.sleep_hours)||0):0;
+  const targetPatch=buildPatch(destinationData,targetSessions,targetFallback);
+  let savedDestination:any=null;
+  let insertedDestinationId:string|null=null;
+  if(destination?.id){
+   const {data,error}=await db.from("health_metrics").update(targetPatch).eq("id",destination.id).eq("user_id",user.id).select("*").single();
+   if(error)throw error;
+   savedDestination=data;
+  }else{
+   const {data,error}=await db.from("health_metrics").insert({user_id:user.id,metric_date:replacement.startDate,...targetPatch}).select("*").single();
+   if(error)throw error;
+   savedDestination=data;
+   insertedDestinationId=data.id;
+  }
+  try{
+   const sourcePatch=buildPatch(originalData,sourceSessions);
+   const {data,error}=await db.from("health_metrics").update(sourcePatch).eq("id",original.id).eq("user_id",user.id).select("*").single();
+   if(error)throw error;
+   return {source:data,destination:savedDestination};
+  }catch(error){
+   try{
+    if(insertedDestinationId){
+     const {error:rollbackError}=await db.from("health_metrics").delete().eq("id",insertedDestinationId).eq("user_id",user.id);
+     if(rollbackError)throw rollbackError;
+    }else if(destination?.id){
+     const {error:rollbackError}=await db.from("health_metrics").update({sleep_hours:destination.sleep_hours,notes:destination.notes}).eq("id",destination.id).eq("user_id",user.id);
+     if(rollbackError)throw rollbackError;
+    }
+   }catch(rollbackError){
+    throw new Error("No se pudo completar el traslado del periodo y tampoco restaurar el registro de destino. Revisa ambos días antes de volver a intentarlo. Error: "+(error instanceof Error?error.message:String(error))+" · Restauración: "+(rollbackError instanceof Error?rollbackError.message:String(rollbackError)));
+   }
+   throw error;
+  }
+ },
  async appendSleepSessions(input:SleepSessionWrite[]){
   const {data:{user},error:authError}=await supabase.auth.getUser();
   if(authError||!user)throw authError??new Error("No hay sesión activa");
