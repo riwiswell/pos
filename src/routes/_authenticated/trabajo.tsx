@@ -11,9 +11,22 @@ import { ErrorState } from "@/components/common/States";
 import { SafeRichText } from "@/components/common/SafeRichText";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useAuth } from "@/hooks/use-auth";
+import { addDaysISO, formatDayLabel } from "@/lib/date";
 import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lifeGraphService } from "@/services/life-graph.service";
 export const Route=createFileRoute("/_authenticated/trabajo")({component:WorkPage});
 const SUGGESTED_PROJECTS=["Nexus","POS","WíswellArt","Treseiscinco"] as const;
+function formatWorkDuration(value: number): string {
+ const minutes=Math.max(0,Math.round(Number(value)||0));
+ const hours=Math.floor(minutes/60),remainder=minutes%60;
+ if(hours===0)return minutes+" min";
+ return remainder===0?hours+" h":hours+" h "+remainder+" min";
+}
+function formatWorkClock(value: string | null | undefined): string {
+ if(!value)return "—";
+ const parsed=new Date(value);
+ if(Number.isNaN(parsed.getTime()))return "—";
+ return new Intl.DateTimeFormat("es-CO",{hour:"2-digit",minute:"2-digit",timeZone:"America/Bogota"}).format(parsed);
+}
 export function WorkPage(){
  const{date}=useGlobalDate();const{user}=useAuth();const items=useLGList("work_items");const sessions=useLGList("work_sessions","session_date");const im=useLGMutations("work_items");const sm=useLGMutations("work_sessions");const cm=useLGMutations("checklists");const cim=useLGMutations("checklist_items");const cqs=useLGList("checklists");
  const[projectName,setProjectName]=useState(""),[projectNotes,setProjectNotes]=useState(""),[due,setDue]=useState(""),[selected,setSelected]=useState<string>(()=>typeof window==="undefined"?"":new URLSearchParams(window.location.search).get("project")||""),[task,setTask]=useState(""),[taskNotes,setTaskNotes]=useState(""),[checkTitle,setCheckTitle]=useState(""),[selectedChecklist,setSelectedChecklist]=useState<string>(""),[checkItem,setCheckItem]=useState(""),[timerRefresh,setTimerRefresh]=useState(0);
@@ -21,7 +34,11 @@ export function WorkPage(){
  const projectTasks=selected?tasks.filter((x:any)=>x.parent_work_item_id===selected):[];
  const selectedProject=projects.find((x:any)=>x.id===selected);
  const checklistItems=useLGList("checklist_items","position"); const selectedChecks=(cqs.data||[]).filter((x:any)=>x.linked_id===selected);
- const todaysMinutes=(sessions.data||[]).filter((x:any)=>x.session_date===date&&x.status!=="active").reduce((a:any,x:any)=>a+Number(x.minutes||0),0);
+ const completedSessions=(sessions.data||[]).filter((x:any)=>x.status==="completed"&&Number(x.minutes)>0);
+ const todaysMinutes=completedSessions.filter((x:any)=>x.session_date===date).reduce((a:number,x:any)=>a+Number(x.minutes||0),0);
+ const weekStart=addDaysISO(date,-6);
+ const weeklyMinutes=completedSessions.filter((x:any)=>x.session_date>=weekStart&&x.session_date<=date).reduce((a:number,x:any)=>a+Number(x.minutes||0),0);
+ const recentSessions=[...completedSessions].sort((a:any,b:any)=>String(b.started_at||"").localeCompare(String(a.started_at||""))).slice(0,6);
  useEffect(()=>{
   if(!active?.started_at)return;
   const interval=window.setInterval(()=>setTimerRefresh((value)=>value+1),15000);
@@ -62,20 +79,20 @@ export function WorkPage(){
   <p className="text-xs text-muted-foreground">{selectedProject?"Proyecto seleccionado: "+selectedProject.title:"Elige uno para comenzar; también puedes crear otros proyectos más abajo."}</p>
  </div>
  <div className="glass space-y-3 rounded-3xl p-5">
-  <div className="flex items-center gap-2"><Clock3 className="h-5 w-5"/><h2 className="font-semibold">Tiempo dedicado hoy</h2></div>
-  {active?<>
-   <p className="text-sm">Sesión activa en <b>{activeProject?.title||"proyecto"}</b></p>
-   <p className="text-4xl font-semibold tabular-nums">{activeMinutes}<span className="ml-1 text-base font-normal text-muted-foreground">min</span></p>
-   <p className="text-xs text-muted-foreground">Al terminar, este tiempo quedará sumado a ese proyecto.</p>
-   <Button variant="outline" onClick={()=>void stop()}><Pause className="mr-1 h-4 w-4"/>Terminar sesión</Button>
-  </>:<>
-   <p className="text-3xl font-semibold">{todaysMinutes}<span className="ml-1 text-base font-normal text-muted-foreground">min hoy</span></p>
-   <p className="text-xs text-muted-foreground">Solo cuenta cuando inicias y terminas una sesión de trabajo.</p>
-   {selectedProject?<Button variant="outline" onClick={()=>void start()}><Play className="mr-1 h-4 w-4"/>Iniciar sesión de trabajo</Button>:<p className="text-xs text-muted-foreground">Selecciona un proyecto para iniciar.</p>}
-  </>}
- </div>
-</section>
+  <div className="flex items-center gap-2"><Clock3 className="h-5 w-5"/><h2 className="font-semibold">Tiempo de trabajo registrado</h2></div>
+  <div className="grid grid-cols-2 gap-2">
+   <div className="rounded-xl border p-3"><p className="text-xs text-muted-foreground">Día seleccionado · {formatDayLabel(date)}</p><p className="mt-1 text-xl font-semibold tabular-nums">{formatWorkDuration(todaysMinutes+(active?.session_date===date?activeMinutes:0))}</p></div>
+   <div className="rounded-xl border p-3"><p className="text-xs text-muted-foreground">Últimos 7 días</p><p className="mt-1 text-xl font-semibold tabular-nums">{formatWorkDuration(weeklyMinutes+(active&&active.session_date>=weekStart&&active.session_date<=date?activeMinutes:0))}</p></div>
+  </div>
+  {active?<><p className="text-sm">Ahora estás trabajando en <b>{activeProject?.title||"un proyecto"}</b>.</p><p className="text-3xl font-semibold tabular-nums">{formatWorkDuration(activeMinutes)}<span className="ml-2 text-sm font-normal text-muted-foreground">en este bloque</span></p><Button variant="outline" onClick={()=>void stop()}><Pause className="mr-1 h-4 w-4"/>Terminar sesión</Button></>:selectedProject?<Button variant="outline" onClick={()=>void start()}><Play className="mr-1 h-4 w-4"/>Iniciar sesión en {selectedProject.title}</Button>:<p className="text-xs text-muted-foreground">Primero elige uno de tus proyectos.</p>}
+  <p className="text-xs text-muted-foreground">El cronómetro suma el tiempo que tú inicias y terminas. No mide automáticamente cuánto tiempo estás sentado.</p>
+ </div></section>
 <section className="glass space-y-3 rounded-3xl p-5"><div className="flex items-center gap-2"><FolderKanban className="h-5 w-5"/><h2 className="font-semibold">Añadir otro proyecto</h2></div><div className="grid gap-2 sm:grid-cols-[1fr_160px_auto]"><Input placeholder="Nombre del proyecto o negocio" value={projectName} onChange={e=>setProjectName(e.target.value)}/><Input type="date" value={due} onChange={e=>setDue(e.target.value)}/><Button disabled={!projectName.trim()} onClick={()=>void createProject()}><Plus className="mr-1 h-4 w-4"/>Añadir proyecto</Button></div><RichTextEditor value={projectNotes} onChange={setProjectNotes} placeholder="Descripción, alcance, objetivos…"/></section>
- <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]"><section className="space-y-3"><h2 className="font-semibold">Proyectos</h2>{projects.length===0?<div className="glass rounded-2xl border-dashed p-5 text-sm text-muted-foreground">Todavía no hay proyectos. Una idea del Diario puede convertirse aquí.</div>:projects.map((p:any)=>{const mins=(sessions.data||[]).filter((s:any)=>s.work_item_id===p.id).reduce((a:any,s:any)=>a+Number(s.minutes||0),0);return <button key={p.id} type="button" onClick={()=>setSelected(p.id)} className={"w-full rounded-2xl border p-4 text-left "+(selected===p.id?"border-primary bg-primary/5":"border-border") }><div className="flex items-start gap-3"><FolderKanban className="mt-0.5 h-4 w-4"/><div className="min-w-0 flex-1"><p className="font-medium">{p.title}</p><p className="text-xs text-muted-foreground">{p.target_date?"Fecha objetivo "+p.target_date:"Sin fecha"} · {mins} min registrados</p></div></div></button>})}</section>
+ <section className="glass space-y-3 rounded-3xl p-5">
+ <div className="flex items-center justify-between gap-2"><h2 className="font-semibold">Últimas sesiones</h2><span className="text-xs text-muted-foreground">{recentSessions.length} recientes</span></div>
+ {recentSessions.length===0?<p className="text-sm text-muted-foreground">Cuando termines tu primer bloque, aquí verás el proyecto, el día y el tiempo dedicado.</p>:<div className="space-y-2">
+  {recentSessions.map((session:any)=>{const project=all.find((item:any)=>item.id===session.work_item_id);return <article key={session.id} className="flex items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{project?.title||"Proyecto"}</p><p className="text-xs text-muted-foreground">{formatDayLabel(session.session_date)} · {formatWorkClock(session.started_at)}–{formatWorkClock(session.ended_at)}</p></div><p className="shrink-0 text-sm font-semibold tabular-nums">{formatWorkDuration(Number(session.minutes)||0)}</p></article>;})}
+ </div>}
+</section><div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]"><section className="space-y-3"><h2 className="font-semibold">Proyectos</h2>{projects.length===0?<div className="glass rounded-2xl border-dashed p-5 text-sm text-muted-foreground">Todavía no hay proyectos. Una idea del Diario puede convertirse aquí.</div>:projects.map((p:any)=>{const mins=(sessions.data||[]).filter((s:any)=>s.work_item_id===p.id).reduce((a:any,s:any)=>a+Number(s.minutes||0),0);return <button key={p.id} type="button" onClick={()=>setSelected(p.id)} className={"w-full rounded-2xl border p-4 text-left "+(selected===p.id?"border-primary bg-primary/5":"border-border") }><div className="flex items-start gap-3"><FolderKanban className="mt-0.5 h-4 w-4"/><div className="min-w-0 flex-1"><p className="font-medium">{p.title}</p><p className="text-xs text-muted-foreground">{p.target_date?"Fecha objetivo "+p.target_date:"Sin fecha"} · {formatWorkDuration(mins)} acumulados</p></div></div></button>})}</section>
  <section className="space-y-4">{selectedProject?<><div className="glass rounded-2xl p-4"><div className="flex items-center justify-between gap-2"><div><p className="text-xs uppercase tracking-wide text-muted-foreground">Proyecto seleccionado</p><h2 className="text-lg font-semibold">{selectedProject.title}</h2>{selectedProject.notes&&<SafeRichText html={selectedProject.notes} className="prose prose-sm dark:prose-invert mt-2 max-w-none"/>}</div><Button size="sm" onClick={()=>active?void stop():void start()}>{active?<><Pause className="mr-1 h-4 w-4"/>Terminar sesión</>:<><Play className="mr-1 h-4 w-4"/>Iniciar sesión de trabajo</>}</Button></div></div><section className="glass space-y-3 rounded-2xl p-4"><h3 className="font-semibold">Tareas</h3><div className="flex gap-2"><Input placeholder="Nueva tarea" value={task} onChange={e=>setTask(e.target.value)}/><Button disabled={!task.trim()} onClick={()=>void createTask()}><Plus className="h-4 w-4"/></Button></div><RichTextEditor value={taskNotes} onChange={setTaskNotes} placeholder="Contexto de la tarea…"/>{projectTasks.length===0?<p className="text-sm text-muted-foreground">No hay tareas todavía.</p>:projectTasks.map((t:any)=>{const done=t.status==="done";return <div key={t.id} className="flex items-center gap-2 rounded-xl border p-3"><Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label={done?"Marcar tarea pendiente":"Completar tarea"} title={done?"Marcar pendiente":"Completar tarea"} disabled={im.update.isPending} onClick={()=>im.update.mutate({id:t.id,patch:{status:done?"open":"done"}})}><CheckCircle2 className={done?"h-5 w-5 text-emerald-500":"h-5 w-5 text-muted-foreground"}/></Button><div className="min-w-0 flex-1"><p className={done?"text-sm text-muted-foreground line-through":"text-sm"}>{t.title}</p>{t.notes&&<SafeRichText html={t.notes} className="prose prose-xs dark:prose-invert mt-1 max-w-none text-muted-foreground"/>}</div><Button size="icon" variant="ghost" aria-label="Eliminar tarea" onClick={()=>void im.remove.mutateAsync(t.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>})}</section><section className="glass space-y-3 rounded-2xl p-4"><div className="flex items-center gap-2"><SquareCheck className="h-4 w-4"/><h3 className="font-semibold">Checklists</h3></div><div className="flex gap-2"><Input placeholder="Nombre del checklist" value={checkTitle} onChange={e=>setCheckTitle(e.target.value)}/><Button disabled={!checkTitle.trim()} onClick={()=>void createChecklist()}><Plus className="h-4 w-4"/></Button></div>{selectedChecks.map((c:any)=><button key={c.id} type="button" onClick={()=>setSelectedChecklist(c.id)} className={"block w-full rounded-xl border p-3 text-left text-sm "+(selectedChecklist===c.id?"border-primary bg-primary/5":"border-border")}>{c.title}</button>)}{selectedChecklist&&<div className="space-y-2 rounded-xl border p-3"><div className="flex gap-2"><Input placeholder="Objetivo / elemento" value={checkItem} onChange={e=>setCheckItem(e.target.value)}/><Button disabled={!checkItem.trim()} onClick={()=>void addChecklistItem()}><Plus className="h-4 w-4"/></Button></div>{(checklistItems.data||[]).filter((i:any)=>i.checklist_id===selectedChecklist).map((i:any)=><div key={i.id} className="flex items-center gap-2 rounded-lg border px-2 py-1.5 text-xs"><input type="checkbox" checked={Boolean(i.completed)} onChange={e=>void cim.update.mutateAsync({id:i.id,patch:{completed:e.target.checked}})}/><span>{i.title}</span></div>)}</div>}</section></>:<div className="glass rounded-2xl border-dashed p-6 text-sm text-muted-foreground">Selecciona un proyecto para ver sus tareas, checklists y tiempo.</div>}</section></div></div>;
 }
