@@ -53,16 +53,16 @@ export const DESKTOP_NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    key: "bienestar",
-    label: "Bienestar",
-    icon: HeartPulse,
-    items: [nav("salud"), nav("diario"), nav("emociones")],
-  },
-  {
     key: "finanzas",
     label: "Finanzas",
     icon: Wallet,
     items: [nav("finanzas")],
+  },
+  {
+    key: "bienestar",
+    label: "Bienestar",
+    icon: HeartPulse,
+    items: [nav("salud"), nav("diario"), nav("emociones")],
   },
   {
     key: "vida",
