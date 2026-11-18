@@ -336,6 +336,79 @@ export const medicationsService = {
     if (error) throw error;
   },
 
+  /**
+   * Reconcile inventory against a physical count. The current balance is
+   * recalculated from the database so a stale screen value cannot create a
+   * second incorrect adjustment. The signed delta is kept as an audit movement.
+   */
+  async adjustStock(medicationId: string, countedQuantity: number): Promise<{ previous: number; counted: number; delta: number }> {
+    const user_id = await currentUserId();
+    if (!Number.isFinite(countedQuantity) || countedQuantity < 0 || countedQuantity > 100000) {
+      throw new Error("El conteo físico debe ser un número igual o mayor que cero.");
+    }
+
+    const { data: medication, error: medicationError } = await supabase
+      .from("medications")
+      .select("id,total_quantity,units_per_dose,start_date")
+      .eq("id", medicationId)
+      .eq("user_id", user_id)
+      .maybeSingle();
+    if (medicationError) throw medicationError;
+    if (!medication || medication.total_quantity == null) {
+      throw new Error("Este medicamento no tiene una cantidad inicial configurada.");
+    }
+
+    let movementTotal = 0;
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("medication_stock_movements")
+        .select("id,quantity")
+        .eq("medication_id", medicationId)
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      for (const movement of page) movementTotal += Number(movement.quantity ?? 0);
+      if (page.length < pageSize) break;
+    }
+
+    const { count: takenCount, error: takenError } = await supabase
+      .from("medication_doses")
+      .select("id", { count: "exact", head: true })
+      .eq("medication_id", medicationId)
+      .eq("status", "taken")
+      .gte("dose_date", medication.start_date);
+    if (takenError) throw takenError;
+
+    const previous = Math.max(
+      0,
+      Number(medication.total_quantity)
+        + movementTotal
+        - Number(takenCount ?? 0) * Number(medication.units_per_dose ?? 1),
+    );
+    const counted = Number(countedQuantity.toFixed(3));
+    const delta = Number((counted - previous).toFixed(3));
+    if (Math.abs(delta) < 0.0005) {
+      return { previous, counted, delta: 0 };
+    }
+
+    const signed = delta > 0 ? `+${delta}` : String(delta);
+    const note = `Recuento físico: POS calculaba ${previous}; conteo real ${counted}; ajuste ${signed}.`;
+    const { error: insertError } = await supabase
+      .from("medication_stock_movements")
+      .insert({
+        user_id,
+        medication_id: medicationId,
+        quantity: delta,
+        movement_type: "adjustment",
+        note,
+      });
+    if (insertError) throw insertError;
+
+    return { previous, counted, delta };
+  },
+
   /** Water belongs to the dose row: changing it updates, never duplicates. */
   async setWater(id: string, glasses: number) {
     const { error } = await supabase.from("medication_doses").update({ water_glasses: glasses }).eq("id", id);
