@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { MoonStar, Pencil, Save, Sparkles, Trash2 } from "lucide-react";
+import { Bell, MoonStar, Pencil, Save, Sparkles, Trash2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,8 @@ import { useDeleteSleepSessionMutation, usePersonalRecentList, useSleepSessionsM
 import { useProfile, useProfileMutations } from "@/hooks/use-profile";
 import { addDaysISO, formatDayLabel } from "@/lib/date";
 import { describeError } from "@/lib/error-message";
+import { subscribeToBackgroundPush } from "@/services/push.service";
+import { syncSleepScheduleReminder } from "@/services/sleep-notifications.service";
 
 const STRUCTURED_MARKER = "__POS_BODY_MEASURES__";
 
@@ -118,7 +120,8 @@ export function SleepPanel() {
   const [editingSession, setEditingSession] = useState<{ key: string; metricDate: string; session: SleepSession } | null>(null);
   const profileQuery = useProfile();
   const profileMutations = useProfileMutations({ quietSave: true });
-  const [schedule,setSchedule]=useState({bedtime:"",wakeTime:""});
+  const [schedule,setSchedule]=useState({bedtime:"",wakeTime:"",reminderMinutes:20});
+  const [pushBusy,setPushBusy]=useState(false);
   const [pendingSessions,setPendingSessions]=useState<SleepSession[]>(()=>[createEmptySleepSession(date)]);
   useEffect(()=>{
     setPendingSessions(items=>items.length===1&&!items[0].bedtime&&!items[0].wakeTime?[createEmptySleepSession(date)]:items);
@@ -133,6 +136,7 @@ export function SleepPanel() {
     setSchedule({
       bedtime: typeof stored?.bedtime === "string" ? stored.bedtime : "",
       wakeTime: typeof stored?.wake_time === "string" ? stored.wake_time : "",
+      reminderMinutes: [15, 20, 30].includes(Number(stored?.reminder_minutes)) ? Number(stored?.reminder_minutes) : 20,
     });
   }, [profileQuery.data]);
 
@@ -278,12 +282,58 @@ export function SleepPanel() {
     if (bedtime && bedtime === wakeTime) {
       throw new Error("Las dos horas del horario habitual no pueden ser iguales.");
     }
+    if (bedtime && ![15, 20, 30].includes(schedule.reminderMinutes)) {
+      throw new Error("Elige un aviso de 15, 20 o 30 minutos.");
+    }
     const notificationPreferences = {
       ...(profileQuery.data?.notification_preferences ?? {}),
-      sleep_schedule: bedtime && wakeTime ? { bedtime, wake_time: wakeTime } : null,
+      sleep_schedule: bedtime && wakeTime ? {
+        bedtime,
+        wake_time: wakeTime,
+        reminder_minutes: schedule.reminderMinutes,
+      } : null,
     };
     await profileMutations.save.mutateAsync({ notification_preferences: notificationPreferences });
-    toast.success(bedtime ? "Horario habitual guardado." : "Horario habitual eliminado.");
+    try {
+      const result = await syncSleepScheduleReminder(bedtime || null, bedtime ? schedule.reminderMinutes : null);
+      if (result === "scheduled") {
+        toast.success("Horario guardado. Te avisaré " + schedule.reminderMinutes + " minutos antes de acostarte.");
+      } else if (result === "push-not-enabled") {
+        toast.warning("Horario guardado. Activa las notificaciones en este dispositivo para recibir el aviso.");
+      } else {
+        toast.success("Horario habitual eliminado y aviso cancelado.");
+      }
+    } catch (error) {
+      toast.error("Horario guardado, pero no se pudo programar el aviso: " + describeError(error, "Error de notificaciones."), { duration: 10000 });
+    }
+  };
+
+  const activateSleepNotifications = async () => {
+    setPushBusy(true);
+    try {
+      const result = await subscribeToBackgroundPush();
+      if (result !== "subscribed") {
+        const messages: Record<string, string> = {
+          unsupported: "Este navegador no admite notificaciones push.",
+          "permission-denied": "Permite las notificaciones del navegador para continuar.",
+          "missing-key": "Falta configurar las claves VAPID en Cloudflare.",
+          "no-session": "Tu sesión ha caducado. Inicia sesión e inténtalo de nuevo.",
+          failed: "No se pudo registrar este dispositivo para notificaciones.",
+        };
+        throw new Error(messages[result] ?? "No se pudieron activar las notificaciones.");
+      }
+      const synced = await syncSleepScheduleReminder(
+        schedule.bedtime || null,
+        schedule.bedtime ? schedule.reminderMinutes : null,
+      );
+      toast.success(synced === "scheduled"
+        ? "Avisos activados. Te avisaré " + schedule.reminderMinutes + " minutos antes de acostarte."
+        : "Notificaciones activadas en este dispositivo.");
+    } catch (error) {
+      toast.error(describeError(error, "No se pudieron activar los avisos."), { duration: 10000 });
+    } finally {
+      setPushBusy(false);
+    }
   };
 
   return (
@@ -470,7 +520,7 @@ export function SleepPanel() {
           <h3 className="font-semibold">Mi horario habitual</h3>
           <p className="text-xs text-muted-foreground">Es tu referencia diaria, independiente de las horas reales que registres.</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <label className="text-xs text-muted-foreground">
             Quiero acostarme a
             <Input className="mt-1" type="time" value={schedule.bedtime} onChange={(event) => setSchedule((value) => ({ ...value, bedtime: event.target.value }))} />
@@ -479,6 +529,16 @@ export function SleepPanel() {
             Quiero levantarme a
             <Input className="mt-1" type="time" value={schedule.wakeTime} onChange={(event) => setSchedule((value) => ({ ...value, wakeTime: event.target.value }))} />
           </label>
+          <label className="text-xs text-muted-foreground">
+            Avisarme antes
+            <select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+              value={String(schedule.reminderMinutes)}
+              onChange={(event) => setSchedule((value) => ({ ...value, reminderMinutes: Number(event.target.value) }))}>
+              <option value="15">15 minutos</option>
+              <option value="20">20 minutos</option>
+              <option value="30">30 minutos</option>
+            </select>
+          </label>
           <div className="flex flex-col justify-end rounded-lg border bg-background px-3 py-2">
             <span className="text-[11px] text-muted-foreground">Descanso previsto</span>
             <span className="text-base font-semibold tabular-nums">
@@ -486,13 +546,20 @@ export function SleepPanel() {
             </span>
           </div>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Recibirás un aviso diario {schedule.reminderMinutes} minutos antes de tu hora de acostarte para apagar, organizarte y prepararte para dormir. Requiere activar las notificaciones en este dispositivo.
+        </p>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" disabled={profileQuery.isLoading || profileMutations.save.isPending} onClick={() => void saveSchedule().catch((error) => toast.error(describeError(error, "No se pudo guardar el horario habitual."), { duration: 10000 }))}>
-            {profileMutations.save.isPending ? "Guardando…" : "Guardar horario habitual"}
+          <Button size="sm" variant="outline" disabled={profileQuery.isLoading || profileMutations.save.isPending}
+            onClick={() => void saveSchedule().catch((error) => toast.error(describeError(error, "No se pudo guardar el horario habitual."), { duration: 10000 }))}>
+            {profileMutations.save.isPending ? "Guardando…" : "Guardar horario y aviso"}
           </Button>
           {(schedule.bedtime || schedule.wakeTime) && (
-            <Button size="sm" variant="ghost" onClick={() => setSchedule({ bedtime: "", wakeTime: "" })}>Limpiar</Button>
+            <Button size="sm" variant="ghost" onClick={() => setSchedule((value) => ({ ...value, bedtime: "", wakeTime: "" }))}>Limpiar</Button>
           )}
+          <Button size="sm" variant="secondary" disabled={pushBusy} onClick={() => void activateSleepNotifications()}>
+            <Bell className="mr-1.5 h-4 w-4" />{pushBusy ? "Activando…" : "Activar avisos en este dispositivo"}
+          </Button>
         </div>
       </section>
 
