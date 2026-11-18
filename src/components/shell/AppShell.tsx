@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
+import { Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -129,7 +129,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const menuSaveQueue = useRef<Promise<void>>(Promise.resolve());
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const routeSearch = useRouterState({ select: (state) => state.location.search as Record<string, unknown> });
-  const [expandedDesktopGroup, setExpandedDesktopGroup] = useState<string | null>(null);
   const signOut = useSignOut();
   const { data: profile } = useProfile();
   const { user } = useAuth();
@@ -195,16 +194,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
 
-  useEffect(() => {
-    const activeGroup = DESKTOP_NAV_GROUPS.find((group) =>
-      group.items.some((item) =>
-        pathname.startsWith(item.to) &&
-        (!item.search || (routeSearch.tab ?? "habitos") === item.search.tab),
-      ),
-    );
-    setExpandedDesktopGroup(activeGroup?.key ?? null);
-  }, [pathname, routeSearch.tab]);
-
   const background = profile?.background_url ?? null;
   // Only uploaded images are custom backgrounds. A legacy hex value in
   // background_url must never override the color selected in the profile.
@@ -233,7 +222,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const renderMenuItem = (
     item: NavItem,
-    options: { forceExpanded?: boolean; onNavigate?: () => void; hideHelp?: boolean; reorderable?: boolean } = {},
+    options: { forceExpanded?: boolean; onNavigate?: () => void; hideHelp?: boolean; reorderable?: boolean; compact?: boolean } = {},
   ) => {
     const visible = !isMenuModuleHidden(item.key, hiddenModules);
     const expanded = options.forceExpanded ?? !collapsed;
@@ -283,7 +272,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </button>}
         <Link to={item.to} search={(p: Record<string, unknown>) => ({ ...p, ...item.search })} title={item.label}
           onClick={options.onNavigate}
-          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", !expanded && "flex-none justify-center px-0", isActive && "bg-sidebar-accent")}>
+          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", options.compact && "h-[30px] py-1", !expanded && "flex-none justify-center px-0", isActive && "bg-sidebar-accent")}>
           <item.icon className="h-4 w-4 shrink-0" />
           {expanded && <span className="truncate">{item.label}</span>}
         </Link>
@@ -309,7 +298,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div
           className={cn(
             "sidebar-branding-header relative flex shrink-0 flex-col items-center justify-start gap-2 border-b border-sidebar-border bg-sidebar/35 px-4 pb-2 pt-2 backdrop-blur-sm",
-            collapsed ? "h-[136px] min-h-[136px]" : "h-[216px] min-h-[216px]",
+            collapsed ? "h-[136px] min-h-[136px]" : "h-[150px] min-h-[150px]",
           )}
         >
           <SkinBranding skin={skin} collapsed={collapsed} sidebar />
@@ -324,7 +313,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
 
-        <nav aria-label="Navegación de escritorio" className="sidebar-nav flex min-h-0 flex-1 flex-col gap-1 overflow-hidden bg-sidebar p-2">
+        <nav aria-label="Navegación de escritorio" className="sidebar-nav sidebar-nav--direct flex min-h-0 flex-1 flex-col gap-1 overflow-hidden bg-sidebar p-2">
           <div className="mb-1 flex items-center justify-between">
             {!collapsed && <span className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/55">Espacios</span>}
             <Button type="button" size="icon" variant={menuEditing ? "secondary" : "ghost"} className="h-8 w-8"
@@ -332,37 +321,36 @@ export function AppShell({ children }: { children: ReactNode }) {
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </div>
-          {renderMenuItem(NAV_ITEMS.find((item) => item.key === "inicio")!, { reorderable: false })}
+          {renderMenuItem(NAV_ITEMS.find((item) => item.key === "inicio")!, { reorderable: false, compact: true })}
           {DESKTOP_NAV_GROUPS.map((group) => {
             const groupItems = group.items.filter((item) => menuEditing || !isMenuModuleHidden(item.key, hiddenModules));
             if (groupItems.length === 0) return null;
-            const expanded = expandedDesktopGroup === group.key;
-            const active = group.items.some((item) =>
-              pathname.startsWith(item.to) &&
-              (!item.search || (routeSearch.tab ?? "habitos") === item.search.tab),
-            );
+
+            // A one-item area (Finanzas) is itself the direct destination:
+            // avoid showing a redundant "Finanzas → Finanzas" two-step menu.
+            if (groupItems.length === 1) {
+              return (
+                <div key={group.key}>
+                  {renderMenuItem(groupItems[0], { reorderable: false, hideHelp: true, compact: true })}
+                </div>
+              );
+            }
+
             return (
-              <section key={group.key} className="min-w-0">
-                <button
-                  type="button"
-                  aria-expanded={expanded}
-                  aria-controls={"desktop-nav-group-" + group.key}
-                  title={group.label}
-                  onClick={() => setExpandedDesktopGroup((current) => current === group.key ? null : group.key)}
+              <section key={group.key} className="sidebar-nav-group min-w-0">
+                <div
+                  aria-label={group.label}
                   className={cn(
-                    "flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-                    active && "text-sidebar-primary",
+                    "sidebar-area-label flex h-5 w-full items-center gap-2 rounded-lg px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/65",
                     collapsed && "justify-center px-0",
                   )}
                 >
-                  <group.icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && <><span className="min-w-0 flex-1 truncate">{group.label}</span><ChevronDown className={cn("h-3.5 w-3.5 shrink-0 transition-transform", expanded && "rotate-180")} /></>}
-                </button>
-                {expanded && (
-                  <div id={"desktop-nav-group-" + group.key} className="ml-2 flex min-w-0 flex-col gap-0.5 border-l border-sidebar-border pl-1">
-                    {groupItems.map((item) => renderMenuItem(item, { reorderable: false, hideHelp: true }))}
-                  </div>
-                )}
+                  <group.icon className="h-3.5 w-3.5 shrink-0" />
+                  {!collapsed && <span className="min-w-0 truncate">{group.label}</span>}
+                </div>
+                <div className="ml-2 flex min-w-0 flex-col gap-0 border-l border-sidebar-border pl-1">
+                  {groupItems.map((item) => renderMenuItem(item, { reorderable: false, hideHelp: true, compact: true }))}
+                </div>
               </section>
             );
           })}
