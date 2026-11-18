@@ -147,8 +147,14 @@ export function SleepPanel() {
         const hasValidStoredHours =
           storedHours !== null && Number.isFinite(storedHours) && storedHours > 0 && storedHours <= 24;
         const storedSessions = readStructuredNotes(row.notes).sleep.sessions;
-        const sessionTotal = Array.isArray(storedSessions) && storedSessions.length
-          ? storedSessions.reduce((sum: number, session: any) => sum + (sleepDurationHours(session?.bedtime, session?.wakeTime) ?? 0), 0)
+        const sessions: SleepSession[] = Array.isArray(storedSessions) && storedSessions.length
+          ? storedSessions.filter((session: any) => session && typeof session === "object").map((session: any) => ({
+              bedtime: typeof session.bedtime === "string" ? session.bedtime : "",
+              wakeTime: typeof session.wakeTime === "string" ? session.wakeTime : "",
+            })).filter((session) => session.bedtime && session.wakeTime)
+          : details.bedtime && details.wakeTime ? [{ bedtime: details.bedtime, wakeTime: details.wakeTime }] : [];
+        const sessionTotal = sessions.length
+          ? sessions.reduce((sum, session) => sum + (sleepDurationHours(session.bedtime, session.wakeTime) ?? 0), 0)
           : null;
         const recoveredHours = hasValidStoredHours
           ? storedHours
@@ -159,7 +165,7 @@ export function SleepPanel() {
           (Array.isArray(storedSessions) && storedSessions.length > 0);
         const hours = recoveredHours !== null && Number.isFinite(recoveredHours) &&
           recoveredHours > 0 && recoveredHours <= 24 ? recoveredHours : null;
-        return { date: row.metric_date, hours, details, hasSleepData };
+        return { date: row.metric_date, hours, details, sessions, hasSleepData };
       })
       .filter((row) => row.hasSleepData)
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -505,7 +511,7 @@ export function SleepPanel() {
         <div className="space-y-2 rounded-xl border border-dashed p-3">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium">Otras sesiones del día</p>
-            <Button type="button" size="sm" variant="outline" onClick={() => setExtraSessions((items) => [...items, { bedtime: "", wakeTime: "" }])}>Añadir siesta / sesión</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setExtraSessions((items) => [...items, { bedtime: "", wakeTime: "" }])}>Añadir otro periodo</Button>
           </div>
           {extraSessions.map((session, index) => (
             <div key={index} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
@@ -514,7 +520,7 @@ export function SleepPanel() {
               <Button type="button" size="icon" variant="ghost" aria-label="Quitar sesión" onClick={() => setExtraSessions((items) => items.filter((_, i) => i !== index))}>×</Button>
             </div>
           ))}
-          <p className="text-[11px] text-muted-foreground">Puedes guardar el sueño principal y varias siestas. POS sumará las duraciones sin borrar las sesiones anteriores.</p>
+          <p className="text-[11px] text-muted-foreground">Si te despiertas durante la noche y vuelves a dormir, añade aquí ese segundo periodo. También puedes registrar siestas. POS sumará solo el tiempo dormido y mostrará cada periodo por separado.</p>
         </div>
                 {hoursValue !== null && Number.isFinite(hoursValue) && hoursValue > 0 && (
           <p className="text-xs text-muted-foreground">Duración calculada: {formatSleepHours(hoursValue)}</p>
@@ -569,17 +575,29 @@ export function SleepPanel() {
               <article key={row.date} className="flex items-center justify-between gap-3 rounded-xl border p-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium">{formatDayLabel(row.date)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {row.details.bedtime && row.details.wakeTime
-                      ? `${row.details.bedtime} – ${row.details.wakeTime}`
-                      : row.details.bedtime
+                  {row.sessions.length > 0 ? (
+                    <div className="mt-1 space-y-1">
+                      {row.sessions.map((session, index) => {
+                        const duration = sleepDurationHours(session.bedtime, session.wakeTime);
+                        return (
+                          <p key={index} className="text-xs text-muted-foreground">
+                            {index === 0 ? "Sueño principal" : `Otro periodo de sueño ${index + 1}`} · {session.bedtime} – {session.wakeTime}
+                            {duration !== null ? ` · ${formatSleepHours(duration)}` : ""}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {row.details.bedtime
                         ? `Me acosté a las ${row.details.bedtime} · falta la hora de levantarse`
                         : row.details.wakeTime
                           ? `Me levanté a las ${row.details.wakeTime} · falta la hora de acostarse`
                           : row.hours !== null
                             ? "Duración registrada manualmente"
                             : "Duración no registrada"}
-                  </p>
+                    </p>
+                  )}
                 </div>
                 <p className="shrink-0 text-sm font-semibold tabular-nums">
                   {row.hours === null ? <span className="text-xs font-medium text-amber-600">Incompleto</span> : formatSleepHours(row.hours)}
