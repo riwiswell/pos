@@ -25,6 +25,7 @@ import { UniversalCapture } from "@/components/common/UniversalCapture";
 
 const STORAGE_KEY = "personal-os:sidebar-collapsed";
 const LEGACY_ORGANIZATION_KEYS = ["habitos", "planeador", "trabajo"];
+const LEGACY_DEFAULT_MODULE_ORDER = ["inicio","habitos","planeador","salud","finanzas","diario","alarmas","vida","aprendizaje","relaciones","trabajo","espiritualidad","ia","gamificacion","perfil"];
 function isMenuModuleHidden(key: string, hidden: string[]) {
   if (key === "organizacion") {
     return hidden.includes("organizacion") || LEGACY_ORGANIZATION_KEYS.every((legacyKey) => hidden.includes(legacyKey));
@@ -64,6 +65,12 @@ function orderedAllItems(order: string[] | undefined) {
     .filter((index) => index >= 0);
   if (legacyOrganizationPositions.length && !savedOrder.includes("organizacion")) {
     rank.set("organizacion", Math.min(...legacyOrganizationPositions));
+  }
+  const untouchedLegacyDefault = savedOrder.length === LEGACY_DEFAULT_MODULE_ORDER.length &&
+    savedOrder.every((key, index) => key === LEGACY_DEFAULT_MODULE_ORDER[index]);
+  if (untouchedLegacyDefault) {
+    const organizationRank = rank.get("organizacion");
+    if (organizationRank !== undefined) rank.set("finanzas", organizationRank + 0.5);
   }
   return NAV_ITEMS.filter((item) => item.key !== "perfil")
     .sort((a, b) => (rank.get(a.key) ?? 999) - (rank.get(b.key) ?? 999));
