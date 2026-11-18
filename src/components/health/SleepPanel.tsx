@@ -322,13 +322,16 @@ export function SleepPanel() {
         };
         throw new Error(messages[result] ?? "No se pudieron activar las notificaciones.");
       }
-      const synced = await syncSleepScheduleReminder(
-        schedule.bedtime || null,
-        schedule.bedtime ? schedule.reminderMinutes : null,
-      );
-      toast.success(synced === "scheduled"
-        ? "Avisos activados. Te avisaré " + schedule.reminderMinutes + " minutos antes de acostarte."
-        : "Notificaciones activadas en este dispositivo.");
+      if (Boolean(schedule.bedtime) !== Boolean(schedule.wakeTime)) {
+        throw new Error("Completa las dos horas del horario habitual antes de activar el aviso.");
+      }
+      if (schedule.bedtime && schedule.wakeTime) {
+        // Persist the latest edited hours and offset before creating the push job;
+        // the Worker checks that queued reminders still match the saved profile.
+        await saveSchedule();
+      } else {
+        toast.success("Notificaciones activadas en este dispositivo. Define tu horario habitual para programar el aviso diario.");
+      }
     } catch (error) {
       toast.error(describeError(error, "No se pudieron activar los avisos."), { duration: 10000 });
     } finally {
