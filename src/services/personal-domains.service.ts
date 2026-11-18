@@ -77,6 +77,51 @@ export const personalDomainsService={
  async remove(table:TableName,id:string){const {error}=await db.from(table).delete().eq("id",id);if(error)throw error;},
  async summary(){const tables:TableName[]=["shopping_items","learning_items","relationships","work_items","spiritual_entries","ai_insights"];const out=await Promise.all(tables.map(async table=>{const {count,error}=await db.from(table).select("id",{count:"exact",head:true});if(error)throw error;return [table,count??0] as const;}));return Object.fromEntries(out);},
 
+
+ async deleteSleepSession(metricDate:string,sessionId:string){
+  if(sleepDateTimeMinutes(metricDate,"00:00")===null||typeof sessionId!=="string"||!sessionId.trim())throw new Error("No se identificó correctamente la sesión que quieres eliminar.");
+  const {data:{user},error:authError}=await supabase.auth.getUser();
+  if(authError||!user)throw authError??new Error("No hay sesión activa");
+  const {data:existing,error:readError}=await db.from("health_metrics").select("*").eq("user_id",user.id).eq("metric_date",metricDate).maybeSingle();
+  if(readError)throw readError;
+  if(!existing)throw new Error("No se encontró el registro de ese día. Actualiza el historial e inténtalo de nuevo.");
+  const rawNotes=typeof existing.notes==="string"?existing.notes:"";
+  let body:Record<string,unknown>={},userNotes=rawNotes,sleep:Record<string,any>={};
+  if(rawNotes){
+   try{
+    const decoded=JSON.parse(rawNotes);
+    if(decoded?.marker==="__POS_BODY_MEASURES__"){
+     body=decoded.body&&typeof decoded.body==="object"?decoded.body:{};
+     userNotes=typeof decoded.notes==="string"?decoded.notes:"";
+     sleep=decoded.sleep&&typeof decoded.sleep==="object"?decoded.sleep:{};
+    }
+   }catch{}
+  }
+  const previous=normalizeStoredSleepSessions(sleep,metricDate);
+  if(!previous.some(item=>item.id===sessionId))throw new Error("Esa sesión ya no está en el historial. Actualiza la lista.");
+  const sessions=previous.filter(item=>item.id!==sessionId);
+  const minutes=sessions.reduce((sum,item)=>{
+   const start=sleepDateTimeMinutes(item.startDate,item.bedtime)??0;
+   const end=sleepDateTimeMinutes(item.endDate,item.wakeTime)??start;
+   return sum+Math.max(0,end-start);
+  },0);
+  const manual=Number(sleep.manualHours);
+  const manualHours=Number.isFinite(manual)&&manual>0?manual:0;
+  const totalHours=Math.round((minutes/60+manualHours)*100)/100;
+  if(totalHours>24)throw new Error("El total de sueño restante supera las 24 horas. Revisa los periodos antes de continuar.");
+  const nextSleep={
+   ...sleep,
+   bedtime:sessions[0]?.bedtime??null,
+   wakeTime:sessions[0]?.wakeTime??null,
+   manualHours:manualHours>0?manualHours:null,
+   sessions,
+  };
+  const notes=JSON.stringify({marker:"__POS_BODY_MEASURES__",body,notes:userNotes,sleep:nextSleep});
+  const {data,error}=await db.from("health_metrics").update({sleep_hours:totalHours>0?totalHours:null,notes})
+   .eq("id",existing.id).eq("user_id",user.id).select("*").single();
+  if(error)throw error;
+  return data;
+ },
  async appendSleepSessions(input:SleepSessionWrite[]){
   const {data:{user},error:authError}=await supabase.auth.getUser();
   if(authError||!user)throw authError??new Error("No hay sesión activa");
