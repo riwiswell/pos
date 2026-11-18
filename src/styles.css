@@ -1758,3 +1758,139 @@ html.theme-light[data-skin="mario"] {
     margin-top: 0.25rem !important;
   }
 }
+
+
+/* Desktop sidebar: reserve the full brand height before starting navigation.
+   The old 136px header was shorter than the logo + theme identity stack. */
+@media (min-width: 768px) {
+  .sidebar-branding-header--expanded {
+    height: 176px !important;
+    min-height: 176px !important;
+    gap: 0.55rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  .sidebar-branding-header--expanded .skin-branding--sidebar:not(.skin-branding--collapsed) .skin-branding__symbol--personal {
+    width: 6.1rem !important;
+    height: 6.1rem !important;
+    min-width: 6.1rem !important;
+    min-height: 6.1rem !important;
+    flex-basis: 6.1rem !important;
+  }
+  .sidebar-branding-header--collapsed {
+    height: 112px !important;
+    min-height: 112px !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* Larger labels and taller hit areas use the otherwise empty lower sidebar. */
+  .sidebar-nav--direct {
+    gap: 0.125rem !important;
+    padding: 0.75rem 0.5rem 0.5rem !important;
+  }
+  .sidebar-nav--direct [data-sidebar-item-key] {
+    min-height: 2.125rem !important;
+    flex: 0 0 auto;
+  }
+  .sidebar-nav--direct [data-sidebar-item-key] > a {
+    min-height: 2.125rem !important;
+    height: 2.125rem !important;
+    padding: 0.35rem 0.55rem !important;
+    gap: 0.7rem !important;
+    font-size: 0.98rem !important;
+    line-height: 1.3rem !important;
+    font-weight: 650 !important;
+  }
+  .sidebar-nav--direct [data-sidebar-item-key] > a > svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  .sidebar-nav--direct .sidebar-area-label {
+    min-height: 1.25rem !important;
+    height: 1.25rem !important;
+    font-size: 0.66rem !important;
+  }
+  .sidebar-nav--direct .sidebar-nav-group + .sidebar-nav-group {
+    margin-top: 0.2rem;
+  }
+}
+
+@media (min-width: 768px) and (max-height: 820px) {
+  .sidebar-branding-header--expanded {
+    height: 154px !important;
+    min-height: 154px !important;
+    gap: 0.4rem !important;
+  }
+  .sidebar-branding-header--expanded .skin-branding--sidebar:not(.skin-branding--collapsed) .skin-branding__symbol--personal {
+    width: 5.35rem !important;
+    height: 5.35rem !important;
+    min-width: 5.35rem !important;
+    min-height: 5.35rem !important;
+    flex-basis: 5.35rem !important;
+  }
+  .sidebar-branding-header--collapsed {
+    height: 100px !important;
+    min-height: 100px !important;
+  }
+  .sidebar-nav--direct {
+    padding-top: 0.6rem !important;
+  }
+  .sidebar-nav--direct [data-sidebar-item-key] {
+    min-height: 1.875rem !important;
+  }
+  .sidebar-nav--direct [data-sidebar-item-key] > a {
+    min-height: 1.875rem !important;
+    height: 1.875rem !important;
+    font-size: 0.9rem !important;
+    padding-top: 0.2rem !important;
+    padding-bottom: 0.2rem !important;
+  }
+  .sidebar-nav--direct .sidebar-area-label {
+    min-height: 1.05rem !important;
+    height: 1.05rem !important;
+    font-size: 0.61rem !important;
+  }
+}
+
+@media (min-width: 768px) and (max-height: 650px) {
+  .sidebar-branding-header--expanded {
+    height: 128px !important;
+    min-height: 128px !important;
+    gap: 0.25rem !important;
+  }
+  .sidebar-branding-header--expanded .skin-branding--sidebar:not(.skin-branding--collapsed) .skin-branding__symbol--personal {
+    width: 4.45rem !important;
+    height: 4.45rem !important;
+    min-width: 4.45rem !important;
+    min-height: 4.45rem !important;
+    flex-basis: 4.45rem !important;
+  }
+  .sidebar-branding-header--collapsed {
+    height: 88px !important;
+    min-height: 88px !important;
+  }
+  .sidebar-nav--direct {
+    gap: 0 !important;
+    padding: 0.25rem !important;
+  }
+  .sidebar-nav--direct [data-sidebar-item-key] {
+    min-height: 1.5rem !important;
+  }
+  .sidebar-nav--direct [data-sidebar-item-key] > a {
+    min-height: 1.5rem !important;
+    height: 1.5rem !important;
+    padding-top: 0.1rem !important;
+    padding-bottom: 0.1rem !important;
+    font-size: 0.78rem !important;
+    gap: 0.45rem !important;
+  }
+  .sidebar-nav--direct .sidebar-area-label {
+    min-height: 0.75rem !important;
+    height: 0.75rem !important;
+    font-size: 0.54rem !important;
+  }
+  .sidebar-nav--direct .sidebar-nav-group + .sidebar-nav-group {
+    margin-top: 0;
+  }
+}

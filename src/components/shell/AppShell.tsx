@@ -298,7 +298,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div
           className={cn(
             "sidebar-branding-header relative flex shrink-0 flex-col items-center justify-start gap-2 border-b border-sidebar-border bg-sidebar/35 px-4 pb-2 pt-2 backdrop-blur-sm",
-            collapsed ? "h-[136px] min-h-[136px]" : "h-[136px] min-h-[136px]",
+            collapsed ? "sidebar-branding-header--collapsed h-[112px] min-h-[112px]" : "sidebar-branding-header--expanded h-[176px] min-h-[176px]",
           )}
         >
           <SkinBranding skin={skin} collapsed={collapsed} sidebar />
