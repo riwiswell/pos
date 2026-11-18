@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { profileService, type ProfilePatch } from "@/services/profile.service";
 import { useAuth } from "@/hooks/use-auth";
+import { describeError } from "@/lib/error-message";
 
 export const profileKeys = {
   profile: (userId: string | undefined) => ["profile", userId] as const,
@@ -29,7 +30,7 @@ export function useProfileMediaUrl(value: string | null | undefined) {
   });
 }
 
-export function useProfileMutations() {
+export function useProfileMutations(options: { quietSave?: boolean } = {}) {
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -42,10 +43,11 @@ export function useProfileMutations() {
     mutationFn: (patch: ProfilePatch) => profileService.upsert(user!.id, patch),
     onSuccess: () => {
       invalidate();
-      toast.success("Perfil actualizado");
+      if (!options.quietSave) toast.success("Perfil actualizado");
     },
-    onError: (error: unknown) =>
-      toast.error(error instanceof Error ? error.message : "No pudimos guardar tu perfil"),
+    onError: (error: unknown) => {
+      if (!options.quietSave) toast.error(describeError(error, "No pudimos guardar tu perfil"), { duration: 10000 });
+    },
   });
 
   const uploadMedia = useMutation({
