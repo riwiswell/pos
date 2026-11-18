@@ -11,10 +11,31 @@ import { Input } from "@/components/ui/input";
 import { useGlobalDate } from "@/hooks/use-global-date";
 import { useDeleteSleepSessionMutation, usePersonalRecentList, useSleepSessionsMutation, useUpdateSleepSessionMutation } from "@/hooks/use-personal-domains";
 import { useProfile, useProfileMutations } from "@/hooks/use-profile";
+import { useTheme } from "@/hooks/use-theme";
+import type { SkinId } from "@/domain/skins";
 import { addDaysISO, formatDayLabel } from "@/lib/date";
 import { describeError } from "@/lib/error-message";
 import { subscribeToBackgroundPush } from "@/services/push.service";
 import { syncSleepScheduleReminder } from "@/services/sleep-notifications.service";
+
+const SLEEP_CHART_COLORS: Record<SkinId, string> = {
+  classic: "#79D6D8",
+  lego: "#FFD500",
+  "dc-comics": "#E32636",
+  marvel: "#ED1D24",
+  "star-wars": "#E8C45A",
+  football: "#22A45A",
+  pixel: "#82B84A",
+  winamp: "#A3E635",
+  nintendo: "#E60012",
+  pokemon: "#D71920",
+  "resident-evil": "#87354D",
+  zelda: "#B99A4D",
+  mario: "#EF3340",
+  chess: "#805238",
+  lumen: "#5D9FC9",
+  orchid: "#9C76A7",
+};
 
 const STRUCTURED_MARKER = "__POS_BODY_MEASURES__";
 
@@ -110,6 +131,7 @@ function shortDate(date: string): string {
 }
 
 export function SleepPanel() {
+  const { skin } = useTheme();
   const { date } = useGlobalDate();
   const navigate = useNavigate();
   const historyQuery = usePersonalRecentList<HealthMetric>("health_metrics", "metric_date", 100);
@@ -462,7 +484,7 @@ export function SleepPanel() {
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""}
                   formatter={(value: number) => [formatSleepHours(Number(value)), "Duración"]}
                 />
-                <Bar dataKey="hours" name="Sueño" fill="var(--chart-bar, var(--primary))" radius={[5, 5, 0, 0]} barSize={26} maxBarSize={26} isAnimationActive={false} />
+                <Bar dataKey="hours" name="Sueño" fill={SLEEP_CHART_COLORS[skin]} radius={[5, 5, 0, 0]} barSize={26} maxBarSize={26} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
