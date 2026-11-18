@@ -802,6 +802,21 @@ async function dispatchDueNotifications(env:Env){
      continue;
     }
    }
+   if(job.source_type==="sleep_schedule"){
+    const prefRead=await supabaseFetch(env,"profiles?id=eq."+encodeURIComponent(job.user_id)+"&select=notification_preferences&limit=1");
+    if(!prefRead.ok){
+     await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({fire_at:new Date(Date.now()+5*60_000).toISOString()})});
+     console.error("[push] Could not verify sleep schedule preference; deferred",job.id);
+     continue;
+    }
+    const prefRows=await prefRead.json() as any[];
+    const current=prefRows[0]?.notification_preferences?.sleep_schedule;
+    const matches=Boolean(current)&&current.bedtime===payload.bedtime&&Number(current.reminder_minutes)===Number(payload.reminder_minutes);
+    if(!matches){
+     await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
+     continue;
+    }
+   }
    const subs=await supabaseFetch(env,"push_subscriptions?user_id=eq."+encodeURIComponent(job.user_id));
    if(!subs.ok){
     await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({fire_at:new Date(Date.now()+5*60_000).toISOString()})});
@@ -817,9 +832,9 @@ async function dispatchDueNotifications(env:Env){
     continue;
    }
    const payload=job.payload&&typeof job.payload==="object"?job.payload as Record<string,unknown>:{};
-   const targetByType:Record<string,string>={medication_dose:"/salud",medical_appointment:"/salud",relationship:"/relaciones",work_session:"/trabajo",alarm:"/inicio"};
+   const targetByType:Record<string,string>={medication_dose:"/salud",medical_appointment:"/salud",sleep_schedule:"/salud",relationship:"/relaciones",work_session:"/trabajo",alarm:"/inicio"};
    const targetUrl=targetByType[job.source_type]??"/inicio";
-   const notificationTag=job.source_type==="medication_dose"?`pos:medication:${job.source_id}`:job.source_type==="alarm"?`pos:alarm:${job.source_id}`:job.id;
+   const notificationTag=job.source_type==="medication_dose"?`pos:medication:${job.source_id}`:job.source_type==="alarm"?`pos:alarm:${job.source_id}`:job.source_type==="sleep_schedule"?`pos:sleep:${job.source_id}`:job.id;
    const notification={title:job.title,body:job.body??"",tag:notificationTag,data:{type:"scheduled-notification",url:targetUrl,...(job.source_type==="medication_dose"&&typeof payload.dose_id==="string"?{doseId:payload.dose_id}:{})}};
    let delivered=0;
    let retryableFailure=false;
