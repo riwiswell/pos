@@ -5,6 +5,41 @@ type CoverLookupResponse = {
   error?: string;
 };
 
+const CACHEABLE_COVER_HOSTS = new Set([
+  "books.google.com",
+  "books.googleusercontent.com",
+  "upload.wikimedia.org",
+  "shared.akamai.steamstatic.com",
+  "cdn.akamai.steamstatic.com",
+  "shared.fastly.steamstatic.com",
+  "steamcdn-a.akamaihd.net",
+]);
+const CACHED_COVER_PREFIX = "/api/learning-cover-image?";
+
+/** Distinguish provider URLs and our same-origin cached image path from private Storage paths. */
+export function isRemoteLearningCoverPath(path: string | null | undefined): boolean {
+  return typeof path === "string" &&
+    (/^https?:\/\//i.test(path) || path.startsWith(CACHED_COVER_PREFIX));
+}
+
+/** Route known provider covers through the same-origin cache; leave private uploads untouched. */
+export function resolveLearningCoverUrl(value: string | null | undefined): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const input = value.trim();
+  if (input.startsWith(CACHED_COVER_PREFIX)) return input;
+
+  try {
+    const parsed = new URL(input);
+    if (parsed.protocol === "http:") parsed.protocol = "https:";
+    if (parsed.protocol !== "https:") return null;
+    if (!CACHEABLE_COVER_HOSTS.has(parsed.hostname.toLowerCase())) return parsed.toString();
+    const params = new URLSearchParams({ source: parsed.toString() });
+    return CACHED_COVER_PREFIX + params.toString();
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Ask the same-origin Cloudflare Worker to look up a cover.
  * External providers are called server-side so browser CORS restrictions

@@ -11,7 +11,11 @@ import { BibleChapterProgressSummary, BibleReadingPanel } from "@/components/lea
 import { usePrivatePhotos } from "@/hooks/use-private-photos";
 import { privateMediaService } from "@/services/private-media.service";
 import { todayISO } from "@/lib/date";
-import { lookupLearningCover } from "@/services/learning-cover.service";
+import {
+  isRemoteLearningCoverPath,
+  lookupLearningCover,
+  resolveLearningCoverUrl,
+} from "@/services/learning-cover.service";
 import { MoviesLibrary } from "@/components/learning/MoviesLibrary";
 export const Route=createFileRoute("/_authenticated/aprendizaje")({component:LearningPage});
 const LANGS=[
@@ -195,14 +199,14 @@ function Books(){
   const[targetPages,setTargetPages]=useState("");
   const books=sortLearningItems((q.data||[]).filter((x:any)=>x.kind==="book"),sessions.data||[],sort);
   const deleteBook=async(book:any)=>{
-    if(book.cover_path&&!/^https?:\/\//i.test(String(book.cover_path)))await privateMediaService.removePhoto(String(book.cover_path)).catch(()=>undefined);
+    if(book.cover_path&&!isRemoteLearningCoverPath(String(book.cover_path)))await privateMediaService.removePhoto(String(book.cover_path)).catch(()=>undefined);
     await m.remove.mutateAsync(book.id);
   };
   const addBook=async()=>{
     if(!title.trim())return;
     const parsedYear=Number(publicationYear);
     if(publicationYear.trim()&&(!Number.isInteger(parsedYear)||parsedYear<0||parsedYear>3000)){toast.error("El año debe ser un número entero válido.");return;}
-    const coverPath=await lookupLearningCover({kind:"book",title:title.trim(),author:author.trim()||undefined});
+    const coverPath=resolveLearningCoverUrl(await lookupLearningCover({kind:"book",title:title.trim(),author:author.trim()||undefined}));
     await m.create.mutateAsync({
       user_id:user?.id,
       title:title.trim(),
@@ -295,9 +299,9 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
   const[findingCover,setFindingCover]=useState(false);
   const coverInput=useRef<HTMLInputElement>(null);
   const mine=notes;
-  const remoteCover=Boolean(coverPath&&/^https?:\/\//i.test(coverPath));
+  const remoteCover=isRemoteLearningCoverPath(coverPath);
   const coverQuery=usePrivatePhotos(coverPath&&!remoteCover?[coverPath]:[],Boolean(coverPath&&!remoteCover));
-  const coverUrl=remoteCover?coverPath:coverQuery.data?.find(item=>item.path===coverPath)?.url;
+  const coverUrl=remoteCover?resolveLearningCoverUrl(coverPath):coverQuery.data?.find(item=>item.path===coverPath)?.url;
   const pageValue=Math.max(0,Number(page)||0);
   const progress=total?Math.min(100,Math.max(0,pageValue/total*100)):Number(book.progress)||0;
   const remain=Math.max(0,total-pageValue);
@@ -391,7 +395,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
   const findCover=async()=>{
     setFindingCover(true);
     try{
-      const cover=await lookupLearningCover({kind:"book",title:newTitle.trim()||book.title,author:newAuthor.trim()||book.author||undefined});
+      const cover=resolveLearningCoverUrl(await lookupLearningCover({kind:"book",title:newTitle.trim()||book.title,author:newAuthor.trim()||book.author||undefined}));
       if(!cover){toast.info("No encontré una portada para este libro.");return;}
       await onSave({cover_path:cover});
       toast.success("Portada sugerida actualizada.");
@@ -636,13 +640,13 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
     finally{setSavingSession(false);}
   };
   const path=item.cover_path?String(item.cover_path):null;
-  const remoteCover=Boolean(path&&/^https?:\/\//i.test(path));
+  const remoteCover=isRemoteLearningCoverPath(path);
   const photoQuery=usePrivatePhotos(path&&!remoteCover?[path]:[],Boolean(path&&!remoteCover));
-  const photoUrl=remoteCover?path:photoQuery.data?.find(photo=>photo.path===path)?.url;
+  const photoUrl=remoteCover?resolveLearningCoverUrl(path):photoQuery.data?.find(photo=>photo.path===path)?.url;
   const findGameCover=async()=>{
     setFindingCover(true);
     try{
-      const cover=await lookupLearningCover({kind:"game",title:item.title});
+      const cover=resolveLearningCoverUrl(await lookupLearningCover({kind:"game",title:item.title}));
       if(!cover){toast.info("No encontré una carátula fiable para este videojuego.");return;}
       await onSaveCover(cover);
       toast.success("Carátula sugerida actualizada.");
@@ -810,7 +814,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     if(isGame&&(parsedMinutes===null||parsedMinutes>1000000)){toast.error("Escribe un tiempo válido en horas (por ejemplo, 10,1).");return;}
     const existingItem=editingId?(q.data||[]).find((item:any)=>item.id===editingId):null;
     let coverPath=existingItem?.cover_path??null;
-    if(isGame&&!coverPath)coverPath=await lookupLearningCover({kind:"game",title:title.trim()});
+    if(isGame&&!coverPath)coverPath=resolveLearningCoverUrl(await lookupLearningCover({kind:"game",title:title.trim()}));
     const coverPatch=isGame&&!existingItem?.cover_path?{cover_path:coverPath}:{};
     if(editingId){
       await m.update.mutateAsync({id:editingId,patch:{title:title.trim(),kind,notes:cleanNotes||null,goal_description:isGame?(goalDescription.trim()||null):null,goal_date:isGame?(goalDate||null):null,progress:isGame?progress:undefined,minutes_total:isGame?parsedMinutes!:undefined,platform:isGame?(platform.trim()||null):null,genre:isGame?(genre.trim()||null):null,...coverPatch}});

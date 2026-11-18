@@ -481,6 +481,80 @@ function safeCoverUrl(value:unknown):string|null{
  if(typeof value!=="string"||!value.trim())return null;
  try{const url=new URL(value.trim());if(url.protocol!=="https:"&&url.protocol!=="http:")return null;url.protocol="https:";return url.toString()}catch{return null}
 }
+
+const LEARNING_COVER_IMAGE_HOSTS = new Set([
+ "books.google.com",
+ "books.googleusercontent.com",
+ "upload.wikimedia.org",
+ "shared.akamai.steamstatic.com",
+ "cdn.akamai.steamstatic.com",
+ "shared.fastly.steamstatic.com",
+ "steamcdn-a.akamaihd.net",
+]);
+const LEARNING_COVER_IMAGE_TYPES = new Set([
+ "image/jpeg", "image/jpg", "image/png", "image/webp", "image/avif", "image/gif",
+]);
+const MAX_LEARNING_COVER_IMAGE_BYTES = 8 * 1024 * 1024;
+
+function isAllowedLearningCoverImageUrl(url:URL):boolean{
+ return url.protocol==="https:" && !url.username && !url.password && !url.port &&
+  LEARNING_COVER_IMAGE_HOSTS.has(url.hostname.toLowerCase());
+}
+
+type WorkerExecutionContext = { waitUntil: (promise: Promise<unknown>) => void };
+
+async function handleLearningCoverImage(request:Request,ctx?:unknown):Promise<Response>{
+ if(request.method!=="GET")return json({error:"Método no permitido"},405);
+ const requestUrl=new URL(request.url);
+ const source=requestUrl.searchParams.get("source")??"";
+ let sourceUrl:URL;
+ try{sourceUrl=new URL(source)}catch{return json({error:"Origen de portada no válido."},400)}
+ if(!isAllowedLearningCoverImageUrl(sourceUrl))return json({error:"El proveedor de esta portada no está permitido."},400);
+
+ const cacheKey=new Request(requestUrl.toString(),{method:"GET"});
+ const edgeCache=(globalThis as unknown as {caches?:{default?:Cache}}).caches?.default;
+ if(edgeCache){
+  try{
+   const cached=await edgeCache.match(cacheKey);
+   if(cached)return cached;
+  }catch(error){console.warn("[learning-cover] edge cache read failed",error)}
+ }
+
+ try{
+  const upstream=await fetch(sourceUrl.toString(),{
+   headers:{Accept:"image/avif,image/webp,image/*,*/*;q=0.8","User-Agent":"PersonalOS/1.0"},
+   redirect:"follow",
+  });
+  if(!upstream.ok)return json({error:"No se pudo descargar la portada del proveedor."},502);
+  let finalUrl:URL;
+  try{finalUrl=new URL(upstream.url||sourceUrl.toString())}catch{return json({error:"La dirección final de la portada no es válida."},502)}
+  if(!isAllowedLearningCoverImageUrl(finalUrl))return json({error:"El proveedor redirigió a un origen no permitido."},502);
+
+  const contentType=(upstream.headers.get("content-type")??"").split(";")[0].trim().toLowerCase();
+  if(!LEARNING_COVER_IMAGE_TYPES.has(contentType))return json({error:"El proveedor no devolvió una imagen válida."},502);
+  const declaredLength=Number(upstream.headers.get("content-length")??0);
+  if(declaredLength>MAX_LEARNING_COVER_IMAGE_BYTES)return json({error:"La portada supera el tamaño permitido."},413);
+  const bytes=await upstream.arrayBuffer();
+  if(!bytes.byteLength||bytes.byteLength>MAX_LEARNING_COVER_IMAGE_BYTES)return json({error:"La portada está vacía o supera el tamaño permitido."},502);
+
+  const response=new Response(bytes,{status:200,headers:{
+   "content-type":contentType,
+   "cache-control":"public, max-age=2592000, s-maxage=2592000, immutable",
+   "x-content-type-options":"nosniff",
+  }});
+  if(edgeCache){
+   const write=edgeCache.put(cacheKey,response.clone()).catch(error=>console.warn("[learning-cover] edge cache write failed",error));
+   const execution=ctx as WorkerExecutionContext|undefined;
+   if(execution&&typeof execution.waitUntil==="function")execution.waitUntil(write);
+   else await write;
+  }
+  return response;
+ }catch(error){
+  console.error("[learning-cover] image proxy failed",sourceUrl.hostname,error instanceof Error?error.message:"unknown error");
+  return json({error:"No se pudo obtener la portada."},502);
+ }
+}
+
 async function lookupSteamStoreCover(title:string):Promise<string|null>{
  const searchUrl=new URL("https://store.steampowered.com/api/storesearch/");
  searchUrl.searchParams.set("term",title);searchUrl.searchParams.set("l","english");searchUrl.searchParams.set("cc","us");
@@ -590,8 +664,9 @@ async function handleLearningCover(request:Request):Promise<Response>{
  }
 }
 
-async function handleApi(request:Request,env:Env):Promise<Response|null>{
+async function handleApi(request:Request,env:Env,ctx?:unknown):Promise<Response|null>{
  const url=new URL(request.url);
+ if(url.pathname==="/api/learning-cover-image")return handleLearningCoverImage(request,ctx);
  if(url.pathname==="/api/learning-cover")return handleLearningCover(request);
  if(url.pathname==="/api/chess/profile"&&request.method==="GET"){
   const username="ricardowiswell";
@@ -779,6 +854,6 @@ async function dispatchDueNotifications(env:Env){
 async function normalizeCatastrophicSsrResponse(response:Response){if(response.status<500)return response;const ct=response.headers.get("content-type")??"";if(!ct.includes("application/json"))return response;const body=await response.clone().text();try{const p=JSON.parse(body);if(p.unhandled===true&&p.message==="HTTPError"){console.error(consumeLastCapturedError()??new Error("h3 swallowed SSR error"));return new Response(renderErrorPage(),{status:500,headers:{"content-type":"text/html; charset=utf-8"}})}}catch{}return response}
 
 export default {
- async fetch(request:Request,env:Env,ctx:unknown){try{const api=await handleApi(request,env);if(api)return api;const handler=await getServerEntry();return await normalizeCatastrophicSsrResponse(await handler.fetch(request,env,ctx));}catch(error){console.error(error);return new Response(renderErrorPage(),{status:500,headers:{"content-type":"text/html; charset=utf-8"}})}},
+ async fetch(request:Request,env:Env,ctx:unknown){try{const api=await handleApi(request,env,ctx);if(api)return api;const handler=await getServerEntry();return await normalizeCatastrophicSsrResponse(await handler.fetch(request,env,ctx));}catch(error){console.error(error);return new Response(renderErrorPage(),{status:500,headers:{"content-type":"text/html; charset=utf-8"}})}},
  async scheduled(_controller:unknown,env:Env,ctx:{waitUntil:(p:Promise<unknown>)=>void}){ctx.waitUntil(dispatchDueNotifications(env))}
 };

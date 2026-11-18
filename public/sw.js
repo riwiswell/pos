@@ -1,7 +1,35 @@
-// Personal OS service worker: displays server-sent push notifications and handles clicks.
-// It intentionally does not cache or intercept application requests.
+// Personal OS service worker: caches learning covers and handles push notifications.
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
+// Cache only the same-origin cover proxy; all other POS requests keep their existing behavior.
+const LEARNING_COVER_CACHE = "personal-os-learning-covers-v1";
+const LEARNING_COVER_CACHE_LIMIT = 240;
+
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || url.pathname !== "/api/learning-cover-image") return;
+
+  event.respondWith((async () => {
+    const cache = await caches.open(LEARNING_COVER_CACHE);
+    const cached = await cache.match(request);
+    if (cached) return cached;
+
+    const response = await fetch(request);
+    if (response.ok && response.type !== "opaque") {
+      await cache.put(request, response.clone());
+      const keys = await cache.keys();
+      if (keys.length > LEARNING_COVER_CACHE_LIMIT) {
+        const excess = keys.slice(0, keys.length - LEARNING_COVER_CACHE_LIMIT);
+        await Promise.all(excess.map((key) => cache.delete(key)));
+      }
+    }
+    return response;
+  })());
+});
 
 self.addEventListener("push", (event) => {
   let payload = {};
