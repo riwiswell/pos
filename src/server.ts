@@ -811,7 +811,8 @@ async function dispatchDueNotifications(env:Env){
     }
     const prefRows=await prefRead.json() as any[];
     const current=prefRows[0]?.notification_preferences?.sleep_schedule;
-    const matches=Boolean(current)&&current.bedtime===payload.bedtime&&Number(current.reminder_minutes)===Number(payload.reminder_minutes);
+    const reminderPayload=job.payload&&typeof job.payload==="object"?job.payload as Record<string,unknown>:{};
+    const matches=Boolean(current)&&current.bedtime===reminderPayload.bedtime&&Number(current.reminder_minutes)===Number(reminderPayload.reminder_minutes);
     if(!matches){
      await supabaseFetch(env,"notification_jobs?id=eq."+encodeURIComponent(job.id),{method:"PATCH",body:JSON.stringify({status:"cancelled"})});
      continue;
