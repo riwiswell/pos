@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { MoonStar, Save, Sparkles, Trash2 } from "lucide-react";
+import { MoonStar, Pencil, Save, Sparkles, Trash2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useGlobalDate } from "@/hooks/use-global-date";
-import { useDeleteSleepSessionMutation, usePersonalRecentList, useSleepSessionsMutation } from "@/hooks/use-personal-domains";
+import { useDeleteSleepSessionMutation, usePersonalRecentList, useSleepSessionsMutation, useUpdateSleepSessionMutation } from "@/hooks/use-personal-domains";
 import { useProfile, useProfileMutations } from "@/hooks/use-profile";
 import { addDaysISO, formatDayLabel } from "@/lib/date";
 import { describeError } from "@/lib/error-message";
@@ -113,7 +113,9 @@ export function SleepPanel() {
   const historyQuery = usePersonalRecentList<HealthMetric>("health_metrics", "metric_date", 100);
   const saveSessions = useSleepSessionsMutation();
   const deleteSleepSession = useDeleteSleepSessionMutation();
+  const updateSleepSession = useUpdateSleepSessionMutation();
   const [sessionPendingDelete, setSessionPendingDelete] = useState<string | null>(null);
+  const [editingSession, setEditingSession] = useState<{ key: string; metricDate: string; session: SleepSession } | null>(null);
   const profileQuery = useProfile();
   const profileMutations = useProfileMutations({ quietSave: true });
   const [schedule,setSchedule]=useState({bedtime:"",wakeTime:""});
@@ -248,6 +250,23 @@ export function SleepPanel() {
     await saveSessions.mutateAsync(sessions);
     setPendingSessions([createEmptySleepSession(date)]);
     toast.success("Sesión guardada. Los registros anteriores se conservaron.");
+  };
+
+  const saveEditedSession = async () => {
+    if (!editingSession) return;
+    const { metricDate, session } = editingSession;
+    if (!session.startDate || !session.endDate || !session.bedtime || !session.wakeTime) {
+      throw new Error("Completa las fechas y horas del periodo.");
+    }
+    if (sleepSessionDurationHours(session) === null) {
+      throw new Error("Revisa el periodo: la finalización debe ser posterior al inicio y no superar 24 horas.");
+    }
+    await updateSleepSession.mutateAsync({ metricDate, sessionId: session.id, session });
+    setEditingSession(null);
+    setSessionPendingDelete(null);
+    toast.success(metricDate === session.startDate
+      ? "Periodo de sueño actualizado."
+      : "Periodo actualizado y trasladado a la fecha correcta.");
   };
 
   const saveSchedule = async () => {
@@ -390,7 +409,7 @@ export function SleepPanel() {
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""}
                   formatter={(value: number) => [formatSleepHours(Number(value)), "Duración"]}
                 />
-                <Bar dataKey="hours" name="Sueño" fill="hsl(var(--primary))" radius={[5, 5, 0, 0]} barSize={26} maxBarSize={26} isAnimationActive={false} />
+                <Bar dataKey="hours" name="Sueño" fill="var(--chart-bar, var(--primary))" radius={[5, 5, 0, 0]} barSize={26} maxBarSize={26} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -493,6 +512,41 @@ export function SleepPanel() {
                         const duration=sleepSessionDurationHours(session);
                         const deleteKey=`${row.date}:${session.id}`;
                         const isConfirming=sessionPendingDelete===deleteKey;
+                        const isEditing=editingSession?.key===deleteKey;
+                        if(isEditing&&editingSession){
+                          const updateDraft=(patch:Partial<SleepSession>)=>setEditingSession(current=>current?{...current,session:{...current.session,...patch}}:current);
+                          return <div key={session.id} className="space-y-3 rounded-lg border border-primary/30 bg-background/70 p-3">
+                            <p className="text-xs font-medium">Editar {session.kind==="nap"?"siesta":`sueño ${index+1}`}</p>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                              <label className="text-xs text-muted-foreground">Tipo
+                                <select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground" value={editingSession.session.kind}
+                                  onChange={event=>updateDraft({kind:event.target.value as "sleep"|"nap"})}>
+                                  <option value="sleep">Sueño</option><option value="nap">Siesta</option>
+                                </select>
+                              </label>
+                              <label className="text-xs text-muted-foreground">Fecha de inicio
+                                <Input className="mt-1" type="date" value={editingSession.session.startDate} onChange={event=>updateDraft({startDate:event.target.value})}/>
+                              </label>
+                              <label className="text-xs text-muted-foreground">Hora de inicio
+                                <Input className="mt-1" type="time" value={editingSession.session.bedtime} onChange={event=>updateDraft({bedtime:event.target.value})}/>
+                              </label>
+                              <label className="text-xs text-muted-foreground">Fecha de finalización
+                                <Input className="mt-1" type="date" value={editingSession.session.endDate} onChange={event=>updateDraft({endDate:event.target.value})}/>
+                              </label>
+                              <label className="text-xs text-muted-foreground">Hora de finalización
+                                <Input className="mt-1" type="time" value={editingSession.session.wakeTime} onChange={event=>updateDraft({wakeTime:event.target.value})}/>
+                              </label>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Button type="button" size="sm" disabled={updateSleepSession.isPending}
+                                onClick={()=>void saveEditedSession().catch(error=>toast.error(describeError(error,"No se pudo actualizar el periodo."),{duration:10000}))}>
+                                {updateSleepSession.isPending?"Guardando…":"Guardar cambios"}
+                              </Button>
+                              <Button type="button" size="sm" variant="ghost" disabled={updateSleepSession.isPending}
+                                onClick={()=>setEditingSession(null)}>Cancelar</Button>
+                            </div>
+                          </div>;
+                        }
                         return <div key={session.id} className="flex flex-wrap items-center justify-between gap-2">
                           <p className="min-w-0 text-xs text-muted-foreground">
                             {session.kind==="nap"?"Siesta":`Sueño ${index+1}`} · {session.startDate} {session.bedtime} → {session.endDate} {session.wakeTime}
@@ -504,22 +558,28 @@ export function SleepPanel() {
                                 onClick={()=>void deleteSleepSession.mutateAsync({metricDate:row.date,sessionId:session.id}).then(()=>{
                                   setSessionPendingDelete(null);
                                   toast.success("Periodo de sueño eliminado. Los demás registros se conservaron.");
-                                }).catch(error=>toast.error(error instanceof Error?error.message:"No se pudo eliminar el periodo."))}>
+                                }).catch(error=>toast.error(describeError(error,"No se pudo eliminar el periodo."),{duration:10000}))}>
                                 {deleteSleepSession.isPending?"Eliminando…":"Confirmar"}
                               </Button>
                               <Button type="button" size="sm" variant="ghost" disabled={deleteSleepSession.isPending}
                                 onClick={()=>setSessionPendingDelete(null)}>Cancelar</Button>
                             </div>
                           ) : (
-                            <Button type="button" size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-muted-foreground hover:text-destructive"
-                              aria-label={`Eliminar ${session.kind==="nap"?"siesta":"periodo de sueño"} del ${session.startDate} a las ${session.bedtime}`}
-                              title="Eliminar este periodo" onClick={()=>setSessionPendingDelete(deleteKey)}>
-                              <Trash2 className="mr-1 h-3.5 w-3.5"/>
-                              <span className="text-[11px]">Eliminar</span>
-                            </Button>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground"
+                                aria-label="Editar este periodo" title="Editar este periodo"
+                                onClick={()=>{setSessionPendingDelete(null);setEditingSession({key:deleteKey,metricDate:row.date,session:{...session}});}}>
+                                <Pencil className="mr-1 h-3.5 w-3.5"/><span className="text-[11px]">Editar</span>
+                              </Button>
+                              <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-destructive"
+                                aria-label={`Eliminar ${session.kind==="nap"?"siesta":"periodo de sueño"} del ${session.startDate} a las ${session.bedtime}`}
+                                title="Eliminar este periodo" onClick={()=>setSessionPendingDelete(deleteKey)}>
+                                <Trash2 className="mr-1 h-3.5 w-3.5"/><span className="text-[11px]">Eliminar</span>
+                              </Button>
+                            </div>
                           )}
                         </div>;
-                      })}
+                      })})}
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
