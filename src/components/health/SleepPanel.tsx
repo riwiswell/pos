@@ -12,6 +12,7 @@ import { useGlobalDate } from "@/hooks/use-global-date";
 import { useDeleteSleepSessionMutation, usePersonalRecentList, useSleepSessionsMutation } from "@/hooks/use-personal-domains";
 import { useProfile, useProfileMutations } from "@/hooks/use-profile";
 import { addDaysISO, formatDayLabel } from "@/lib/date";
+import { describeError } from "@/lib/error-message";
 
 const STRUCTURED_MARKER = "__POS_BODY_MEASURES__";
 
@@ -114,7 +115,7 @@ export function SleepPanel() {
   const deleteSleepSession = useDeleteSleepSessionMutation();
   const [sessionPendingDelete, setSessionPendingDelete] = useState<string | null>(null);
   const profileQuery = useProfile();
-  const profileMutations = useProfileMutations();
+  const profileMutations = useProfileMutations({ quietSave: true });
   const [schedule,setSchedule]=useState({bedtime:"",wakeTime:""});
   const [pendingSessions,setPendingSessions]=useState<SleepSession[]>(()=>[createEmptySleepSession(date)]);
   useEffect(()=>{
@@ -467,7 +468,7 @@ export function SleepPanel() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" disabled={profileQuery.isLoading || profileMutations.save.isPending} onClick={() => void saveSchedule().catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo guardar el horario habitual."))}>
+          <Button size="sm" variant="outline" disabled={profileQuery.isLoading || profileMutations.save.isPending} onClick={() => void saveSchedule().catch((error) => toast.error(describeError(error, "No se pudo guardar el horario habitual."), { duration: 10000 }))}>
             {profileMutations.save.isPending ? "Guardando…" : "Guardar horario habitual"}
           </Button>
           {(schedule.bedtime || schedule.wakeTime) && (
