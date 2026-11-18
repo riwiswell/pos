@@ -9,13 +9,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useGlobalDate } from "@/hooks/use-global-date";
-import { useHealthMetricMutation, usePersonalDateList, usePersonalRecentList } from "@/hooks/use-personal-domains";
+import { usePersonalRecentList, useSleepSessionsMutation } from "@/hooks/use-personal-domains";
 import { useProfile, useProfileMutations } from "@/hooks/use-profile";
-import { formatDayLabel } from "@/lib/date";
+import { addDaysISO, formatDayLabel } from "@/lib/date";
 
 const STRUCTURED_MARKER = "__POS_BODY_MEASURES__";
 
-type SleepSession = { bedtime: string; wakeTime: string };
+type SleepSession = { id:string; startDate:string; bedtime:string; endDate:string; wakeTime:string; kind:"sleep"|"nap" };
 
 type SleepDetails = {
   bedtime: string;
@@ -37,8 +37,6 @@ type StructuredNotes = {
   notes: string;
   sleep: Record<string, unknown>;
 };
-
-const EMPTY_SLEEP: SleepDetails = { bedtime: "", wakeTime: "", awakenings: "", napMinutes: "" };
 
 function readStructuredNotes(note: string | null): StructuredNotes {
   if (!note) return { body: {}, notes: "", sleep: {} };
@@ -77,6 +75,24 @@ function sleepDurationHours(bedtime: string, wakeTime: string): number | null {
   return Math.round((minutes / 60) * 100) / 100;
 }
 
+function createEmptySleepSession(date:string):SleepSession {
+ return {id:typeof crypto!=="undefined"&&typeof crypto.randomUUID==="function"?crypto.randomUUID():`sleep-${Date.now()}-${Math.random().toString(36).slice(2)}`,startDate:date,bedtime:"",endDate:date,wakeTime:"",kind:"sleep"};
+}
+function sleepSessionDurationHours(session:SleepSession):number|null {
+ const dp=/^(\d{4})-(\d{2})-(\d{2})$/,tp=/^(\d{2}):(\d{2})$/;
+ const sd=dp.exec(session.startDate),ed=dp.exec(session.endDate),st=tp.exec(session.bedtime),et=tp.exec(session.wakeTime);
+ if(!sd||!ed||!st||!et)return null;
+ const mins=(d:RegExpExecArray,t:RegExpExecArray)=>{
+  const y=+d[1],m=+d[2],day=+d[3],h=+t[1],minute=+t[2];
+  if(m<1||m>12||h>23||minute>59)return null;
+  const ms=Date.UTC(y,m-1,day,h,minute),check=new Date(ms);
+  if(check.getUTCFullYear()!==y||check.getUTCMonth()!==m-1||check.getUTCDate()!==day)return null;
+  return Math.floor(ms/60000);
+ };
+ const a=mins(sd,st),b=mins(ed,et);
+ if(a===null||b===null||b<=a||b-a>1440)return null;
+ return Math.round(((b-a)/60)*100)/100;
+}
 function formatSleepHours(value: number): string {
   const totalMinutes = Math.round(value * 60);
   const hours = Math.floor(totalMinutes / 60);
@@ -91,32 +107,21 @@ function shortDate(date: string): string {
 }
 
 export function SleepPanel() {
-  const { date, goToday } = useGlobalDate();
-  useEffect(() => { goToday(); }, [goToday]);
+  const { date } = useGlobalDate();
   const navigate = useNavigate();
-  const currentQuery = usePersonalDateList<HealthMetric>("health_metrics", "metric_date", date);
   const historyQuery = usePersonalRecentList<HealthMetric>("health_metrics", "metric_date", 100);
-  const saveMetric = useHealthMetricMutation();
+  const saveSessions = useSleepSessionsMutation();
   const profileQuery = useProfile();
   const profileMutations = useProfileMutations();
-
-  const current = currentQuery.data?.[0];
-  const [sleepDetails, setSleepDetails] = useState<SleepDetails>(EMPTY_SLEEP);
-  const [manualHours, setManualHours] = useState("");
-  const [schedule, setSchedule] = useState({ bedtime: "", wakeTime: "" });
-  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
-  const [extraSessions, setExtraSessions] = useState<SleepSession[]>([]);
-
-  useEffect(() => {
-    setSleepDetails(readSleepDetails(current?.notes ?? null));
-    setManualHours(current?.sleep_hours == null ? "" : String(current.sleep_hours));
-    const storedSleep = readStructuredNotes(current?.notes ?? null).sleep;
-    const sessions = Array.isArray(storedSleep.sessions) ? storedSleep.sessions : [];
-    setExtraSessions(sessions.slice(1).filter((item) => item && typeof item === "object").map((item: any) => ({
-      bedtime: typeof item.bedtime === "string" ? item.bedtime : "",
-      wakeTime: typeof item.wakeTime === "string" ? item.wakeTime : "",
-    })));
-  }, [current?.id, current?.metric_date, current?.notes, current?.sleep_hours]);
+  const [schedule,setSchedule]=useState({bedtime:"",wakeTime:""});
+  const [pendingSessions,setPendingSessions]=useState<SleepSession[]>(()=>[createEmptySleepSession(date)]);
+  useEffect(()=>{
+    setPendingSessions(items=>items.length===1&&!items[0].bedtime&&!items[0].wakeTime?[createEmptySleepSession(date)]:items);
+  },[date]);
+  const enteredSessions=pendingSessions.filter(s=>s.bedtime||s.wakeTime);
+  const pendingDurations=enteredSessions.map(sleepSessionDurationHours);
+  const calculatedHours=pendingDurations.length>0&&pendingDurations.every(v=>v!==null)
+    ?Math.round(pendingDurations.reduce((sum,v)=>sum+(v??0),0)*100)/100:null;
 
   useEffect(() => {
     const stored = profileQuery.data?.notification_preferences?.sleep_schedule;
@@ -126,56 +131,34 @@ export function SleepPanel() {
     });
   }, [profileQuery.data]);
 
-  const enteredSessions = [
-    { bedtime: sleepDetails.bedtime, wakeTime: sleepDetails.wakeTime },
-    ...extraSessions,
-  ].filter((session) => session.bedtime || session.wakeTime);
-  const sessionDurations = enteredSessions.map((session) => sleepDurationHours(session.bedtime, session.wakeTime));
-  const calculatedHours = sessionDurations.length > 0 && sessionDurations.every((value) => value !== null)
-    ? Math.round(sessionDurations.reduce((sum, value) => sum + (value ?? 0), 0) * 100) / 100
-    : null;
-  const hoursValue = calculatedHours ?? (manualHours.trim() ? Number(manualHours.replace(",", ".")) : null);
-
-  // Keep every row that actually contains sleep information, even when its
-  // duration is incomplete. The chart uses valid durations; the visible
-  // history still shows incomplete records so a saved night is never hidden.
   const allSleepRecords = useMemo(() => {
-    return (historyQuery.data ?? [])
-      .map((row) => {
-        const details = readSleepDetails(row.notes);
-        const storedHours = row.sleep_hours == null ? null : Number(row.sleep_hours);
-        const hasValidStoredHours =
-          storedHours !== null && Number.isFinite(storedHours) && storedHours > 0 && storedHours <= 24;
-        const storedSessions = readStructuredNotes(row.notes).sleep.sessions;
-        const sessions: SleepSession[] = Array.isArray(storedSessions) && storedSessions.length
-          ? storedSessions.filter((session: any) => session && typeof session === "object").map((session: any) => ({
-              bedtime: typeof session.bedtime === "string" ? session.bedtime : "",
-              wakeTime: typeof session.wakeTime === "string" ? session.wakeTime : "",
-            })).filter((session) => session.bedtime && session.wakeTime)
-          : details.bedtime && details.wakeTime ? [{ bedtime: details.bedtime, wakeTime: details.wakeTime }] : [];
-        const sessionTotal = sessions.length
-          ? sessions.reduce((sum, session) => sum + (sleepDurationHours(session.bedtime, session.wakeTime) ?? 0), 0)
-          : null;
-        const recoveredHours = hasValidStoredHours
-          ? storedHours
-          : sessionTotal !== null ? sessionTotal : sleepDurationHours(details.bedtime, details.wakeTime);
-        const hasSleepData =
-          row.sleep_hours !== null && row.sleep_hours !== undefined ||
-          Boolean(details.bedtime || details.wakeTime || details.awakenings || details.napMinutes) ||
-          (Array.isArray(storedSessions) && storedSessions.length > 0);
-        const hours = recoveredHours !== null && Number.isFinite(recoveredHours) &&
-          recoveredHours > 0 && recoveredHours <= 24 ? recoveredHours : null;
-        return { date: row.metric_date, hours, details, sessions, hasSleepData };
-      })
-      .filter((row) => row.hasSleepData)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(-30)
-      .map((row) => ({ ...row, label: shortDate(row.date) }));
-  }, [historyQuery.data]);
+    return (historyQuery.data ?? []).map((row) => {
+      const details=readSleepDetails(row.notes),sleep=readStructuredNotes(row.notes).sleep;
+      const storedHours=row.sleep_hours==null?null:Number(row.sleep_hours);
+      const hasValidStoredHours=storedHours!==null&&Number.isFinite(storedHours)&&storedHours>0&&storedHours<=24;
+      const raw=Array.isArray(sleep.sessions)?sleep.sessions:[];
+      const sessions:SleepSession[]=raw.length?raw.map((item:any,index:number)=>{
+        const bedtime=typeof item?.bedtime==="string"?item.bedtime:"",wakeTime=typeof item?.wakeTime==="string"?item.wakeTime:"";
+        const startDate=typeof item?.startDate==="string"?item.startDate:typeof item?.start_date==="string"?item.start_date:row.metric_date;
+        const endDate=typeof item?.endDate==="string"?item.endDate:typeof item?.end_date==="string"?item.end_date:bedtime&&wakeTime&&wakeTime<bedtime?addDaysISO(startDate,1):startDate;
+        return {id:typeof item?.id==="string"?item.id:`legacy-${row.metric_date}-${index}`,startDate,bedtime,endDate,wakeTime,kind:item?.kind==="nap"?"nap" as const:"sleep" as const};
+      }).filter(s=>s.bedtime&&s.wakeTime):details.bedtime&&details.wakeTime?[{
+        id:`legacy-${row.metric_date}-main`,startDate:row.metric_date,bedtime:details.bedtime,
+        endDate:details.wakeTime<details.bedtime?addDaysISO(row.metric_date,1):row.metric_date,
+        wakeTime:details.wakeTime,kind:"sleep" as const,
+      }]:[];
+      const sessionTotal=sessions.length?sessions.reduce((sum,s)=>sum+(sleepSessionDurationHours(s)??0),0):null;
+      const recovered=hasValidStoredHours?storedHours:sessionTotal!==null?sessionTotal:sleepDurationHours(details.bedtime,details.wakeTime);
+      const hasSleepData=row.sleep_hours!==null&&row.sleep_hours!==undefined||
+        Boolean(details.bedtime||details.wakeTime||details.awakenings||details.napMinutes)||(Array.isArray(sleep.sessions)&&sleep.sessions.length>0);
+      const hours=recovered!==null&&Number.isFinite(recovered)&&recovered>0&&recovered<=24?recovered:null;
+      return {date:row.metric_date,hours,details,sessions,hasSleepData};
+    }).filter(row=>row.hasSleepData).sort((a,b)=>a.date.localeCompare(b.date)).slice(-30).map(row=>({...row,label:shortDate(row.date)}));
+  },[historyQuery.data]);
 
   const history = useMemo(
     () => allSleepRecords.filter(
-      (row): row is { date: string; hours: number; details: SleepDetails; hasSleepData: boolean; label: string } =>
+      (row): row is { date: string; hours: number; details: SleepDetails; sessions: SleepSession[]; hasSleepData: boolean; label: string } =>
         row.hours !== null,
     ),
     [allSleepRecords],
@@ -252,72 +235,16 @@ export function SleepPanel() {
     },
   });
 
-  const saveSleep = async (confirmed = false) => {
-    if (current?.sleep_hours != null && !confirmed) {
-      setConfirmOverwrite(true);
-      return;
+  const saveSleep=async()=>{
+    const sessions=pendingSessions.filter(s=>s.bedtime||s.wakeTime);
+    if(!sessions.length)throw new Error("Añade al menos un periodo de sueño con hora de inicio y fin.");
+    for(const [index,session] of sessions.entries()){
+      if(!session.startDate||!session.endDate||!session.bedtime||!session.wakeTime)throw new Error(`Completa las fechas y horas del periodo ${index+1}.`);
+      if(sleepSessionDurationHours(session)===null)throw new Error(`Revisa el periodo ${index+1}: la finalización debe ser posterior al inicio y no superar 24 horas.`);
     }
-    const sessions = [{ bedtime: sleepDetails.bedtime, wakeTime: sleepDetails.wakeTime }, ...extraSessions];
-    for (const [index, session] of sessions.entries()) {
-      if (Boolean(session.bedtime) !== Boolean(session.wakeTime)) {
-        throw new Error(`Completa las dos horas de la sesión ${index + 1}.`);
-      }
-      if (session.bedtime && session.bedtime === session.wakeTime) {
-        throw new Error(`Las horas de la sesión ${index + 1} no pueden ser iguales.`);
-      }
-    }
-    if (!sessions.some((session) => session.bedtime && session.wakeTime) && !manualHours.trim()) {
-      throw new Error("Registra al menos una sesión completa o indica la duración.");
-    }
-
-    const integers = [
-      ["despertares", sleepDetails.awakenings, 0, 30],
-      ["minutos de siesta", sleepDetails.napMinutes, 0, 1440],
-    ] as const;
-    for (const [label, raw, min, max] of integers) {
-      if (!raw.trim()) continue;
-      const value = Number(raw);
-      if (!Number.isInteger(value) || value < min || value > max) {
-        throw new Error(`Revisa ${label}: debe estar entre ${min} y ${max}.`);
-      }
-    }
-    if (calculatedHours === null && manualHours.trim()) {
-      const manual = Number(manualHours.replace(",", "."));
-      if (!Number.isFinite(manual) || manual <= 0 || manual > 24) {
-        throw new Error("La duración debe ser un número mayor que 0 y máximo de 24 horas.");
-      }
-    }
-    if (hoursValue === null || !Number.isFinite(hoursValue) || hoursValue <= 0 || hoursValue > 24) {
-      throw new Error("No se pudo calcular una duración válida.");
-    }
-
-    const previous = readStructuredNotes(current?.notes ?? null);
-    const notes = JSON.stringify({
-      marker: STRUCTURED_MARKER,
-      body: previous.body,
-      notes: previous.notes,
-      sleep: {
-        bedtime: sleepDetails.bedtime || null,
-        wakeTime: sleepDetails.wakeTime || null,
-        awakenings: sleepDetails.awakenings === "" ? null : Number(sleepDetails.awakenings),
-        napMinutes: sleepDetails.napMinutes === "" ? null : Number(sleepDetails.napMinutes),
-        sessions: sessions.filter((session) => session.bedtime && session.wakeTime),
-      },
-    });
-
-    const preserved = Object.fromEntries(
-      Object.entries(current ?? {}).filter(
-        ([key]) => !["id", "user_id", "created_at", "updated_at"].includes(key),
-      ),
-    );
-
-    await saveMetric.mutateAsync({
-      ...preserved,
-      metric_date: date,
-      sleep_hours: hoursValue,
-      notes,
-    });
-    toast.success("Registro de sueño guardado.");
+    await saveSessions.mutateAsync(sessions);
+    setPendingSessions([createEmptySleepSession(date)]);
+    toast.success("Sesión guardada. Los registros anteriores se conservaron.");
   };
 
   const saveSchedule = async () => {
@@ -469,68 +396,50 @@ export function SleepPanel() {
 
       <section className="glass space-y-4 rounded-2xl p-4">
         <div>
-          <h3 className="font-semibold">Registrar sueño</h3>
-          <p className="text-xs text-muted-foreground">
-            Fecha del registro: {formatDayLabel(date)}. Si dormiste después de medianoche, el sistema calcula el cruce de día.
-          </p>
+          <h3 className="font-semibold">Registrar sesiones de sueño</h3>
+          <p className="text-xs text-muted-foreground">Cada periodo se guarda por separado con su propia fecha y hora. Puedes registrar varios periodos de días distintos. Añadir una sesión nunca reemplaza las anteriores.</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <label className="text-xs text-muted-foreground">
-            Me acosté
-            <Input className="mt-1" type="time" value={sleepDetails.bedtime} onChange={(event) => setSleepDetails((value) => ({ ...value, bedtime: event.target.value }))} />
-          </label>
-          <label className="text-xs text-muted-foreground">
-            Me levanté
-            <Input className="mt-1" type="time" value={sleepDetails.wakeTime} onChange={(event) => setSleepDetails((value) => ({ ...value, wakeTime: event.target.value }))} />
-          </label>
-          <label className="text-xs text-muted-foreground">
-            Duración (horas)
-            <Input className="mt-1" inputMode="decimal" value={calculatedHours !== null ? calculatedHours.toFixed(2) : manualHours} readOnly={calculatedHours !== null} onChange={(event) => setManualHours(event.target.value)} placeholder="Ej. 7,5" />
-          </label>
-          <label className="text-xs text-muted-foreground">
-            Despertares
-            <Input className="mt-1" type="number" min="0" max="30" step="1" value={sleepDetails.awakenings} onChange={(event) => setSleepDetails((value) => ({ ...value, awakenings: event.target.value }))} placeholder="0" />
-          </label>
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
-            <label className="min-w-0 text-xs text-muted-foreground">
-              Siesta (min)
-              <Input className="mt-1" type="number" min="0" max="1440" step="5" value={sleepDetails.napMinutes} onChange={(event) => setSleepDetails((value) => ({ ...value, napMinutes: event.target.value }))} placeholder="0" />
-            </label>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-10 whitespace-nowrap px-2 text-xs"
-              onClick={() => void navigate({ to: "/diario", search: { capture: "dream" } })}
-            >
-              <MoonStar className="mr-1 h-3.5 w-3.5" />
-              Sueño (soñar)
-            </Button>
-          </div>
+        <div className="space-y-3">
+          {pendingSessions.map((session,index)=>{
+            const duration=sleepSessionDurationHours(session);
+            return <div key={session.id} className="space-y-3 rounded-xl border bg-background/50 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Periodo {index+1}</p>
+                <div className="flex items-center gap-2">
+                  {duration!==null&&<span className="text-xs text-muted-foreground">{formatSleepHours(duration)}</span>}
+                  {pendingSessions.length>1&&<Button type="button" size="icon" variant="ghost" aria-label={`Quitar periodo ${index+1}`} onClick={()=>setPendingSessions(items=>items.filter(item=>item.id!==session.id))}>×</Button>}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <label className="text-xs text-muted-foreground">Tipo
+                  <select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground" value={session.kind}
+                    onChange={event=>setPendingSessions(items=>items.map(item=>item.id===session.id?{...item,kind:event.target.value as "sleep"|"nap"}:item))}>
+                    <option value="sleep">Sueño</option><option value="nap">Siesta</option>
+                  </select>
+                </label>
+                <label className="text-xs text-muted-foreground">Fecha de inicio
+                  <Input className="mt-1" type="date" value={session.startDate} onChange={event=>setPendingSessions(items=>items.map(item=>item.id===session.id?{...item,startDate:event.target.value}:item))}/>
+                </label>
+                <label className="text-xs text-muted-foreground">Hora de inicio
+                  <Input className="mt-1" type="time" value={session.bedtime} onChange={event=>setPendingSessions(items=>items.map(item=>item.id===session.id?{...item,bedtime:event.target.value}:item))}/>
+                </label>
+                <label className="text-xs text-muted-foreground">Fecha de finalización
+                  <Input className="mt-1" type="date" value={session.endDate} onChange={event=>setPendingSessions(items=>items.map(item=>item.id===session.id?{...item,endDate:event.target.value}:item))}/>
+                </label>
+                <label className="text-xs text-muted-foreground">Hora de finalización
+                  <Input className="mt-1" type="time" value={session.wakeTime} onChange={event=>setPendingSessions(items=>items.map(item=>item.id===session.id?{...item,wakeTime:event.target.value}:item))}/>
+                </label>
+              </div>
+            </div>;
+          })}
         </div>
-        <div className="space-y-2 rounded-xl border border-dashed p-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">Otras sesiones del día</p>
-            <Button type="button" size="sm" variant="outline" onClick={() => setExtraSessions((items) => [...items, { bedtime: "", wakeTime: "" }])}>Añadir otro periodo</Button>
-          </div>
-          {extraSessions.map((session, index) => (
-            <div key={index} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
-              <label className="text-xs text-muted-foreground">Inicio<Input className="mt-1" type="time" value={session.bedtime} onChange={(event) => setExtraSessions((items) => items.map((item, i) => i === index ? { ...item, bedtime: event.target.value } : item))} /></label>
-              <label className="text-xs text-muted-foreground">Fin<Input className="mt-1" type="time" value={session.wakeTime} onChange={(event) => setExtraSessions((items) => items.map((item, i) => i === index ? { ...item, wakeTime: event.target.value } : item))} /></label>
-              <Button type="button" size="icon" variant="ghost" aria-label="Quitar sesión" onClick={() => setExtraSessions((items) => items.filter((_, i) => i !== index))}>×</Button>
-            </div>
-          ))}
-          <p className="text-[11px] text-muted-foreground">Si te despiertas durante la noche y vuelves a dormir, añade aquí ese segundo periodo. También puedes registrar siestas. POS sumará solo el tiempo dormido y mostrará cada periodo por separado.</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={()=>setPendingSessions(items=>[...items,createEmptySleepSession(date)])}>Añadir otra sesión</Button>
+          {calculatedHours!==null&&<p className="text-xs text-muted-foreground">Total de los periodos: {formatSleepHours(calculatedHours)}</p>}
         </div>
-                {hoursValue !== null && Number.isFinite(hoursValue) && hoursValue > 0 && (
-          <p className="text-xs text-muted-foreground">Duración calculada: {formatSleepHours(hoursValue)}</p>
-        )}
-        <Button
-          disabled={currentQuery.isLoading || currentQuery.isError || saveMetric.isPending}
-          onClick={() => void saveSleep().catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo guardar el registro de sueño."))}
-        >
-          <Save className="mr-2 h-4 w-4" />
-          {saveMetric.isPending ? "Guardando…" : "Guardar registro de sueño"}
+        <Button disabled={historyQuery.isLoading||historyQuery.isError||saveSessions.isPending}
+          onClick={()=>void saveSleep().catch(error=>toast.error(error instanceof Error?error.message:"No se pudieron guardar las sesiones."))}>
+          <Save className="mr-2 h-4 w-4"/>{saveSessions.isPending?"Guardando…":"Guardar sesiones de sueño"}
         </Button>
       </section>
 
@@ -577,14 +486,12 @@ export function SleepPanel() {
                   <p className="text-sm font-medium">{formatDayLabel(row.date)}</p>
                   {row.sessions.length > 0 ? (
                     <div className="mt-1 space-y-1">
-                      {row.sessions.map((session, index) => {
-                        const duration = sleepDurationHours(session.bedtime, session.wakeTime);
-                        return (
-                          <p key={index} className="text-xs text-muted-foreground">
-                            {index === 0 ? "Sueño principal" : `Otro periodo de sueño ${index + 1}`} · {session.bedtime} – {session.wakeTime}
-                            {duration !== null ? ` · ${formatSleepHours(duration)}` : ""}
-                          </p>
-                        );
+                      {row.sessions.map((session,index)=>{
+                        const duration=sleepSessionDurationHours(session);
+                        return <p key={session.id} className="text-xs text-muted-foreground">
+                          {session.kind==="nap"?"Siesta":`Sueño ${index+1}`} · {session.startDate} {session.bedtime} → {session.endDate} {session.wakeTime}
+                          {duration!==null?` · ${formatSleepHours(duration)}`:""}
+                        </p>;
                       })}
                     </div>
                   ) : (
@@ -608,19 +515,6 @@ export function SleepPanel() {
         )}
       </section>
 
-      {confirmOverwrite && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="sleep-overwrite-title">
-          <div className="w-full max-w-md space-y-4 rounded-2xl border bg-background p-5 shadow-xl">
-            <h3 id="sleep-overwrite-title" className="text-lg font-semibold">Ya existe un registro de sueño para esta fecha</h3>
-            <p className="text-sm text-muted-foreground">Ya hay sueño registrado para esta fecha. Puedes añadir sesiones y siestas; al guardar se conservarán todas las sesiones que aparecen en el formulario.</p>
-            <p className="text-sm">Confirma solo si deseas guardar los cambios del día.</p>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="ghost" onClick={() => setConfirmOverwrite(false)}>Volver sin guardar</Button>
-              <Button type="button" onClick={() => { setConfirmOverwrite(false); void saveSleep(true).catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo guardar el registro de sueño.")); }}>Guardar sesiones del día</Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
