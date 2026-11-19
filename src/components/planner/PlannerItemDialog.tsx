@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -83,11 +84,34 @@ function ItemForm({
   const [location, setLocation] = useState(item?.location ?? "");
   const [priority, setPriority] = useState<PlannerPriority>(item?.priority ?? "normal");
   const [categoryId, setCategoryId] = useState<string | null>(item?.category_id ?? null);
+  const [previousCategoryId, setPreviousCategoryId] = useState<string | null>(null);
   const [categoryOpen, setCategoryOpen] = useState(false);
+  const normalizeCategoryName = (value: string) =>
+    value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es").trim();
+  const medicalCategory = categories.find(
+    (category) => normalizeCategoryName(category.name) === "cita medica",
+  );
+  const isMedicalAppointment = kind === "event" &&
+    Boolean(medicalCategory && categoryId === medicalCategory.id);
+
+  async function toggleMedicalAppointment() {
+    if (isMedicalAppointment) {
+      setCategoryId(previousCategoryId);
+      return;
+    }
+    setPreviousCategoryId(categoryId);
+    const category = medicalCategory ??
+      await onCreateCategory({ name: "Cita médica", color: "#0EA5E9" });
+    setCategoryId(category.id);
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!title.trim()) return;
+    if (isMedicalAppointment && !startTime) {
+      toast.error("Indica la hora de la cita médica para poder programar sus avisos.");
+      return;
+    }
     await onSubmit({
       type: kind,
       title: title.trim(),
@@ -169,6 +193,19 @@ function ItemForm({
             value={dueOn}
             onChange={(event) => setDueOn(event.target.value)}
           />
+        </div>
+      )}
+
+      {kind === "event" && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-sky-500/30 bg-sky-500/[.06] p-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">¿Es una cita médica?</p>
+            <p className="text-xs text-muted-foreground">También aparecerá en Salud → Citas y tendrá avisos locales.</p>
+          </div>
+          <Button type="button" size="sm" variant={isMedicalAppointment ? "default" : "outline"} className="shrink-0"
+            onClick={() => void toggleMedicalAppointment()}>
+            {isMedicalAppointment ? "Sí, es cita" : "Marcar cita"}
+          </Button>
         </div>
       )}
 
