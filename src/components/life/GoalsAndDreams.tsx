@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { BookOpen, CalendarDays, Camera, ImagePlus, Pencil, Plus, Save, Sparkles, Trash2, X } from "lucide-react";
+import { BookOpen, ImagePlus, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/common/RichTextEditor";
@@ -448,7 +448,7 @@ export function DreamMapPage() {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dreams = (q.data || []).filter((entry: any) => entry.type === "dream");
-  const paths = useMemo(() => dreams.flatMap((dream: any) => Array.isArray(dream.photos) ? dream.photos : []).filter((path: string) => typeof path === "string" && path), [dreams]);
+  const paths = useMemo(() => [...dreams.flatMap((dream: any) => Array.isArray(dream.photos) ? dream.photos : []), ...photos].filter((path: string) => typeof path === "string" && path), [dreams, photos]);
   const photoQuery = usePrivatePhotos(paths, paths.length > 0);
   const photoByPath = useMemo(() => new Map((photoQuery.data || []).map((photo: any) => [photo.path, photo.url])), [photoQuery.data]);
 
