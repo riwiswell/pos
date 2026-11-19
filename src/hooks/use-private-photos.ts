@@ -5,7 +5,7 @@ type CachedPhoto = {
   url: string;
   resolvedAt: number;
   expiresAt: number;
-  decodedImage?: HTMLImageElement;
+  decodedImage?: HTMLImageElement;\n  decoded: boolean;\n  ready: Promise<void>;
 };
 
 const SIGNED_URL_CACHE_MS = 55 * 60 * 1000;
@@ -28,13 +28,24 @@ function getCachedPhoto(path: string): CachedPhoto | undefined {
 
 function rememberPhoto(path: string, url: string): CachedPhoto {
   const now = Date.now();
-  const entry: CachedPhoto = { url, resolvedAt: now, expiresAt: now + SIGNED_URL_CACHE_MS };
+  const entry: CachedPhoto = {
+    url,
+    resolvedAt: now,
+    expiresAt: now + SIGNED_URL_CACHE_MS,
+    decoded: typeof window === "undefined",
+    ready: Promise.resolve(),
+  };
   if (typeof window !== "undefined") {
     const decodedImage = new window.Image();
     decodedImage.decoding = "async";
     decodedImage.src = url;
     entry.decodedImage = decodedImage;
-    void decodedImage.decode().catch(() => undefined);
+    // Mark it ready only after the browser has actually fetched and decoded it.
+    // This prevents an unmounted/reopened module from briefly showing an empty
+    // cover while the same signed URL is still warming up.
+    entry.ready = decodedImage.decode()
+      .catch(() => undefined)
+      .then(() => { entry.decoded = true; });
   }
   privatePhotoCache.delete(path);
   privatePhotoCache.set(path, entry);
@@ -49,7 +60,7 @@ function rememberPhoto(path: string, url: string): CachedPhoto {
 function cachedPhotoResults(paths: string[]) {
   const results = paths.map((path) => {
     const entry = getCachedPhoto(path);
-    return entry ? { path, url: entry.url, resolvedAt: entry.resolvedAt } : null;
+    return entry?.decoded ? { path, url: entry.url, resolvedAt: entry.resolvedAt } : null;
   });
   if (results.some((entry) => entry === null)) return undefined;
   return results as { path: string; url: string; resolvedAt: number }[];

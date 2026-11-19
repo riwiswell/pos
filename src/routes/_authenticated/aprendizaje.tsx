@@ -303,7 +303,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
   const remoteCover=isRemoteLearningCoverPath(coverPath);
   const coverQuery=usePrivatePhotos(coverPath&&!remoteCover?[coverPath]:[],Boolean(coverPath&&!remoteCover));
   const coverUrl=remoteCover?resolveLearningCoverUrl(coverPath):coverQuery.data?.find(item=>item.path===coverPath)?.url;
-  useEffect(()=>{preloadLearningCover(coverUrl)},[coverUrl]);
+  useEffect(()=>{if(remoteCover)preloadLearningCover(coverUrl)},[remoteCover,coverUrl]);
   const pageValue=Math.max(0,Number(page)||0);
   const progress=total?Math.min(100,Math.max(0,pageValue/total*100)):Number(book.progress)||0;
   const remain=Math.max(0,total-pageValue);
@@ -645,7 +645,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
   const remoteCover=isRemoteLearningCoverPath(path);
   const photoQuery=usePrivatePhotos(path&&!remoteCover?[path]:[],Boolean(path&&!remoteCover));
   const photoUrl=remoteCover?resolveLearningCoverUrl(path):photoQuery.data?.find(photo=>photo.path===path)?.url;
-  useEffect(()=>{preloadLearningCover(photoUrl)},[photoUrl]);
+  useEffect(()=>{if(remoteCover)preloadLearningCover(photoUrl)},[remoteCover,photoUrl]);
   const findGameCover=async()=>{
     setFindingCover(true);
     try{
@@ -674,7 +674,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
   return <article className="glass flex min-w-0 gap-3 overflow-hidden rounded-2xl p-3">
     <div className="relative w-[76px] shrink-0">
       <div className="aspect-[2/3] overflow-hidden rounded-xl border bg-muted shadow-sm">
-        {photoUrl?<img src={photoUrl} alt={"Portada de "+item.title} loading="lazy" decoding="async" className="h-full w-full object-cover"/>:
+        {photoUrl?<img src={photoUrl} alt={"Portada de "+item.title} loading="eager" fetchPriority="high" decoding="async" className="h-full w-full object-cover"/>:
           <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-stone-800 via-slate-800 to-slate-950 p-2 text-center text-white">
             <span className="text-2xl">{kindIcon(item.kind)}</span><span className="line-clamp-4 break-words text-[10px] font-semibold leading-tight">{item.title}</span>
           </div>}

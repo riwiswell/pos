@@ -84,13 +84,15 @@ function ItemForm({
   const [location, setLocation] = useState(item?.location ?? "");
   const [priority, setPriority] = useState<PlannerPriority>(item?.priority ?? "normal");
   const [categoryId, setCategoryId] = useState<string | null>(item?.category_id ?? null);
-  const [previousCategoryId, setPreviousCategoryId] = useState<string | null>(null);
-  const [categoryOpen, setCategoryOpen] = useState(false);
   const normalizeCategoryName = (value: string) =>
     value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es").trim();
   const medicalCategory = categories.find(
     (category) => normalizeCategoryName(category.name) === "cita medica",
   );
+  const [previousCategoryId, setPreviousCategoryId] = useState<string | null>(
+    item?.category_id && item.category_id !== medicalCategory?.id ? item.category_id : null,
+  );
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const isMedicalAppointment = kind === "event" &&
     Boolean(medicalCategory && categoryId === medicalCategory.id);
 

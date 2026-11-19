@@ -462,7 +462,7 @@ export function SleepPanel() {
                   dataKey="label"
                   tickLine={false}
                   axisLine={false}
-                  tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                  tick={{ fontSize: 9, fill: "var(--card-foreground)" }}
                   interval={0}
                   minTickGap={0}
                   angle={-32}
@@ -475,7 +475,7 @@ export function SleepPanel() {
                   tickLine={false}
                   axisLine={false}
                   width={38}
-                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tick={{ fontSize: 10, fill: "var(--card-foreground)" }}
                   tickFormatter={(value: number) => `${value} h`}
                 />
                 <Tooltip
@@ -490,7 +490,7 @@ export function SleepPanel() {
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""}
                   formatter={(value: number) => [formatSleepHours(Number(value)), "Duración"]}
                 />
-                <Bar dataKey="hours" name="Sueño" fill={SLEEP_CHART_COLORS[skin]} radius={[5, 5, 0, 0]} barSize={26} maxBarSize={26} isAnimationActive={false} />
+                <Bar dataKey="hours" name="Sueño" fill={SLEEP_CHART_COLORS[skin]} stroke="var(--card-foreground)" strokeWidth={1} radius={[5, 5, 0, 0]} barSize={26} maxBarSize={26} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>

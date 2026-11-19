@@ -92,10 +92,10 @@ export function DailyFocusPicker({ date, compact = false }: Props) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Crosshair className="h-4 w-4 text-primary" />
-            <h2 className="flex items-center gap-1 text-sm font-semibold">{compact ? "Enfoque" : "Enfoque del día"} <HelpTip helpKey="focus" /></h2>
+            <h2 className="flex items-center gap-1 text-sm font-semibold">{compact ? "Prioridad de hoy" : "Prioridad del día"} <HelpTip helpKey="focus" /></h2>
           </div>
           <Button size="sm" variant="outline" disabled={focusQuery.isError} onClick={() => setOpen(true)}>
-            {current ? "Cambiar" : "Elegir enfoque"}
+            {current ? "Cambiar" : "Definir prioridad"}
           </Button>
         </div>
 
@@ -105,7 +105,7 @@ export function DailyFocusPicker({ date, compact = false }: Props) {
           <p className="mt-3 text-base font-medium">{currentLabel}</p>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
-            {compact ? "Todavía no has elegido una prioridad." : "Elige una sola prioridad para esta fecha. Puedes pedirle a la IA que te ayude a decidir: abre el botón flotante y cuéntale qué tienes pendiente, cuánto tiempo tienes y cómo te sientes."}
+            "Escoge una sola tarea, hábito o idea para tenerla presente hoy. No marca nada como hecho ni cambia tu agenda."
           </p>
         )}
       </section>

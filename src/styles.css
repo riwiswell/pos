@@ -1932,3 +1932,44 @@ html.dark[data-skin="nintendo"] .weather-card .text-white,
 html.dark[data-skin="nintendo"] .weather-card [class*="text-sky-300"] {
   color: #145A78 !important;
 }
+
+/* Nintendo dark keeps its light card surfaces, so nested controls must use matching light-surface tokens. */
+html.dark[data-skin="nintendo"] .glass {
+  --background: #F8FAFC;
+  --foreground: #202A36;
+  --surface: #F1F4F7;
+  --surface-foreground: #202A36;
+  --card: #F8FAFC;
+  --card-foreground: #202A36;
+  --popover: #F8FAFC;
+  --popover-foreground: #202A36;
+  --muted: #E5E9EF;
+  --muted-foreground: #566171;
+  --accent: #DDE3EA;
+  --accent-foreground: #26313E;
+  --border: #D4DBE3;
+  --border-strong: #AEB8C5;
+  --input: #C0C9D4;
+}
+html.dark[data-skin="nintendo"] .weather-card {
+  --background: #F1F4F7;
+  --foreground: #202A36;
+  --surface: #F1F4F7;
+  --surface-foreground: #202A36;
+  --card: #F8FAFC;
+  --card-foreground: #202A36;
+  --popover: #F8FAFC;
+  --popover-foreground: #202A36;
+  --muted: #E5E9EF;
+  --muted-foreground: #566171;
+  --accent: #DDE3EA;
+  --accent-foreground: #26313E;
+  --border: #D4DBE3;
+}
+html.dark[data-skin="nintendo"] [class~="bg-card"][class~="text-foreground"] {
+  color: var(--card-foreground) !important;
+}
+html.dark[data-skin="nintendo"] [class~="bg-card"][class~="text-foreground"]:hover {
+  background-color: #E5E9EF !important;
+  color: #202A36 !important;
+}
