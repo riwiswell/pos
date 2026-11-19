@@ -2,7 +2,7 @@ export type SkinId =
   | "classic" | "lego" | "dc-comics" | "marvel"
   | "star-wars" | "football" | "pixel" | "winamp"
   | "nintendo" | "pokemon" | "resident-evil" | "zelda" | "mario" | "chess"
-  | "lumen" | "orchid";
+  | "lumen" | "orchid" | "simpsons" | "nba" | "barbie";
 
 export type SkinCollection = "Base" | "Universos" | "Estilos" | "Deportes";
 
@@ -133,6 +133,28 @@ export const BUILT_IN_SKINS: SkinDefinition[] = [
     glyph: "✿", collection: "Estilos", brandTitle: "ORCHID ATELIER", brandSubtitle: "VIOLET · ROSE · BALANCE",
     workspaceColor: { light: "#F0EAF4", dark: "#292334" },
     preview: { background: "#EDE4F1", sidebar: "#4B3A57", primary: "#9C76A7", accent: "#DDA9BE" },
+  },
+
+  {
+    id: "simpsons", name: "Los Simpson", tagline: "¡Excelente!",
+    description: "Springfield en amarillo, azul cielo y azul profundo, con energía de caricatura y humor cotidiano.",
+    glyph: "🍩", collection: "Universos", brandTitle: "SPRINGFIELD", brandSubtitle: "EXCELLENT DAILY LIFE",
+    workspaceColor: { light: "#FFF5C8", dark: "#172B43" },
+    preview: { background: "#F5D84B", sidebar: "#1768A5", primary: "#E6B92E", accent: "#6CBDE8" },
+  },
+  {
+    id: "nba", name: "NBA", tagline: "Make every day count",
+    description: "Cancha, marcador y energía de baloncesto: carbón, naranja de balón y detalles de cancha.",
+    glyph: "🏀", collection: "Deportes", brandTitle: "NBA DAILY LEAGUE", brandSubtitle: "MAKE YOUR MOVE",
+    workspaceColor: { light: "#EEF2F5", dark: "#101820" },
+    preview: { background: "#17232D", sidebar: "#0B1118", primary: "#F46A19", accent: "#D9E1E8" },
+  },
+  {
+    id: "barbie", name: "Barbie", tagline: "You can be anything",
+    description: "Rosa vibrante, fucsia y lavanda: una identidad alegre, brillante y llena de posibilidades.",
+    glyph: "💖", collection: "Estilos", brandTitle: "BARBIE DREAM SPACE", brandSubtitle: "YOU CAN BE ANYTHING",
+    workspaceColor: { light: "#FFF0F7", dark: "#25172D" },
+    preview: { background: "#F72585", sidebar: "#9D1654", primary: "#E51C78", accent: "#FFC3DE" },
   },
 ];
 
