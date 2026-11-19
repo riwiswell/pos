@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLGList } from "@/hooks/use-life-graph";
+import { usePlannerCategories, usePlannerItemsRange } from "@/hooks/use-planner";
+import { addDaysISO, todayISO } from "@/lib/date";
 
 type Appointment = { id:string; title:string; appointment_at:string; status?:string|null; alarm_enabled?:boolean|null; reminder_minutes?:number[]|null };
 const STORAGE_KEY = "personal-os:appointment-reminders-fired";
@@ -19,6 +21,22 @@ function reminderText(minutes:number) {
 /** Avisos locales globales: funcionan mientras Personal OS está abierto, sin VAPID. */
 export function useAppointmentReminders() {
  const query=useLGList("medical_appointments","appointment_at");
+ const today=todayISO();
+ const plannerCategories=usePlannerCategories();
+ const plannerItems=usePlannerItemsRange(today,addDaysISO(today,365*2));
+ const medicalCategory=plannerCategories.data?.find(category=>
+  category.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("es").trim()==="cita medica"
+ );
+ const plannerAppointments:Appointment[]=(plannerItems.data??[])
+  .filter(item=>item.type==="event"&&item.category_id===medicalCategory?.id)
+  .map(item=>({
+   id:"planner:"+item.id,
+   title:item.title,
+   appointment_at:item.scheduled_on+"T"+(item.start_time?.slice(0,5)||"09:00")+":00-05:00",
+   status:item.status==="done"?"done":"scheduled",
+   alarm_enabled:true,
+   reminder_minutes:[1440,60,0],
+  }));
  const [tick,setTick]=useState(0);
  const firedRef=useRef<Set<string>|null>(null);
  const registrationRef=useRef<ServiceWorkerRegistration|null>(null);
@@ -29,10 +47,11 @@ export function useAppointmentReminders() {
    return()=>window.clearInterval(timer);
  },[]);
  useEffect(()=>{
-   if(typeof window==="undefined"||!query.data)return;
+   if(typeof window==="undefined"||(!query.data&&!plannerItems.data))return;
    if(!firedRef.current)firedRef.current=readFired();
    const fired=firedRef.current;const now=Date.now();let changed=false;
-   for(const appointment of query.data as Appointment[]){
+   const allAppointments=[...((query.data??[]) as Appointment[]),...plannerAppointments];
+   for(const appointment of allAppointments){
     if(appointment.alarm_enabled===false||(appointment.status&&appointment.status!=="scheduled"))continue;
     const at=Date.parse(appointment.appointment_at);if(!Number.isFinite(at))continue;
     const configured=Array.isArray(appointment.reminder_minutes)&&appointment.reminder_minutes.length?appointment.reminder_minutes:[0];
@@ -50,5 +69,5 @@ export function useAppointmentReminders() {
     }
    }
    if(changed){try{const entries=Array.from(fired).slice(-500);firedRef.current=new Set(entries);localStorage.setItem(STORAGE_KEY,JSON.stringify(entries));}catch{/* La deduplicación en memoria sigue funcionando. */}}
- },[query.data,query.dataUpdatedAt,tick]);
+ },[query.data,query.dataUpdatedAt,plannerItems.data,plannerCategories.data,tick]);
 }
