@@ -301,7 +301,8 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
   const mine=notes;
   const remoteCover=isRemoteLearningCoverPath(coverPath);
   const coverQuery=usePrivatePhotos(coverPath&&!remoteCover?[coverPath]:[],Boolean(coverPath&&!remoteCover));
-  const coverUrl=remoteCover?resolveLearningCoverUrl(coverPath):coverQuery.data?.find(item=>item.path===coverPath)?.url;\n  useEffect(()=>{preloadLearningCover(coverUrl)},[coverUrl]);
+  const coverUrl=remoteCover?resolveLearningCoverUrl(coverPath):coverQuery.data?.find(item=>item.path===coverPath)?.url;
+  useEffect(()=>{preloadLearningCover(coverUrl)},[coverUrl]);
   const pageValue=Math.max(0,Number(page)||0);
   const progress=total?Math.min(100,Math.max(0,pageValue/total*100)):Number(book.progress)||0;
   const remain=Math.max(0,total-pageValue);
@@ -642,7 +643,8 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
   const path=item.cover_path?String(item.cover_path):null;
   const remoteCover=isRemoteLearningCoverPath(path);
   const photoQuery=usePrivatePhotos(path&&!remoteCover?[path]:[],Boolean(path&&!remoteCover));
-  const photoUrl=remoteCover?resolveLearningCoverUrl(path):photoQuery.data?.find(photo=>photo.path===path)?.url;\n  useEffect(()=>{preloadLearningCover(photoUrl)},[photoUrl]);
+  const photoUrl=remoteCover?resolveLearningCoverUrl(path):photoQuery.data?.find(photo=>photo.path===path)?.url;
+  useEffect(()=>{preloadLearningCover(photoUrl)},[photoUrl]);
   const findGameCover=async()=>{
     setFindingCover(true);
     try{
