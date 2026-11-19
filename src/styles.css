@@ -2140,3 +2140,104 @@ html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-teal-400"] {
 html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-orange-400"] {
   color: #C2410C !important;
 }
+
+/* Inicio: sistema de módulos con unidades compartidas.
+   La Línea de vida equivale a Clima + Emociones.
+   En el tablero, Hábitos ocupa dos unidades y Retos una; al otro lado,
+   Hidratación, Agenda y Diario ocupan una unidad cada una. */
+@media (min-width: 1200px) {
+  .inicio-hero-weather {
+    height: 100%;
+    align-self: stretch;
+  }
+  .inicio-hero-weather-grid {
+    height: 100%;
+    flex: 1 1 auto;
+    align-items: stretch;
+  }
+  .inicio-hero-weather-grid--with-activity {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .inicio-hero-weather-stack {
+    height: 100%;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    align-content: stretch;
+  }
+  .inicio-hero-weather-stack > * {
+    height: 100%;
+    min-height: 0;
+  }
+  .inicio-hero-weather .weather-card,
+  .inicio-hero-weather-stack > .weather-card {
+    height: 100%;
+  }
+  .inicio-hero-activity,
+  .inicio-hero-activity > section,
+  .inicio-hero-activity > .life-activity-feed {
+    height: 100%;
+  }
+
+  .inicio-dashboard-grid {
+    align-items: stretch;
+  }
+  .inicio-dashboard-column {
+    display: grid;
+    height: 100%;
+    min-height: 45rem;
+    grid-template-rows: repeat(3, minmax(15rem, 1fr));
+    align-items: stretch;
+    gap: .875rem;
+  }
+  .inicio-dashboard-column--habits .inicio-widget--habits {
+    grid-row: span 2;
+  }
+  .inicio-dashboard-column--habits .inicio-widget--shared-challenges {
+    grid-row: span 1;
+    height: 100%;
+    min-height: 0;
+  }
+  .inicio-dashboard-column--wellbeing > .inicio-widget--hydration,
+  .inicio-dashboard-column--wellbeing > .inicio-widget--agenda,
+  .inicio-dashboard-column--wellbeing > .inicio-widget--diary {
+    height: 100%;
+    min-height: 0;
+  }
+  .inicio-widget--habits > section,
+  .inicio-widget--hydration > section,
+  .inicio-widget--agenda > section,
+  .inicio-widget--diary > section {
+    height: 100%;
+    box-sizing: border-box;
+  }
+
+  .inicio-dashboard-extras {
+    align-items: stretch;
+  }
+  .inicio-widget--reading > section,
+  .inicio-widget--games > section {
+    height: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* Preserve natural content flow where the screen is too narrow for the tile grid. */
+@media (max-width: 1199px) {
+  .inicio-dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  .inicio-dashboard-column {
+    display: flex;
+    height: auto;
+    min-height: 0;
+  }
+  .inicio-dashboard-column--habits .inicio-widget--habits,
+  .inicio-dashboard-column--habits .inicio-widget--shared-challenges,
+  .inicio-dashboard-column--wellbeing > .inicio-widget--hydration,
+  .inicio-dashboard-column--wellbeing > .inicio-widget--agenda,
+  .inicio-dashboard-column--wellbeing > .inicio-widget--diary {
+    grid-row: auto;
+    height: auto;
+    min-height: 0;
+  }
+}
