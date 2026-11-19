@@ -15,27 +15,41 @@ const CACHEABLE_COVER_HOSTS = new Set([
   "steamcdn-a.akamaihd.net",
 ]);
 const CACHED_COVER_PREFIX = "/api/learning-cover-image?";
-const preloadedCoverImages = new Map<string, Promise<void>>();
+type PreloadedCover = { image: HTMLImageElement; ready: Promise<boolean> };
+const preloadedCoverImages = new Map<string, PreloadedCover>();
 
-/** Warm and decode a cover once so opening a book or game card is immediate. */
-export function preloadLearningCover(url: string | null | undefined): void {
-  if (!url || typeof window === "undefined" || preloadedCoverImages.has(url)) return;
+/** Keep a decoded image alive and expose when it is genuinely ready to render. */
+export function preloadLearningCover(url: string | null | undefined): Promise<boolean> {
+  if (!url || typeof window === "undefined") return Promise.resolve(false);
+  const cached = preloadedCoverImages.get(url);
+  if (cached) return cached.ready;
+
   const image = new window.Image();
   image.decoding = "async";
   image.fetchPriority = "high";
-  const loaded = new Promise<void>((resolve) => {
-    image.onload = () => resolve();
-    image.onerror = () => resolve();
+  const ready = new Promise<boolean>((resolve) => {
+    image.onload = () => {
+      if (typeof image.decode === "function") {
+        void image.decode().then(() => resolve(true)).catch(() => resolve(false));
+      } else {
+        resolve(true);
+      }
+    };
+    image.onerror = () => resolve(false);
+    image.src = url;
   });
-  preloadedCoverImages.set(url, loaded);
-  image.src = url;
-  if (image.complete && typeof image.decode === "function") {
-    void image.decode().catch(() => undefined);
-  }
+  const entry = { image, ready };
+  preloadedCoverImages.set(url, entry);
+  void ready.then((loaded) => {
+    if (!loaded && preloadedCoverImages.get(url) === entry) {
+      preloadedCoverImages.delete(url);
+    }
+  });
   if (preloadedCoverImages.size > 180) {
     const oldest = preloadedCoverImages.keys().next().value;
     if (oldest) preloadedCoverImages.delete(oldest);
   }
+  return ready;
 }
 
 
