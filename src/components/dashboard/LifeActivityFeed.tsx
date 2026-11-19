@@ -228,7 +228,7 @@ export function LifeActivityFeed({ date, connections, connectionsLoading }: { da
     () => new Map<string, Habit>((habitsQuery.data ?? []).map((habit) => [habit.id, habit] as const)),
     [habitsQuery.data],
   );
-  const previewQuery = useLGEventsByDate(date, true, 4);
+  const previewQuery = useLGEventsByDate(date, true, 7);
   const query = useLGEventsByDate(date, open);
   const previewEvents = (previewQuery.data ?? []) as LifeEvent[];
   const events = (query.data ?? []) as LifeEvent[];
@@ -240,7 +240,7 @@ export function LifeActivityFeed({ date, connections, connectionsLoading }: { da
 
   return (
     <>
-      <section className="rounded-[22px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[.07] via-card to-card px-3.5 py-3 shadow-sm">
+      <section className="life-activity-feed rounded-[22px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[.07] via-card to-card px-3.5 py-3 shadow-sm">
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[.15em] text-cyan-500">Tu historia conectada</p>
@@ -274,12 +274,12 @@ export function LifeActivityFeed({ date, connections, connectionsLoading }: { da
           ) : previewEvents.length === 0 ? (
             <p className="text-xs text-muted-foreground">Todavía no hay actividad registrada para esta fecha.</p>
           ) : (
-            previewEvents.map((event, index) => {
+            previewEvents.map((event) => {
               const domain = eventDomain(event);
               const Icon = domain.icon;
               const habit = eventHabit(event, habitsById);
               return (
-                <div key={event.id} className={`flex min-w-0 items-center gap-2.5 ${index >= 4 ? "max-sm:hidden" : ""}`}>
+                <div key={event.id} className="flex min-w-0 items-center gap-2.5">
                   <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${domain.tone}`}>
                     <EventGlyph event={event} habit={habit} Icon={Icon} small />
                   </span>
