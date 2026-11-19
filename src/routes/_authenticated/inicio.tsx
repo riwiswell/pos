@@ -694,26 +694,19 @@ function EmotionQuickCard({ date }: { date: string }) {
   };
 
   return (
-    <section className="glass flex min-w-0 flex-col rounded-2xl p-3.5">
-      <div className="flex items-center justify-between gap-2">
+    <section className="glass flex min-w-0 flex-col rounded-2xl p-2.5">
+      <div className="flex min-w-0 items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-400/15 text-rose-500"><span className="text-lg">💗</span></span>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-border/70 bg-muted/40 text-2xl" aria-hidden="true">{current?.emoji ?? "🙂"}</span>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-rose-500">Bienestar</p>
-            <h2 className="font-semibold">Emociones</h2>
+            <h2 className="text-sm font-semibold leading-tight">Emociones</h2>
+            <p className="mt-0.5 truncate text-xs font-medium">{current?.label ?? "Aún sin registrar"}</p>
+            {latest && <p className="text-[10px] text-muted-foreground">{latest.entry_date}</p>}
           </div>
         </div>
         <Button type="button" size="sm" variant="outline" className="h-8 shrink-0" onClick={() => setChoosing((value) => !value)}>
           {choosing ? "Listo" : current ? "Cambiar" : "Registrar"}
         </Button>
-      </div>
-      <div className="mt-4 flex min-h-[76px] items-center gap-3">
-        <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-border/70 bg-muted/40 text-4xl" aria-hidden="true">{current?.emoji ?? "🙂"}</span>
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">Última emoción registrada</p>
-          <p className="truncate text-lg font-semibold">{current?.label ?? "Aún sin registrar"}</p>
-          {latest && <p className="text-[11px] text-muted-foreground">{latest.entry_date}</p>}
-        </div>
       </div>
       {choosing && (
         <div className="mt-3 grid grid-cols-4 gap-1.5 border-t border-border/60 pt-3">
