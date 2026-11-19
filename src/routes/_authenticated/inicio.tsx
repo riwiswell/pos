@@ -240,21 +240,23 @@ function HomePage() {
           </div>
           </div>
           {homeLayout.visible.includes("weather") && (
-            <div className="inicio-hero-weather space-y-3">
+            <div className="inicio-hero-weather">
               {skin === "pokemon" && (
                 <div className="inicio-theme-logo">
                   <img src="/formula1-home.svg" alt="Fórmula 1 · Race Weekend · Grand Prix" />
                 </div>
               )}
-              <div className="grid min-w-0 grid-cols-1 gap-3">
-                <WeatherCard compact />
-                <EmotionQuickCard date={date} />
-              </div>
-              {homeLayout.visible.includes("activity") && (
-                <div className="inicio-widget inicio-widget--activity" style={{ order: homeLayout.order.indexOf("activity") }}>
-                  <LifeActivityFeed date={date} connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} />
+              <div className={"inicio-hero-weather-grid" + (homeLayout.visible.includes("activity") ? " inicio-hero-weather-grid--with-activity" : "")}>
+                <div className="inicio-hero-weather-stack">
+                  <WeatherCard compact />
+                  <EmotionQuickCard date={date} />
                 </div>
-              )}
+                {homeLayout.visible.includes("activity") && (
+                  <div className="inicio-hero-activity">
+                    <LifeActivityFeed date={date} connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -397,7 +399,7 @@ function HomePage() {
           {homeLayout.visible.includes("hydration") && <div className="inicio-widget inicio-widget--hydration" style={{ order: homeLayout.order.indexOf("hydration") }}><HydrationOverview date={date} compact /></div>}
           {showPlannerCard && (
                       <div className="inicio-widget inicio-widget--agenda" style={{ order: homeLayout.order.indexOf("agenda") }}>
-                      <section className="rounded-[26px] border border-amber-400/20 bg-gradient-to-br from-amber-500/[.07] via-card to-card p-4 shadow-sm">
+                      <section className="inicio-agenda-card rounded-[26px] border border-amber-400/20 bg-gradient-to-br from-amber-500/[.07] via-card to-card p-4 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-violet-400">Organiza tu tiempo</p>
@@ -761,7 +763,7 @@ function HydrationOverview({ date, compact = false }: { date: string; compact?: 
   const retry = () => void Promise.all([metrics.refetch(), doses.refetch(), entries.refetch()]);
 
   return (
-    <section className="relative min-w-0 overflow-hidden rounded-[24px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[.13] via-card to-card p-3.5 shadow-sm">
+    <section className="inicio-hydration-card relative min-w-0 overflow-hidden rounded-[24px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[.13] via-card to-card p-3.5 shadow-sm">
       <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-400/10" />
       <div className="relative">
         <div className="flex items-center justify-between gap-3">
