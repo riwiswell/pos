@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button"; import { Input } from "@/compon
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { BowelLogPanel } from "@/components/health/BowelLogPanel"; import { SleepPanel } from "@/components/health/SleepPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
 import { useGlobalDate } from "@/hooks/use-global-date";
-import { todayISO } from "@/lib/date";
+import { addDaysISO, todayISO } from "@/lib/date";
 import { subscribeToBackgroundPush } from "@/services/push.service"; import { useAuth } from "@/hooks/use-auth"; import { usePersonalDateList } from "@/hooks/use-personal-domains"; import { useProfile, useProfileMutations } from "@/hooks/use-profile";
 import { supabase } from "@/integrations/supabase/client"; import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lastWater,useDoseHistory,useDoses,useMedicationMutations,useMedications,useTakenCounts } from "@/hooks/use-medications"; import { formatTime12,medicationScheduleLabel,formatStockQuantity,formatGlasses,waterGlassesToMl,WATER_GLASS_ML,medicationWater,remainingQuantity,durationDays,WATER_OPTIONS,type BeverageType,type HydrationEntry,type Medication } from "@/domain/health";
 import { useHydrationEntries,useHydrationMutations } from "@/hooks/use-hydration";
+import { usePlannerCategories, usePlannerItemsRange, usePlannerMutations } from "@/hooks/use-planner";
 import { useMedicationStockTotals } from "@/hooks/use-medications";
 export const Route=createFileRoute("/_authenticated/salud")({component:HealthPage});
 function HealthPage(){
@@ -764,5 +765,60 @@ function CycleProfile({
 }
 
 
-function Appointments(){const q=useLGList("medical_appointments","appointment_at");const m=useLGMutations("medical_appointments");const{user}=useAuth();const[title,setTitle]=useState(""),[date,setDate]=useState(""),[provider,setProvider]=useState(""),[location,setLocation]=useState(""),[notes,setNotes]=useState("");return <section className="glass space-y-3 rounded-2xl p-4"><div className="flex items-center gap-2"><ClipboardList className="h-4 w-4"/><h2 className="font-semibold">Citas médicas</h2></div><div className="grid gap-2 sm:grid-cols-2"><Input placeholder="Cita / examen" value={title} onChange={e=>setTitle(e.target.value)}/><Input type="datetime-local" value={date} onChange={e=>setDate(e.target.value)}/><Input placeholder="Profesional / clínica" value={provider} onChange={e=>setProvider(e.target.value)}/><Input placeholder="Lugar" value={location} onChange={e=>setLocation(e.target.value)}/></div><RichTextEditor value={notes} onChange={setNotes} placeholder="Indicaciones, preparación o preguntas…"/><Button disabled={!title.trim()||!date} onClick={()=>void m.create.mutateAsync({user_id:user?.id,title:title.trim(),appointment_at:new Date(date).toISOString(),provider:provider||null,location:location||null,notes:notes||null,reminder_minutes:[10080,1440,60,0],alarm_enabled:true}).then(()=>setTitle(""))}><Plus className="mr-1 h-4 w-4"/>Guardar cita</Button>{(q.data||[]).map((x:any)=><div key={x.id} className="flex gap-2 rounded-xl border p-3"><span className="flex-1"><b>{x.title}</b><span className="ml-2 text-xs text-muted-foreground">{new Date(x.appointment_at).toLocaleString("es-CO")}</span></span><Button size="icon" variant="ghost" onClick={()=>void m.remove.mutateAsync(x.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>)}</section>}
+function Appointments() {
+  const q = useLGList("medical_appointments", "appointment_at");
+  const m = useLGMutations("medical_appointments");
+  const { user } = useAuth();
+  const today = todayISO();
+  const plannerCategories = usePlannerCategories();
+  const plannerItems = usePlannerItemsRange(addDaysISO(today, -365), addDaysISO(today, 365 * 5));
+  const plannerMutations = usePlannerMutations(today);
+  const medicalCategory = plannerCategories.data?.find((category) =>
+    category.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es").trim() === "cita medica",
+  );
+  const plannedAppointments = (plannerItems.data ?? []).filter((item) =>
+    item.type === "event" && item.category_id === medicalCategory?.id,
+  );
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [provider, setProvider] = useState("");
+  const [location, setLocation] = useState("");
+  const [notes, setNotes] = useState("");
+
+  return (
+    <section className="glass space-y-3 rounded-2xl p-4">
+      <div className="flex items-center gap-2"><ClipboardList className="h-4 w-4"/><h2 className="font-semibold">Citas médicas</h2></div>
+      <p className="text-xs text-muted-foreground">Las citas marcadas desde el Planeador aparecen aquí automáticamente.</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Input placeholder="Cita / examen" value={title} onChange={e=>setTitle(e.target.value)}/>
+        <Input type="datetime-local" value={date} onChange={e=>setDate(e.target.value)}/>
+        <Input placeholder="Profesional / clínica" value={provider} onChange={e=>setProvider(e.target.value)}/>
+        <Input placeholder="Lugar" value={location} onChange={e=>setLocation(e.target.value)}/>
+      </div>
+      <RichTextEditor value={notes} onChange={setNotes} placeholder="Indicaciones, preparación o preguntas…"/>
+      <Button disabled={!title.trim()||!date} onClick={()=>void m.create.mutateAsync({user_id:user?.id,title:title.trim(),appointment_at:new Date(date).toISOString(),provider:provider||null,location:location||null,notes:notes||null,reminder_minutes:[10080,1440,60,0],alarm_enabled:true}).then(()=>setTitle(""))}><Plus className="mr-1 h-4 w-4"/>Guardar cita</Button>
+
+      {(q.data ?? []).map((appointment: any) => (
+        <div key={"legacy-" + appointment.id} className="flex gap-2 rounded-xl border p-3">
+          <span className="min-w-0 flex-1"><b>{appointment.title}</b><span className="ml-2 text-xs text-muted-foreground">{new Date(appointment.appointment_at).toLocaleString("es-CO")}</span></span>
+          <Button size="icon" variant="ghost" aria-label="Eliminar cita" onClick={()=>void m.remove.mutateAsync(appointment.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+        </div>
+      ))}
+      {plannedAppointments.map((appointment) => {
+        const appointmentAt = appointment.scheduled_on + "T" + (appointment.start_time?.slice(0, 5) || "09:00") + ":00-05:00";
+        return (
+          <div key={"planner-" + appointment.id} className="flex gap-2 rounded-xl border border-sky-500/25 bg-sky-500/[.04] p-3">
+            <span className="min-w-0 flex-1">
+              <b>{appointment.title}</b>
+              <span className="ml-2 text-xs text-muted-foreground">{new Date(appointmentAt).toLocaleString("es-CO")}</span>
+              <span className="mt-1 block text-[11px] text-sky-700 dark:text-sky-300">Agendada desde Planeador{appointment.location ? " · " + appointment.location : ""}</span>
+            </span>
+            <Button size="icon" variant="ghost" aria-label="Eliminar cita del Planeador" onClick={()=>void plannerMutations.deleteItem.mutateAsync(appointment.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+          </div>
+        );
+      })}
+      {plannerItems.isLoading && <p className="text-xs text-muted-foreground">Consultando citas del Planeador…</p>}
+    </section>
+  );
+}
 function Nutrition(){const q=useLGList("nutrition_logs","log_date");const m=useLGMutations("nutrition_logs");const{user}=useAuth();const{date}=useGlobalDate();const[meal,setMeal]=useState(""),[cal,setCal]=useState(""),[protein,setProtein]=useState(""),[notes,setNotes]=useState("");useEffect(()=>{setMeal("");setCal("");setProtein("");setNotes("")},[date]);const clearForm=()=>{setMeal("");setCal("");setProtein("");setNotes("")};const hasNutritionInput=[meal,cal,protein,notes].some(v=>v.trim().length>0);return <section className="glass space-y-3 rounded-2xl p-4"><div className="flex items-center gap-2"><HeartPulse className="h-4 w-4"/><h2 className="flex items-center gap-2 font-semibold">Nutrición <HelpTip helpKey="health.nutrition" /></h2></div><div className="grid gap-2 sm:grid-cols-4"><Input placeholder="Comida (desayuno…)" value={meal} onChange={e=>setMeal(e.target.value)}/><Input type="number" placeholder="kcal" value={cal} onChange={e=>setCal(e.target.value)}/><Input type="number" placeholder="Proteína g" value={protein} onChange={e=>setProtein(e.target.value)}/></div><RichTextEditor value={notes} onChange={setNotes} placeholder="Alimentos, porciones y notas…"/><Button disabled={!hasNutritionInput||m.create.isPending} onClick={()=>void m.create.mutateAsync({user_id:user?.id,log_date:date,meal_type:meal.trim()||null,calories:cal.trim()?Number(cal):null,protein_g:protein.trim()?Number(protein):null,notes:notes.trim()||null}).then(clearForm)}><Plus className="mr-1 h-4 w-4"/>{m.create.isPending?"Guardando…":"Registrar"}</Button>{(q.data||[]).filter((x:any)=>x.log_date===date).map((x:any)=><div key={x.id} className="rounded-xl border p-3"><b>{x.meal_type||"Comida"}</b><span className="ml-2 text-xs text-muted-foreground">{x.calories||0} kcal · {x.protein_g||0} g proteína</span></div>)}</section>}
