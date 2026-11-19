@@ -11,6 +11,7 @@ import { usePrivatePhotos } from "@/hooks/use-private-photos";
 import { privateMediaService } from "@/services/private-media.service";
 import { lifeGraphService } from "@/services/life-graph.service";
 import { lookupLearningCover } from "@/services/learning-cover.service";
+import { CoverLightbox } from "@/components/learning/CoverLightbox";
 
 function formatRuntime(value: unknown) {
   const minutes = Math.max(0, Math.floor(Number(value) || 0));
@@ -327,7 +328,7 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
       <div className="relative w-[92px] shrink-0">
         <div className="aspect-[2/3] overflow-hidden rounded-xl border bg-gradient-to-br from-slate-900 via-purple-950 to-slate-950">
           {coverUrl
-            ? <img src={coverUrl} alt={`Póster de ${movie.title}`} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            ? <CoverLightbox src={coverUrl} alt={`Póster de ${movie.title}`} title={movie.title} imageClassName="h-full w-full object-cover" />
             : <div className="flex h-full flex-col items-center justify-between p-2 text-center text-white">
                 <Film className="mt-1 h-6 w-6 opacity-80" />
                 <span className="line-clamp-5 break-words text-[10px] font-semibold leading-tight">{movie.title}</span>
