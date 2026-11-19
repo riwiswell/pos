@@ -71,6 +71,7 @@ function ProfilePage() {
   const avatarInput = useRef<HTMLInputElement | null>(null);
   const backgroundInput = useRef<HTMLInputElement | null>(null);
   const importInput = useRef<HTMLInputElement | null>(null);
+  const skinImportInput = useRef<HTMLInputElement | null>(null);
   const p = profileQuery.data;
 
   useEffect(() => {
@@ -207,6 +208,46 @@ function ProfilePage() {
     }
   };
 
+  const downloadSkin = (option: (typeof skins)[number]) => {
+    const pack = {
+      format: "personal-os-skin-v1",
+      exported_at: new Date().toISOString(),
+      skinId: option.id,
+      skin: option,
+    };
+    const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = option.id + ".posskin.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast.success("Paquete de " + option.name + " descargado.");
+  };
+
+  const importSkin = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const pack = JSON.parse(await file.text());
+      if (pack?.format !== "personal-os-skin-v1") {
+        throw new Error("El archivo no es un paquete de skin de Personal OS.");
+      }
+      const requestedId = pack.skinId ?? pack.skin?.id;
+      const option = skins.find((candidate) => candidate.id === requestedId);
+      if (!option) {
+        throw new Error("Este paquete pertenece a un skin que no está disponible en esta versión de Personal OS.");
+      }
+      setSkin(option.id);
+      toast.success(option.name + " instalado y aplicado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo instalar el skin.");
+    } finally {
+      if (skinImportInput.current) skinImportInput.current.value = "";
+    }
+  };
+
   const importBackup = async (file: File | undefined) => {
     if (!file) return;
     setImporting(true);
@@ -332,24 +373,27 @@ function ProfilePage() {
       </section>
 
       <section className="glass space-y-3 rounded-2xl p-4">
-        <div>
-          <h2 className="font-semibold text-foreground">Biblioteca de skins y emblemas</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Cambia la identidad visual completa: tipografía, paleta, superficies, controles, bordes y estilo de los paneles. Tus datos y funciones permanecen intactos.
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="font-semibold text-foreground">Biblioteca de skins y emblemas</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Explora los estilos, instálalos con un clic o descarga su paquete para guardarlo e instalarlo en otra sesión de Personal OS.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => skinImportInput.current?.click()}>
+              <Upload className="mr-1 h-4 w-4" /> Importar skin
+            </Button>
+            <input ref={skinImportInput} type="file" accept=".json,.posskin.json,application/json" hidden onChange={(event) => { void importSkin(event.target.files?.[0]); }} />
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {skins.map((option) => (
-            <button
+            <article
               key={option.id}
-              type="button"
-              onClick={() => setSkin(option.id)}
-              aria-pressed={skin === option.id}
               className={cn(
-                "min-w-0 rounded-2xl border p-3 text-left transition-all",
-                skin === option.id
-                  ? "border-primary bg-primary/5 ring-2 ring-primary/25"
-                  : "border-border hover:border-primary/50",
+                "skin-library-card min-w-0 rounded-2xl border p-3 transition-all",
+                skin === option.id ? "border-primary ring-2 ring-primary/25" : "border-slate-200 hover:border-slate-400",
               )}
             >
               <div className={cn("skin-preview mb-3", `skin-preview--${option.id}`)}>
@@ -360,22 +404,30 @@ function ProfilePage() {
                   <span style={{ backgroundColor: option.preview.sidebar }} />
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex min-w-0 items-center gap-2">
+              <div className="flex items-start justify-between gap-2">
+                <span className="flex min-w-0 items-start gap-2">
                   <span className="text-lg leading-none">{option.glyph}</span>
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">{option.name}</span>
-                    <span className="block text-[10px] text-muted-foreground">{option.collection} · {option.tagline}</span>
+                    <span className="skin-library-name block break-words text-sm font-semibold">{option.name}</span>
+                    <span className="skin-library-meta mt-0.5 block text-[10px]">{option.collection} · {option.tagline}</span>
                   </span>
                 </span>
-                {skin === option.id && <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">Activo</span>}
+                {skin === option.id && <span className="skin-library-active shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold">Activo</span>}
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">{option.description}</p>
-            </button>
+              <p className="skin-library-description mt-2 min-h-10 text-xs">{option.description}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" className="skin-library-action" variant={skin === option.id ? "secondary" : "default"} onClick={() => setSkin(option.id)}>
+                  {skin === option.id ? "Instalado" : "Instalar"}
+                </Button>
+                <Button size="sm" className="skin-library-action" variant="outline" onClick={() => downloadSkin(option)}>
+                  <Download className="mr-1 h-3.5 w-3.5" /> Descargar
+                </Button>
+              </div>
+            </article>
           ))}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Cada tarjeta muestra su emblema y nombre de marca, diseñados para reconocer su identidad visual. Son interpretaciones gráficas propias; no son logotipos oficiales ni incluyen material licenciado. Cambiar de skin no modifica tus datos, módulos ni funciones.
+          Los paquetes .posskin.json guardan la identidad del tema y pueden importarse desde esta biblioteca. Los emblemas y las composiciones son interpretaciones visuales propias, no logotipos oficiales ni material licenciado.
         </p>
       </section>
 
