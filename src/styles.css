@@ -2241,3 +2241,12 @@ html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-orange-400"] {
     min-height: 0;
   }
 }
+
+
+/* Readable secondary labels on the Nintendo level card, which uses light surfaces. */
+html[data-skin="nintendo"] .gamification-level-card .gamification-level-secondary {
+  color: #354354 !important;
+}
+html[data-skin="nintendo"] .gamification-level-card .gamification-level-secondary span {
+  color: #354354 !important;
+}
