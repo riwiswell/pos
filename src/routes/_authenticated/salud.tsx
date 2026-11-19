@@ -426,6 +426,11 @@ function CycleProfile({
   const [flow, setFlow] = useState("none");
   const [symptoms, setSymptoms] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [historyFormOpen, setHistoryFormOpen] = useState(false);
+  const [historyDrafts, setHistoryDrafts] = useState<Array<{ startDate: string; endDate: string }>>([{ startDate: "", endDate: "" }]);
+  const [editingPeriodId, setEditingPeriodId] = useState<string | null>(null);
+  const [editPeriodStart, setEditPeriodStart] = useState("");
+  const [editPeriodEnd, setEditPeriodEnd] = useState("");
   const ownRecords = records
     .filter((record: any) => record.profile_id === profile.id)
     .sort((a: any, b: any) => a.start_date.localeCompare(b.start_date));
@@ -534,6 +539,104 @@ function CycleProfile({
     }
   };
 
+  const saveHistoricalPeriods = async () => {
+    const entries = historyDrafts.map((entry) => ({
+      startDate: entry.startDate,
+      endDate: entry.endDate,
+    }));
+    if (!entries.length || entries.some((entry) => !entry.startDate || !entry.endDate)) {
+      toast.error("Completa la fecha de inicio y de fin de cada período.");
+      return;
+    }
+
+    const sorted = [...entries].sort((a, b) => a.startDate.localeCompare(b.startDate));
+    for (const entry of sorted) {
+      if (entry.startDate > today || entry.endDate > today) {
+        toast.error("Los períodos anteriores deben tener fechas que ya hayan ocurrido.");
+        return;
+      }
+      if (entry.endDate < entry.startDate) {
+        toast.error("La fecha final no puede ser anterior a la fecha de inicio.");
+        return;
+      }
+    }
+    for (let index = 1; index < sorted.length; index += 1) {
+      if (sorted[index]!.startDate <= sorted[index - 1]!.endDate) {
+        toast.error("Dos períodos nuevos se cruzan. Ajusta sus fechas para que no se superpongan.");
+        return;
+      }
+    }
+    const overlapsExisting = sorted.some((entry) => ownRecords.some((record: any) =>
+      entry.startDate <= (record.end_date || today) && entry.endDate >= record.start_date
+    ));
+    if (overlapsExisting) {
+      toast.error("Alguna fecha ya pertenece a un período registrado. Revisa el historial antes de guardar.");
+      return;
+    }
+
+    let saved = 0;
+    try {
+      for (const entry of sorted) {
+        await periodMutations.create.mutateAsync({
+          user_id: user?.id,
+          profile_id: profile.id,
+          start_date: entry.startDate,
+          end_date: entry.endDate,
+          flow: null,
+          notes: null,
+        });
+        saved += 1;
+      }
+    } catch {
+      if (saved > 0) {
+        toast.error("Se guardaron " + saved + " de " + sorted.length + " períodos. Revisa el historial antes de volver a intentar.");
+      }
+      return;
+    }
+
+    const latest = sorted[sorted.length - 1]!;
+    setSelectedDate(latest.startDate);
+    setMonth(latest.startDate.slice(0, 7) + "-01");
+    setHistoryFormOpen(false);
+    setHistoryDrafts([{ startDate: "", endDate: "" }]);
+    toast.success(saved + " períodos anteriores guardados. La predicción se actualizará con sus fechas de inicio.");
+  };
+
+  const savePeriodDates = async (record: any) => {
+    const startDate = editPeriodStart;
+    const endDate = editPeriodEnd || null;
+    if (!startDate || startDate > today) {
+      toast.error("El inicio debe ser una fecha que ya haya ocurrido.");
+      return;
+    }
+    if (endDate && (endDate < startDate || endDate > today)) {
+      toast.error("La fecha final debe ser igual o posterior al inicio y no puede estar en el futuro.");
+      return;
+    }
+    const effectiveEnd = endDate || today;
+    const overlaps = ownRecords.some((other: any) =>
+      other.id !== record.id &&
+      startDate <= (other.end_date || today) &&
+      effectiveEnd >= other.start_date
+    );
+    if (overlaps) {
+      toast.error("Ese rango se cruza con otro período. Ajusta las fechas para evitar solapamientos.");
+      return;
+    }
+    try {
+      await periodMutations.update.mutateAsync({
+        id: record.id,
+        patch: { start_date: startDate, end_date: endDate },
+      });
+      setEditingPeriodId(null);
+      setSelectedDate(startDate);
+      setMonth(startDate.slice(0, 7) + "-01");
+      toast.success("Fechas del período actualizadas. La predicción se recalculó.");
+    } catch {
+      // Mutation displays its own error.
+    }
+  };
+
   const saveDailyLog = async () => {
     if (!selectedPeriod || !user?.id) return;
     const input = {
@@ -597,11 +700,25 @@ function CycleProfile({
                   : "Pulsa Registrar y selecciona en el calendario el primer día de sangrado."}
             </p>
           </div>
-          {!activePeriod && (
-            <Button size="sm" onClick={() => setSelectingStart((value) => !value)} variant={selectingStart ? "secondary" : "default"}>
-              {selectingStart ? "Cancelar" : "Registrar"}
+          <div className="flex flex-wrap items-center gap-2">
+            {!activePeriod && (
+              <Button size="sm" onClick={() => setSelectingStart((value) => !value)} variant={selectingStart ? "secondary" : "default"}>
+                {selectingStart ? "Cancelar" : "Registrar"}
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSelectingStart(false);
+                setHistoryDrafts([{ startDate: "", endDate: "" }]);
+                setHistoryFormOpen((value) => !value);
+              }}
+            >
+              {historyFormOpen ? "Cerrar carga" : "Añadir varios ciclos"}
             </Button>
-          )}
+          </div>
           <div className="flex items-center gap-1">
             <Button size="icon" variant="outline" aria-label="Mes anterior" onClick={() => setMonth(cycleMonthShift(month, -1))}><ChevronLeft className="h-4 w-4" /></Button>
             <Button size="icon" variant="outline" aria-label="Mes siguiente" onClick={() => setMonth(cycleMonthShift(month, 1))}><ChevronRight className="h-4 w-4" /></Button>
@@ -657,8 +774,114 @@ function CycleProfile({
         </div>
       </section>
 
+      {historyFormOpen && (
+        <section className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-3">
+          <div>
+            <h4 className="font-semibold">Cargar ciclos anteriores</h4>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Cada fila representa un período ya terminado: indica el primer y el último día de sangrado. Puedes añadir tantos registros como necesites; los síntomas diarios son opcionales.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              La próxima fecha se estima a partir de los intervalos entre inicios de ciclo, usando hasta los últimos tres intervalos válidos.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {historyDrafts.map((draft, index) => (
+              <div key={index} className="grid gap-2 rounded-xl border border-border/70 bg-background p-3 sm:grid-cols-[1fr_1fr_auto]">
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  <span className="block font-medium">Ciclo {index + 1} · Inicio</span>
+                  <Input
+                    type="date"
+                    max={today}
+                    value={draft.startDate}
+                    onChange={(event) => setHistoryDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, startDate: event.target.value } : item))}
+                  />
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  <span className="block font-medium">Último día</span>
+                  <Input
+                    type="date"
+                    min={draft.startDate || undefined}
+                    max={today}
+                    value={draft.endDate}
+                    onChange={(event) => setHistoryDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, endDate: event.target.value } : item))}
+                  />
+                </label>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="w-full sm:w-auto"
+                    aria-label={"Quitar ciclo " + (index + 1)}
+                    disabled={historyDrafts.length === 1}
+                    onClick={() => setHistoryDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" /> Quitar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setHistoryDrafts((current) => [...current, { startDate: "", endDate: "" }])}
+            >
+              <Plus className="mr-1 h-4 w-4" /> Añadir otro ciclo
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={periodMutations.create.isPending}
+              onClick={() => void saveHistoricalPeriods()}
+            >
+              Guardar {historyDrafts.length} {historyDrafts.length === 1 ? "ciclo" : "ciclos"}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setHistoryFormOpen(false)}>
+              Cancelar
+            </Button>
+          </div>
+        </section>
+      )}
+
       {selectedPeriod ? (
         <section className="space-y-3 rounded-xl border border-border/70 p-3">
+          {editingPeriodId === selectedPeriod.id && (
+            <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
+              <div>
+                <h4 className="font-semibold">Editar fechas del período</h4>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Al guardar, los intervalos y la próxima predicción se calcularán de nuevo. Deja el último día vacío solo si el período sigue en curso.
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  <span className="block font-medium">Primer día</span>
+                  <Input type="date" max={today} value={editPeriodStart} onChange={(event) => setEditPeriodStart(event.target.value)} />
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  <span className="block font-medium">Último día</span>
+                  <Input type="date" min={editPeriodStart || undefined} max={today} value={editPeriodEnd} onChange={(event) => setEditPeriodEnd(event.target.value)} />
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={periodMutations.update.isPending}
+                  onClick={() => void savePeriodDates(selectedPeriod)}
+                >
+                  Guardar fechas
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setEditingPeriodId(null)}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
           <div>
             <h4 className="font-semibold">Síntomas y flujo del día</h4>
             <p className="text-xs text-muted-foreground">{selectedDate} · Cada fecha tiene su propio registro.</p>
@@ -745,18 +968,34 @@ function CycleProfile({
               ? Math.round((new Date(record.end_date + "T12:00:00").getTime() - new Date(record.start_date + "T12:00:00").getTime()) / 86400000) + 1
               : null;
             return (
-              <button
-                key={record.id}
-                type="button"
-                onClick={() => {
-                  setSelectedDate(record.start_date);
-                  setMonth(record.start_date.slice(0, 7) + "-01");
-                }}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-border/70 px-3 py-2 text-left text-sm hover:bg-muted/40"
-              >
-                <span className="min-w-0"><b>{record.start_date}</b><span className="ml-2 text-xs text-muted-foreground">{record.end_date ? "hasta " + record.end_date : "En curso"}</span></span>
-                <span className="shrink-0 text-xs text-muted-foreground">{duration ? duration + (duration === 1 ? " día" : " días") : "Abierto"}</span>
-              </button>
+              <div key={record.id} className="flex items-center gap-2 rounded-xl border border-border/70 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate(record.start_date);
+                    setMonth(record.start_date.slice(0, 7) + "-01");
+                  }}
+                  className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left text-sm"
+                >
+                  <span className="min-w-0"><b>{record.start_date}</b><span className="ml-2 text-xs text-muted-foreground">{record.end_date ? "hasta " + record.end_date : "En curso"}</span></span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{duration ? duration + (duration === 1 ? " día" : " días") : "Abierto"}</span>
+                </button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label={"Editar período iniciado el " + record.start_date}
+                  onClick={() => {
+                    setSelectedDate(record.start_date);
+                    setMonth(record.start_date.slice(0, 7) + "-01");
+                    setEditingPeriodId(record.id);
+                    setEditPeriodStart(record.start_date);
+                    setEditPeriodEnd(record.end_date || "");
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
             );
           })}
         </section>
