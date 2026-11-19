@@ -2250,3 +2250,116 @@ html[data-skin="nintendo"] .gamification-level-card .gamification-level-secondar
 html[data-skin="nintendo"] .gamification-level-card .gamification-level-secondary span {
   color: #354354 !important;
 }
+
+
+/* Skin library: isolated, accessible text regardless of the active theme or mode. */
+html[data-skin] .skin-library-card {
+  background: #FFFFFF !important;
+  color: #172033 !important;
+  border-color: #D6DEE8;
+}
+html[data-skin] .skin-library-card .skin-library-name {
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+html[data-skin] .skin-library-card .skin-library-meta,
+html[data-skin] .skin-library-card .skin-library-description {
+  color: #475569 !important;
+  opacity: 1 !important;
+}
+html[data-skin] .skin-library-card .skin-library-active {
+  background: #E7F0FA !important;
+  color: #16416D !important;
+}
+html[data-skin] .skin-library-card .skin-library-action {
+  color: #172033;
+}
+html[data-skin] .skin-library-card .skin-preview {
+  color: #FFFFFF;
+  isolation: isolate;
+}
+
+/* New visual identities: Springfield, pro basketball and Barbie-inspired pink. */
+.skin-preview--simpsons {
+  background: linear-gradient(120deg, #F5D84B 0 38%, #6CBDE8 38% 72%, #1768A5 72%);
+}
+.skin-preview--simpsons::after {
+  position: absolute; right: .9rem; bottom: -.5rem; content: "🍩";
+  font-size: 3.5rem; line-height: 1; opacity: .9;
+}
+.skin-preview--nba {
+  background: linear-gradient(110deg, #101820 0 48%, #263746 48% 100%);
+}
+.skin-preview--nba::after {
+  position: absolute; right: 1rem; bottom: -.55rem; content: "🏀";
+  font-size: 3.7rem; line-height: 1; opacity: .92;
+}
+.skin-preview--barbie {
+  background: linear-gradient(135deg, #F72585, #B51778 58%, #63345F);
+}
+.skin-preview--barbie::after {
+  position: absolute; right: 1rem; bottom: -.7rem; content: "♡";
+  color: #FFD4E8; font-size: 5rem; font-weight: 900; line-height: 1; opacity: .9;
+}
+html[data-skin="simpsons"] {
+  --background:#1B3148;--foreground:#F8FAFC;--surface:#233E59;--surface-base:#233E59;--surface-foreground:#F8FAFC;
+  --card:#FDF8E7;--card-base:#FDF8E7;--card-foreground:#243247;--popover:#FDF8E7;--popover-foreground:#243247;
+  --primary:#E6B92E;--primary-foreground:#2C2B1B;--secondary:#1768A5;--secondary-foreground:#fff;
+  --muted:#304B66;--muted-foreground:#D8E4EF;--accent:#6CBDE8;--accent-foreground:#16344F;
+  --border:#58738E;--border-strong:#8DA8C1;--input:#6C88A2;--ring:#F5D84B;
+  --sidebar:#10253A;--sidebar-foreground:#F8FAFC;--sidebar-primary:#F5D84B;--sidebar-primary-foreground:#263247;
+  --sidebar-accent:#254765;--sidebar-accent-foreground:#fff;--sidebar-border:#3E5F7C;--sidebar-ring:#F5D84B;
+}
+html.theme-light[data-skin="simpsons"] {
+  --background:#FFF5C8;--foreground:#243247;--surface:#FFFBE8;--surface-base:#FFFBE8;--surface-foreground:#243247;
+  --card:#fff;--card-base:#fff;--card-foreground:#243247;--popover:#fff;--popover-foreground:#243247;
+  --secondary:#DDEFFD;--secondary-foreground:#14517B;--muted:#F5EBC4;--muted-foreground:#625A3E;
+  --accent:#F5D84B;--accent-foreground:#302A11;--border:#D8C77C;--border-strong:#B9A75D;--input:#CDBB70;
+  --sidebar:#23669A;--sidebar-foreground:#fff;--sidebar-primary:#F5D84B;--sidebar-primary-foreground:#263247;
+  --sidebar-accent:#185783;--sidebar-accent-foreground:#fff;--sidebar-border:#4E87B3;
+}
+html[data-skin="simpsons"] .skin-branding__symbol{background:#F5D84B;border:2px solid #fff;color:#1B3148}
+html[data-skin="simpsons"] .skin-branding__copy strong{letter-spacing:.07em;font-weight:900}
+html[data-skin="simpsons"] .app-shell-main{background-image:radial-gradient(circle,#E6B92E 0 2px,transparent 2.8px);background-size:34px 34px}
+
+html[data-skin="nba"] {
+  --background:#101820;--foreground:#F5F7FA;--surface:#1B2934;--surface-base:#1B2934;--surface-foreground:#F5F7FA;
+  --card:#1D2B36;--card-base:#1D2B36;--card-foreground:#F5F7FA;--popover:#1D2B36;--popover-foreground:#F5F7FA;
+  --primary:#F46A19;--primary-foreground:#fff;--secondary:#314654;--secondary-foreground:#F5F7FA;
+  --muted:#2C3A44;--muted-foreground:#C8D2DA;--accent:#00A6A6;--accent-foreground:#06292A;
+  --border:#455866;--border-strong:#687E8E;--input:#526878;--ring:#F46A19;
+  --sidebar:#0A1118;--sidebar-foreground:#F5F7FA;--sidebar-primary:#F46A19;--sidebar-primary-foreground:#fff;
+  --sidebar-accent:#1D2B36;--sidebar-accent-foreground:#fff;--sidebar-border:#344754;--sidebar-ring:#F46A19;
+}
+html.theme-light[data-skin="nba"] {
+  --background:#EEF2F5;--foreground:#17232C;--surface:#fff;--surface-base:#fff;--surface-foreground:#17232C;
+  --card:#fff;--card-base:#fff;--card-foreground:#17232C;--popover:#fff;--popover-foreground:#17232C;
+  --secondary:#E1E7EC;--secondary-foreground:#253643;--muted:#E6EBEF;--muted-foreground:#4D5C67;
+  --accent:#FCE5D5;--accent-foreground:#6D3010;--border:#CDD6DD;--border-strong:#AEBBC4;--input:#B7C4CE;
+  --sidebar:#1D2B36;--sidebar-foreground:#F5F7FA;--sidebar-primary:#F46A19;--sidebar-primary-foreground:#fff;
+  --sidebar-accent:#314654;--sidebar-accent-foreground:#fff;--sidebar-border:#536978;
+}
+html[data-skin="nba"] .skin-branding__symbol{background:#F46A19;border:2px solid #fff;color:#fff}
+html[data-skin="nba"] .skin-branding__copy strong{letter-spacing:.08em;font-weight:900}
+html[data-skin="nba"] .app-shell-main{background-image:linear-gradient(90deg,transparent 49.8%,rgb(255 255 255 / 5%) 50%,transparent 50.2%);background-size:42px 42px}
+
+html[data-skin="barbie"] {
+  --background:#25172D;--foreground:#FFF6FB;--surface:#39213F;--surface-base:#39213F;--surface-foreground:#FFF6FB;
+  --card:#39213F;--card-base:#39213F;--card-foreground:#FFF6FB;--popover:#39213F;--popover-foreground:#FFF6FB;
+  --primary:#F72585;--primary-foreground:#fff;--secondary:#63345F;--secondary-foreground:#FFF6FB;
+  --muted:#47294B;--muted-foreground:#E8C9DF;--accent:#FF91C2;--accent-foreground:#40172F;
+  --border:#70436A;--border-strong:#9A638C;--input:#845879;--ring:#FF91C2;
+  --sidebar:#1B1022;--sidebar-foreground:#FFF6FB;--sidebar-primary:#FF91C2;--sidebar-primary-foreground:#42142F;
+  --sidebar-accent:#39213F;--sidebar-accent-foreground:#fff;--sidebar-border:#553451;--sidebar-ring:#FF91C2;
+}
+html.theme-light[data-skin="barbie"] {
+  --background:#FFF0F7;--foreground:#3B1D34;--surface:#FFF9FC;--surface-base:#FFF9FC;--surface-foreground:#3B1D34;
+  --card:#fff;--card-base:#fff;--card-foreground:#3B1D34;--popover:#fff;--popover-foreground:#3B1D34;
+  --secondary:#FAD2E5;--secondary-foreground:#64264B;--muted:#F6E0EB;--muted-foreground:#725467;
+  --accent:#FFD1E5;--accent-foreground:#5C2345;--border:#E9C5D8;--border-strong:#D6A6C0;--input:#DDB6CB;
+  --sidebar:#9D1654;--sidebar-foreground:#fff;--sidebar-primary:#FFB7D9;--sidebar-primary-foreground:#4E1434;
+  --sidebar-accent:#7F1648;--sidebar-accent-foreground:#fff;--sidebar-border:#C04D88;
+}
+html[data-skin="barbie"] .skin-branding__symbol{background:#F72585;border:2px solid #FFC3DE;color:#fff}
+html[data-skin="barbie"] .skin-branding__copy strong{letter-spacing:.08em;font-weight:900}
+html[data-skin="barbie"] .app-shell-main{background-image:radial-gradient(circle,#FF91C2 0 1.5px,transparent 2.5px);background-size:28px 28px}
