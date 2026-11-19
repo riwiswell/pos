@@ -733,6 +733,7 @@ function HydrationOverview({ date, compact = false }: { date: string; compact?: 
   const metrics = usePersonalDateList<{ water_liters: number | null }>("health_metrics", "metric_date", date);
   const doses = useDoses(date);
   const entries = useHydrationEntries(date);
+  const hydrationMutations = useHydrationMutations(date);
 
   const failedSources = [
     metrics.isError ? "el resumen de salud" : null,
