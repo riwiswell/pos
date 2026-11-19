@@ -35,6 +35,9 @@ const SLEEP_CHART_COLORS: Record<SkinId, string> = {
   chess: "#805238",
   lumen: "#5D9FC9",
   orchid: "#9C76A7",
+  simpsons: "#E6B92E",
+  nba: "#F46A19",
+  barbie: "#F72585",
 };
 
 const STRUCTURED_MARKER = "__POS_BODY_MEASURES__";
