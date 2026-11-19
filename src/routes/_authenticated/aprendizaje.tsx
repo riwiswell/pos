@@ -15,6 +15,7 @@ import {
   isRemoteLearningCoverPath,
   lookupLearningCover,
   resolveLearningCoverUrl,
+  preloadLearningCover,
 } from "@/services/learning-cover.service";
 import { MoviesLibrary } from "@/components/learning/MoviesLibrary";
 export const Route=createFileRoute("/_authenticated/aprendizaje")({component:LearningPage});
