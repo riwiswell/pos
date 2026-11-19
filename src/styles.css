@@ -2084,3 +2084,59 @@ html.dark[data-skin="nintendo"] .inicio-agenda-card .text-violet-400 {
 html.dark[data-skin="nintendo"] .inicio-hydration-card .text-amber-500 {
   color: #92400E !important;
 }
+
+/* Nintendo oscuro: Línea de vida tiene una tarjeta clara; todos sus textos
+   y acentos deben usar tinta oscura legible, no el blanco del fondo global. */
+html.dark[data-skin="nintendo"] .life-activity-feed {
+  --background: #F8FAFC;
+  --foreground: #202A36;
+  --surface: #F1F4F7;
+  --surface-foreground: #202A36;
+  --card: #F8FAFC;
+  --card-foreground: #202A36;
+  --muted: #E5E9EF;
+  --muted-foreground: #566171;
+  --secondary: #DDE3EA;
+  --secondary-foreground: #26313E;
+  --accent: #DDE3EA;
+  --accent-foreground: #26313E;
+  --border: #D4DBE3;
+  color: #202A36;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed .text-muted-foreground {
+  color: #566171 !important;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed .text-cyan-500 {
+  color: #0E647D !important;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-violet-400"] {
+  color: #6D28D9 !important;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-indigo-400"] {
+  color: #4338CA !important;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-rose-400"],
+html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-pink-400"] {
+  color: #BE123C !important;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-cyan-400"] {
+  color: #0E7490 !important;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-lime-400"] {
+  color: #4D7C0F !important;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-amber-400"] {
+  color: #92400E !important;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-sky-400"] {
+  color: #0369A1 !important;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-emerald-400"] {
+  color: #047857 !important;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-teal-400"] {
+  color: #0F766E !important;
+}
+html.dark[data-skin="nintendo"] .life-activity-feed [class~="text-orange-400"] {
+  color: #C2410C !important;
+}
