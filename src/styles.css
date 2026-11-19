@@ -1973,3 +1973,110 @@ html.dark[data-skin="nintendo"] [class~="bg-card"][class~="text-foreground"]:hov
   background-color: #E5E9EF !important;
   color: #202A36 !important;
 }
+
+/* Inicio: clima y emoción se apilan a la izquierda; Línea de vida ocupa la misma altura a la derecha. */
+.inicio-hero-layout {
+  grid-template-columns: minmax(0, 1.15fr) minmax(420px, 0.85fr);
+}
+.inicio-hero-weather {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: .75rem;
+}
+.inicio-hero-weather-grid {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: .75rem;
+}
+.inicio-hero-weather-grid--with-activity {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.inicio-hero-weather-stack {
+  display: grid;
+  min-width: 0;
+  height: 100%;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+.inicio-hero-weather-stack > * {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+.inicio-hero-activity {
+  min-width: 0;
+  height: 100%;
+}
+.inicio-hero-activity > section {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+.inicio-hero-activity > section > div:last-of-type {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.inicio-hero-weather-stack > .weather-card {
+  height: 100%;
+}
+
+@media (max-width: 1100px) {
+  .inicio-hero-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 680px) {
+  .inicio-hero-weather-grid--with-activity {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Nintendo oscuro usa superficies claras en estas tarjetas del Inicio:
+   fija tinta oscura y acentos con contraste suficiente dentro de ellas. */
+html.dark[data-skin="nintendo"] .inicio-habits-card,
+html.dark[data-skin="nintendo"] .inicio-hydration-card,
+html.dark[data-skin="nintendo"] .inicio-agenda-card {
+  --background: #F8FAFC;
+  --foreground: #202A36;
+  --surface: #F1F4F7;
+  --surface-foreground: #202A36;
+  --card: #F8FAFC;
+  --card-foreground: #202A36;
+  --popover: #F8FAFC;
+  --popover-foreground: #202A36;
+  --muted: #E5E9EF;
+  --muted-foreground: #566171;
+  --secondary: #DDE3EA;
+  --secondary-foreground: #26313E;
+  --accent: #DDE3EA;
+  --accent-foreground: #26313E;
+  --border: #D4DBE3;
+  --border-strong: #AEB8C5;
+  --input: #C0C9D4;
+  color: #202A36;
+}
+html.dark[data-skin="nintendo"] .inicio-habits-card .text-muted-foreground,
+html.dark[data-skin="nintendo"] .inicio-hydration-card .text-muted-foreground,
+html.dark[data-skin="nintendo"] .inicio-agenda-card .text-muted-foreground {
+  color: #566171 !important;
+}
+html.dark[data-skin="nintendo"] .inicio-habits-card .text-emerald-500,
+html.dark[data-skin="nintendo"] .inicio-agenda-card .text-emerald-500 {
+  color: #15803D !important;
+}
+html.dark[data-skin="nintendo"] .inicio-hydration-card .text-cyan-400,
+html.dark[data-skin="nintendo"] .inicio-hydration-card .text-cyan-500 {
+  color: #155E75 !important;
+}
+html.dark[data-skin="nintendo"] .inicio-agenda-card .text-violet-400 {
+  color: #6D28D9 !important;
+}
+html.dark[data-skin="nintendo"] .inicio-hydration-card .text-amber-500 {
+  color: #92400E !important;
+}
