@@ -40,14 +40,27 @@ function rememberPhoto(path: string, url: string): CachedPhoto {
   if (typeof window !== "undefined") {
     const decodedImage = new window.Image();
     decodedImage.decoding = "async";
-    decodedImage.src = url;
+    decodedImage.fetchPriority = "high";
     entry.decodedImage = decodedImage;
-    // Mark it ready only after the browser has actually fetched and decoded it.
-    // This prevents an unmounted/reopened module from briefly showing an empty
-    // cover while the same signed URL is still warming up.
-    entry.ready = decodedImage.decode()
-      .catch(() => undefined)
-      .then(() => { entry.decoded = true; });
+    // Resolve the cache entry only after the browser has fetched and decoded
+    // the bytes. A failed image is removed so a later query can retry it.
+    const imageReady = new Promise<void>((resolve, reject) => {
+      decodedImage.onload = () => {
+        if (typeof decodedImage.decode === "function") {
+          void decodedImage.decode().then(resolve, reject);
+        } else {
+          resolve();
+        }
+      };
+      decodedImage.onerror = () => reject(new Error("No se pudo cargar la portada privada."));
+      decodedImage.src = url;
+    });
+    entry.ready = imageReady
+      .then(() => { entry.decoded = true; })
+      .catch((error: unknown) => {
+        if (privatePhotoCache.get(path) === entry) privatePhotoCache.delete(path);
+        throw error;
+      });
   }
   privatePhotoCache.delete(path);
   privatePhotoCache.set(path, entry);
@@ -88,13 +101,15 @@ export function usePrivatePhotos(paths: string[], enabled = true) {
       for (const path of paths) {
         const cached = getCachedPhoto(path);
         if (cached) {
-          urls.push({ path, url: cached.url });
+          await cached.ready;
+          if (cached.decoded) urls.push({ path, url: cached.url });
           continue;
         }
         const url = await privateMediaService.photoUrl(path);
         if (url) {
-          rememberPhoto(path, url);
-          urls.push({ path, url });
+          const photo = rememberPhoto(path, url);
+          await photo.ready;
+          if (photo.decoded) urls.push({ path, url: photo.url });
         }
       }
       return urls;
