@@ -92,7 +92,11 @@ const PERSONAL_BOOKS = [
   "Diciembre: El hombre más rico de Babilonia — George S. Clason",
 ];
 const ART_BOOKS = [
-  "Enero–mayo: La historia del arte — E. H. Gombrich (capítulos 1–28)",
+  "Enero: La historia del arte — E. H. Gombrich (capítulos 1–7)",
+  "Febrero: La historia del arte — E. H. Gombrich (capítulos 8–13)",
+  "Marzo: La historia del arte — E. H. Gombrich (capítulos 14–18)",
+  "Abril: La historia del arte — E. H. Gombrich (capítulos 19–23)",
+  "Mayo: La historia del arte — E. H. Gombrich (capítulos 24–28)",
   "Junio: Aprender a dibujar con el lado derecho del cerebro — Betty Edwards",
   "Julio: Notas de diario — Leonardo da Vinci",
   "Agosto: Punto y línea sobre el plano — Wassily Kandinsky",
