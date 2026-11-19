@@ -246,7 +246,7 @@ function HomePage() {
                   <img src="/formula1-home.svg" alt="Fórmula 1 · Race Weekend · Grand Prix" />
                 </div>
               )}
-              <div className="grid min-w-0 gap-3 sm:grid-cols-2 sm:items-stretch">
+              <div className="grid min-w-0 grid-cols-1 gap-3">
                 <WeatherCard compact />
                 <EmotionQuickCard date={date} />
               </div>
@@ -805,7 +805,7 @@ function HydrationOverview({ date, compact = false }: { date: string; compact?: 
             <div className="mt-3 flex flex-wrap gap-1.5">
               <Button type="button" size="sm" variant="outline" className="h-8 rounded-full text-xs" disabled={allFailed || hydrationMutations.create.isPending} onClick={() => hydrationMutations.create.mutate({ beverage_type: "water", amount_ml: 325, icon: "💧" })}>+1 vaso de agua</Button>
               <Button type="button" size="sm" variant="outline" className="h-8 rounded-full text-xs" disabled={allFailed || hydrationMutations.create.isPending} onClick={() => hydrationMutations.create.mutate({ beverage_type: "coffee", amount_ml: 120, note: "Café", icon: "☕" })}>+1/2 taza de café</Button>
-              <Button type="button" size="sm" variant="outline" className="h-8 rounded-full text-xs" disabled={allFailed || hydrationMutations.create.isPending} onClick={() => hydrationMutations.create.mutate({ beverage_type: "tea", amount_ml: 240, note: "Té", icon: "🍵" })}>+1 taza de té</Button>
+              <Button type="button" size="sm" variant="outline" className="h-8 rounded-full text-xs" disabled={allFailed || hydrationMutations.create.isPending} onClick={() => hydrationMutations.create.mutate({ beverage_type: "tea", amount_ml: 325, note: "Té", icon: "🍵" })}>+1 taza de té</Button>
             </div>
             {ready && (
               <div className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
