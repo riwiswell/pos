@@ -109,9 +109,9 @@ const IMPORTED_GOALS = [
   {
     title: "Recorrer 1.000 km en bicicleta",
     area: "Salud",
-    status: "active",
+    status: "paused",
     target_date: "2026-12-31",
-    notes: "Esta es la meta que recuerdas como la original: 1.000 km en el año. El Excel guardaba una meta de 1.500 km, pero sus registros mensuales de kilómetros aparecen en cero. Conservamos aquí tu objetivo recordado de 1.000 km; registra el avance que sí alcanzaste al principio del año.",
+    notes: "Esta es la meta que recuerdas como la original: 1.000 km en el año. El Excel guardaba una meta de 1.500 km, pero sus registros mensuales de kilómetros aparecen en cero. La conservamos en pausa por ahora, sin perder el objetivo ni el historial; puedes reactivarla si vuelves a montar bicicleta. El avance que alcanzaste al principio del año queda pendiente de registrar con tus kilómetros reales.",
     meta: { target: 1000, unit: "km", period: "annual", category: "Salud", startValue: 0, history: [], importedFrom: "Planificador 2026.xlsx" },
   },
   {
