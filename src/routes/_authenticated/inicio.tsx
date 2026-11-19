@@ -32,8 +32,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { useTheme } from "@/hooks/use-theme";
 import { useHabits, useLogs, useLogsRange, useHabitMutations } from "@/hooks/use-habits";
-import { useJournalEntriesByDate } from "@/hooks/use-journal";
-import { JOURNAL_META, entrySnippet, type JournalEntry } from "@/domain/journal";
+import { useJournalEntries, useJournalEntriesByDate, useJournalMutations } from "@/hooks/use-journal";
+import { JOURNAL_META, entrySnippet, type JournalEntry } from "@/domain/journal";\nimport { EMOTIONS } from "@/domain/emotions";
 import { usePersonalDateList } from "@/hooks/use-personal-domains";
 import { useDoses } from "@/hooks/use-medications";
 import { medicationWater, waterGlassesToMl } from "@/domain/health";
@@ -43,7 +43,7 @@ import { addDaysISO, greeting } from "@/lib/date";
 import { normalizeDashboardWidgets, normalizeHomeDashboardLayout } from "@/domain/dashboard";
 import { getLevelProgress } from "@/domain/gamification";
 import { useLGList } from "@/hooks/use-life-graph";
-import { useHydrationEntries } from "@/hooks/use-hydration";
+import { useHydrationEntries, useHydrationMutations } from "@/hooks/use-hydration";
 import { LifeActivityFeed } from "@/components/dashboard/LifeActivityFeed";
 import { DashboardPersonalizer } from "@/components/dashboard/DashboardPersonalizer";
 import type { Habit, HabitLog } from "@/domain/types";
@@ -211,18 +211,18 @@ function HomePage() {
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {showHabits && (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur">
+              <Link to="/organizacion" search={(prev: Record<string, unknown>) => ({ ...prev, tab: "habitos" })} className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur transition-colors hover:border-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                 <div className="flex items-center gap-2 text-xs text-slate-300"><Target className="h-4 w-4 text-cyan-300" /> Hábitos</div>
                 <p className="mt-2 text-xl font-semibold tabular-nums text-white">{done}<span className="text-sm font-normal text-slate-400"> / {total}</span></p>
                 <p className="mt-0.5 text-[11px] text-slate-400">{percent}% completado</p>
-              </div>
+              </Link>
             )}
             {showPlanner && (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur">
+              <Link to="/organizacion" search={(prev: Record<string, unknown>) => ({ ...prev, tab: "planeador" })} className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur transition-colors hover:border-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                 <div className="flex items-center gap-2 text-xs text-slate-300"><CalendarDays className="h-4 w-4 text-violet-300" /> Agenda</div>
                 <p className="mt-2 text-xl font-semibold tabular-nums text-white">{pendingItems.length}<span className="text-sm font-normal text-slate-400"> pendientes</span></p>
                 <p className="mt-0.5 text-[11px] text-slate-400">{eventCount} eventos</p>
-              </div>
+              </Link>
             )}
             <Link to="/diario" search={(prev: Record<string, unknown>) => prev} className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur transition-colors hover:border-white/25">
               <div className="flex items-center gap-2 text-xs text-slate-300"><BookOpen className="h-4 w-4 text-sky-300" /> Diario</div>
@@ -245,7 +245,10 @@ function HomePage() {
                   <img src="/formula1-home.svg" alt="Fórmula 1 · Race Weekend · Grand Prix" />
                 </div>
               )}
-              <WeatherCard compact />
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2 sm:items-stretch">
+                <WeatherCard compact />
+                <EmotionQuickCard date={date} />
+              </div>
               {homeLayout.visible.includes("activity") && (
                 <div className="inicio-widget inicio-widget--activity" style={{ order: homeLayout.order.indexOf("activity") }}>
                   <LifeActivityFeed date={date} connections={connectionsQuery.data ?? []} connectionsLoading={connectionsQuery.isLoading} />
@@ -665,6 +668,66 @@ function DiaryOverview({
   );
 }
 
+function EmotionQuickCard({ date }: { date: string }) {
+  const entries = useJournalEntries();
+  const mutations = useJournalMutations();
+  const [choosing, setChoosing] = useState(false);
+  const latest = (entries.data ?? []).find((entry) =>
+    entry.type === "reflection" && Boolean(entry.mood) && Boolean(entry.notes?.includes("pos-emotion-v1")),
+  );
+  const current = EMOTIONS.find((item) => item.label === latest?.mood);
+  const choose = (label: string) => {
+    mutations.create.mutate({
+      type: "reflection",
+      title: "Emoción · " + label,
+      content: "Registro emocional.",
+      entry_date: date,
+      entry_time: new Date().toTimeString().slice(0, 5),
+      mood: label,
+      notes: JSON.stringify({ marker: "pos-emotion-v1", intensity: 3 }),
+      items: [],
+      photos: [],
+    }, { onSuccess: () => setChoosing(false) });
+  };
+
+  return (
+    <section className="glass flex min-w-0 flex-col rounded-2xl p-3.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-400/15 text-rose-500"><span className="text-lg">💗</span></span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-rose-500">Bienestar</p>
+            <h2 className="font-semibold">Emociones</h2>
+          </div>
+        </div>
+        <Button type="button" size="sm" variant="outline" className="h-8 shrink-0" onClick={() => setChoosing((value) => !value)}>
+          {choosing ? "Listo" : current ? "Cambiar" : "Registrar"}
+        </Button>
+      </div>
+      <div className="mt-4 flex min-h-[76px] items-center gap-3">
+        <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-border/70 bg-muted/40 text-4xl" aria-hidden="true">{current?.emoji ?? "🙂"}</span>
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">Última emoción registrada</p>
+          <p className="truncate text-lg font-semibold">{current?.label ?? "Aún sin registrar"}</p>
+          {latest && <p className="text-[11px] text-muted-foreground">{latest.entry_date}</p>}
+        </div>
+      </div>
+      {choosing && (
+        <div className="mt-3 grid grid-cols-4 gap-1.5 border-t border-border/60 pt-3">
+          {EMOTIONS.map((emotion) => (
+            <button key={emotion.label} type="button" onClick={() => choose(emotion.label)} disabled={mutations.create.isPending}
+              aria-label={"Registrar emoción: " + emotion.label} title={emotion.label}
+              className={"flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 text-center transition hover:border-primary " + emotion.tone}>
+              <span className="text-xl">{emotion.emoji}</span>
+              <span className="w-full truncate text-[9px] font-medium">{emotion.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function HydrationOverview({ date, compact = false }: { date: string; compact?: boolean }) {
   const metrics = usePersonalDateList<{ water_liters: number | null }>("health_metrics", "metric_date", date);
   const doses = useDoses(date);
@@ -737,6 +800,11 @@ function HydrationOverview({ date, compact = false }: { date: string; compact?: 
               </span>
             </div>
             <Progress value={!ready || allFailed ? 0 : percent} className="mt-3 h-2.5" />
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <Button type="button" size="sm" variant="outline" className="h-8 rounded-full text-xs" disabled={allFailed || hydrationMutations.create.isPending} onClick={() => hydrationMutations.create.mutate({ beverage_type: "water", amount_ml: 325, icon: "💧" })}>+1 vaso de agua</Button>
+              <Button type="button" size="sm" variant="outline" className="h-8 rounded-full text-xs" disabled={allFailed || hydrationMutations.create.isPending} onClick={() => hydrationMutations.create.mutate({ beverage_type: "coffee", amount_ml: 120, note: "Café", icon: "☕" })}>+1/2 taza de café</Button>
+              <Button type="button" size="sm" variant="outline" className="h-8 rounded-full text-xs" disabled={allFailed || hydrationMutations.create.isPending} onClick={() => hydrationMutations.create.mutate({ beverage_type: "tea", amount_ml: 240, note: "Té", icon: "🍵" })}>+1 taza de té</Button>
+            </div>
             {ready && (
               <div className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
                 <p>Agua simple: {fmtMl(waterMl)} ml · Otros líquidos: {fmtMl(otherFluidMl)} ml</p>

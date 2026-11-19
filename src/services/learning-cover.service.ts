@@ -15,6 +15,29 @@ const CACHEABLE_COVER_HOSTS = new Set([
   "steamcdn-a.akamaihd.net",
 ]);
 const CACHED_COVER_PREFIX = "/api/learning-cover-image?";
+const preloadedCoverImages = new Map<string, Promise<void>>();
+
+/** Warm and decode a cover once so opening a book or game card is immediate. */
+export function preloadLearningCover(url: string | null | undefined): void {
+  if (!url || typeof window === "undefined" || preloadedCoverImages.has(url)) return;
+  const image = new window.Image();
+  image.decoding = "async";
+  image.fetchPriority = "high";
+  const loaded = new Promise<void>((resolve) => {
+    image.onload = () => resolve();
+    image.onerror = () => resolve();
+  });
+  preloadedCoverImages.set(url, loaded);
+  image.src = url;
+  if (image.complete && typeof image.decode === "function") {
+    void image.decode().catch(() => undefined);
+  }
+  if (preloadedCoverImages.size > 180) {
+    const oldest = preloadedCoverImages.keys().next().value;
+    if (oldest) preloadedCoverImages.delete(oldest);
+  }
+}
+
 
 /** Distinguish provider URLs and our same-origin cached image path from private Storage paths. */
 export function isRemoteLearningCoverPath(path: string | null | undefined): boolean {

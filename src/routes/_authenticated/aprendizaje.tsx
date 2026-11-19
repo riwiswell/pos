@@ -301,7 +301,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
   const mine=notes;
   const remoteCover=isRemoteLearningCoverPath(coverPath);
   const coverQuery=usePrivatePhotos(coverPath&&!remoteCover?[coverPath]:[],Boolean(coverPath&&!remoteCover));
-  const coverUrl=remoteCover?resolveLearningCoverUrl(coverPath):coverQuery.data?.find(item=>item.path===coverPath)?.url;
+  const coverUrl=remoteCover?resolveLearningCoverUrl(coverPath):coverQuery.data?.find(item=>item.path===coverPath)?.url;\n  useEffect(()=>{preloadLearningCover(coverUrl)},[coverUrl]);
   const pageValue=Math.max(0,Number(page)||0);
   const progress=total?Math.min(100,Math.max(0,pageValue/total*100)):Number(book.progress)||0;
   const remain=Math.max(0,total-pageValue);
@@ -439,7 +439,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
       <div className="relative w-[76px] shrink-0">
         <div className="aspect-[2/3] overflow-hidden rounded-xl border bg-gradient-to-br from-stone-800 via-amber-950 to-slate-950 shadow-sm">
           {coverUrl
-            ? <img src={coverUrl} alt={"Portada de "+book.title} loading="lazy" decoding="async" className="h-full w-full object-cover"/>
+            ? <img src={coverUrl} alt={"Portada de "+book.title} loading="eager" fetchPriority="high" decoding="async" className="h-full w-full object-cover"/>
             : <div className={"flex h-full flex-col items-center justify-between p-2 text-center text-white "+(isBible?"bg-gradient-to-br from-indigo-950 via-blue-900 to-slate-950":"")}>
                 <BookOpen className="mt-1 h-5 w-5 opacity-80"/>
                 <span className="line-clamp-5 break-words text-[10px] font-semibold leading-tight">{book.title}</span>
@@ -642,7 +642,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
   const path=item.cover_path?String(item.cover_path):null;
   const remoteCover=isRemoteLearningCoverPath(path);
   const photoQuery=usePrivatePhotos(path&&!remoteCover?[path]:[],Boolean(path&&!remoteCover));
-  const photoUrl=remoteCover?resolveLearningCoverUrl(path):photoQuery.data?.find(photo=>photo.path===path)?.url;
+  const photoUrl=remoteCover?resolveLearningCoverUrl(path):photoQuery.data?.find(photo=>photo.path===path)?.url;\n  useEffect(()=>{preloadLearningCover(photoUrl)},[photoUrl]);
   const findGameCover=async()=>{
     setFindingCover(true);
     try{

@@ -184,8 +184,8 @@ export function WeatherCard({ compact = false, planner = false }: { compact?: bo
           <Button type="button" size="sm" variant="ghost" className="mt-1 px-0" onClick={() => setLocation((value) => ({ ...value }))}>Intentar de nuevo</Button>
         </div>
       ) : current ? (compact ? (
-          <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="col-span-2 flex min-w-0 items-center gap-3 rounded-xl bg-background/35 p-2 sm:col-span-2">
+          <div className="mt-3 grid min-w-0 grid-cols-2 gap-2">
+            <div className="col-span-2 flex min-w-0 items-center gap-3 rounded-xl bg-background/35 p-2 col-span-2">
               <WeatherIcon code={displayCode} isDay={current.is_day === 1} />
               <div className="min-w-0">
                 <p className="text-3xl font-semibold tracking-tight tabular-nums">{Math.round(current.temperature_2m)}°</p>
