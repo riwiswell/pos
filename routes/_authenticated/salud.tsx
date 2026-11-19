@@ -1,0 +1,1064 @@
+import { useEffect,useMemo,useRef,useState } from "react";
+import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { CalendarHeart,ChevronLeft,ChevronRight,ClipboardList,Coffee,CupSoda,Droplets,HeartPulse,Leaf,Pencil,Pill,Plus,Toilet,Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label"; import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { toast } from "sonner"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor"; import { HealthMetricsPanel } from "@/components/health/HealthMetricsPanel"; import { BowelLogPanel } from "@/components/health/BowelLogPanel"; import { SleepPanel } from "@/components/health/SleepPanel"; import { MedicationDialog } from "@/components/health/MedicationDialog";
+import { useGlobalDate } from "@/hooks/use-global-date";
+import { addDaysISO, todayISO } from "@/lib/date";
+import { subscribeToBackgroundPush } from "@/services/push.service"; import { useAuth } from "@/hooks/use-auth"; import { usePersonalDateList } from "@/hooks/use-personal-domains"; import { useProfile, useProfileMutations } from "@/hooks/use-profile";
+import { supabase } from "@/integrations/supabase/client"; import { useLGList,useLGMutations } from "@/hooks/use-life-graph"; import { lastWater,useDoseHistory,useDoses,useMedicationMutations,useMedications,useTakenCounts } from "@/hooks/use-medications"; import { formatTime12,medicationScheduleLabel,formatStockQuantity,formatGlasses,waterGlassesToMl,WATER_GLASS_ML,medicationWater,remainingQuantity,durationDays,WATER_OPTIONS,type BeverageType,type HydrationEntry,type Medication } from "@/domain/health";
+import { useHydrationEntries,useHydrationMutations } from "@/hooks/use-hydration";
+import { usePlannerCategories, usePlannerItemsRange, usePlannerMutations } from "@/hooks/use-planner";
+import { useMedicationStockTotals } from "@/hooks/use-medications";
+export const Route=createFileRoute("/_authenticated/salud")({component:HealthPage});
+function HealthPage(){
+ const[tab,setTab]=useState("hydration");
+ const search=useRouterState({select:(state)=>state.location.search as Record<string,unknown>});
+ // Push-action links must mount the medication panel; the panel owns the single
+ // authenticated mutation and clears the search state through the router.
+ useEffect(()=>{
+  if(typeof search["dose"]==="string"&&(search["action"]==="take"||search["action"]==="snooze"))setTab("meds");
+ },[search["dose"],search["action"]]);
+ const{data:profile}=useProfile();const hidden=profile?.hidden_features||{};const tabs=[["hydration","Hidratación",false],["meds","Medicamentos",false],["sleep","Sueño",false],["metrics","Medidas del cuerpo",false],["cycle","Ciclo",hidden["health.cycle"]===true],["appointments","Citas",hidden["health.appointments"]===true],["nutrition","Nutrición",hidden["health.nutrition"]===true],["bowel","Idas al baño",false]].filter((x:any)=>!x[2]);const current=tabs.some((x:any)=>x[0]===tab)?tab:tabs[0]?.[0]||"meds";const tabIcons:Record<string,any>={meds:Pill,sleep:CalendarHeart,metrics:HeartPulse,hydration:Droplets,bowel:Toilet,cycle:CalendarHeart,appointments:ClipboardList,nutrition:Leaf};return <div className="space-y-5 pb-24"><GlobalDateHeader/><div><h1 className="flex items-center gap-2 text-xl font-semibold">Salud <HelpTip helpKey="health" /></h1><p className="text-sm text-muted-foreground">Medicamentos, sueño, medidas, signos vitales y seguimiento diario.</p></div><div className="grid grid-cols-4 gap-1.5">{tabs.map(([k,v])=>{const Icon=tabIcons[k as string]||HeartPulse;return <button key={k as string} onClick={()=>setTab(k as string)} aria-pressed={current===k} className={"flex min-h-11 items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center text-[10px] font-semibold shadow-sm transition-colors "+(current===k?"border-primary bg-primary text-primary-foreground shadow":"border-border bg-card text-foreground hover:border-primary/50 hover:bg-accent")}><span className={"grid h-5 w-5 shrink-0 place-items-center rounded-md "+(current===k?"bg-primary-foreground/15":"bg-primary/10 text-primary")}><Icon className="h-3.5 w-3.5"/></span><span className="min-w-0 leading-tight">{v as string}</span></button>})}</div>{current==="hydration"?<HydrationCard/>:current==="bowel"?<BowelLogPanel/>:current==="meds"?<Medications/>:current==="sleep"?<SleepPanel/>:current==="metrics"?<HealthMetricsPanel/>:current==="cycle"?<Cycle/>:current==="appointments"?<Appointments/>:<Nutrition/>}</div>}
+type HydrationConfig = { enabled: boolean; start_time: string; end_time: string; interval_minutes: number; amount_ml: number; background_push?: boolean };
+const DEFAULT_HYDRATION: HydrationConfig = { enabled: true, start_time: "08:00", end_time: "21:30", interval_minutes: 90, amount_ml: WATER_GLASS_ML };
+
+function normalizeHydrationTime(value: unknown): string | null {
+ const raw=String(value??"").trim();
+ const match=/^([0-9]{1,2}):([0-9]{2})(?::([0-9]{2})(?:[.]([0-9]+))?)?$/.exec(raw);
+ if(!match)return null;
+ const hour=Number(match[1]);
+ const minute=Number(match[2]);
+ const second=match[3]===undefined?0:Number(match[3]);
+ if(!Number.isInteger(hour)||hour<0||hour>23||!Number.isInteger(minute)||minute<0||minute>59||!Number.isInteger(second)||second<0||second>59)return null;
+ return String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0");
+}
+function hydrationMinutes(value: string): number {
+ const [hour,minute]=value.split(":").map(Number);
+ return hour*60+minute;
+}
+
+function HydrationCard(){
+ const{date}=useGlobalDate();
+ const yesterdayDate=useMemo(()=>{const d=new Date(date+"T12:00:00");d.setDate(d.getDate()-1);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")},[date]);
+ const metrics=usePersonalDateList<any>("health_metrics","metric_date",date);
+ const yesterdayMetrics=usePersonalDateList<any>("health_metrics","metric_date",yesterdayDate);
+ const doses=useDoses(date);
+ const medications=useMedications();
+ const entries=useHydrationEntries(date);
+ const yesterdayEntries=useHydrationEntries(yesterdayDate);
+ const hydration=useHydrationMutations(date);
+ const profileQuery=useProfile();const profile=profileQuery.data;const profileMutations=useProfileMutations();
+ const [customMl,setCustomMl]=useState("300");
+ const [otherType,setOtherType]=useState<BeverageType>("tea");
+ const [otherMl,setOtherMl]=useState("150");
+ const [otherName,setOtherName]=useState("");
+ const [otherIcon,setOtherIcon]=useState("🍵");
+ const [editingEntryId,setEditingEntryId]=useState<string|null>(null);
+ const [editType,setEditType]=useState<BeverageType>("water");
+ const [editMl,setEditMl]=useState("325");
+ const [editName,setEditName]=useState("");
+ const [editIcon,setEditIcon]=useState("🍵");
+ const [editTime,setEditTime]=useState("08:00");
+ const [confirmDeleteId,setConfirmDeleteId]=useState<string|null>(null);
+ const [schedule,setSchedule]=useState<HydrationConfig>(DEFAULT_HYDRATION);
+ const [showHydrationSettings,setShowHydrationSettings]=useState(false);
+ const [savingSchedule,setSavingSchedule]=useState(false);
+ const [pushBusy,setPushBusy]=useState(false);
+ useEffect(()=>{
+  if(!profile)return;
+  const saved={...DEFAULT_HYDRATION,...(profile.notification_preferences?.hydration??{})};
+  setSchedule({
+   ...saved,
+   start_time:normalizeHydrationTime(saved.start_time)??DEFAULT_HYDRATION.start_time,
+   end_time:normalizeHydrationTime(saved.end_time)??DEFAULT_HYDRATION.end_time,
+  });
+ },[profile]);
+ const legacyWaterMl=Math.max(0,Math.round((Number(metrics.data?.[0]?.water_liters??0)||0)*1000));
+ const dayEntries=entries.data??[];
+ const medicationList=medications.data??[];
+ const medicationById=new Map(medicationList.map(item=>[item.id,item] as const));
+ const historyItems=[
+  ...dayEntries.map(entry=>({kind:"drink" as const,id:"drink:"+entry.id,consumed_at:entry.consumed_at,entry})),
+  ...(doses.data??[]).flatMap(dose=>{
+   if(dose.status!=="taken")return [];
+   const glasses=Number(dose.water_glasses??0);
+   const amount_ml=Math.round(waterGlassesToMl(glasses));
+   if(amount_ml<=0)return [];
+   const medication=medicationById.get(dose.medication_id);
+   return [{kind:"medication" as const,id:"medication:"+dose.id,consumed_at:dose.taken_at??dose.scheduled_at,medicationName:medication?.name??"Medicamento",glasses,amount_ml,entryOrigin:dose.entry_origin}];
+  }),
+ ].sort((a,b)=>new Date(a.consumed_at).getTime()-new Date(b.consumed_at).getTime());
+ const recordedWaterMl=dayEntries.filter(x=>x.beverage_type==="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
+ const otherFluidMl=dayEntries.filter(x=>x.beverage_type!=="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
+ const legacyYesterdayWaterMl=Math.max(0,Math.round((Number(yesterdayMetrics.data?.[0]?.water_liters??0)||0)*1000));
+ const yesterdayWaterMl=legacyYesterdayWaterMl+(yesterdayEntries.data??[]).filter(x=>x.beverage_type==="water").reduce((sum,x)=>sum+Number(x.amount_ml||0),0);
+ const medicineWaterMl=waterGlassesToMl(medicationWater(doses.data??[]));
+ const waterMl=legacyWaterMl+recordedWaterMl+medicineWaterMl;
+ const totalFluidMl=waterMl+otherFluidMl;
+ const fmt=(value:number)=>Math.round(value).toLocaleString("es-CO");
+ const busy=hydration.create.isPending||hydration.update.isPending||hydration.remove.isPending;
+ const beverageLabels:Record<BeverageType,string>={water:"Agua",coffee:"Café",tea:"Té",milk:"Leche",other:"Otra bebida"};
+ const addDrink=async(beverage_type:BeverageType,amount_ml:number,note?:string|null,icon?:string)=>{
+  if(!Number.isInteger(amount_ml)||amount_ml<1||amount_ml>3000)return;
+  if(beverage_type==="other"&&!note?.trim()){toast.error("Escribe el nombre de la bebida (por ejemplo, aguapanela o Frutiño).");return;}
+  const defaultIcon:Record<BeverageType,string>={water:"💧",coffee:"☕",tea:"🍵",milk:"🥛",other:"🥤"};
+  await hydration.create.mutateAsync({beverage_type,amount_ml,note,icon:icon??defaultIcon[beverage_type]});
+  if(beverage_type==="other"){setOtherName("");setOtherIcon("🥤");}
+ };
+ const startEditing=(entry:HydrationEntry)=>{
+  const consumedAt=new Date(entry.consumed_at);
+  setEditingEntryId(entry.id);
+  setEditType(entry.beverage_type);
+  setEditMl(String(entry.amount_ml));
+  setEditName(entry.note??"");
+  setEditIcon(entry.icon??({water:"💧",coffee:"☕",tea:"🍵",milk:"🥛",other:"🥤"} as Record<BeverageType,string>)[entry.beverage_type]);
+  setEditTime(Number.isNaN(consumedAt.getTime())?"08:00":String(consumedAt.getHours()).padStart(2,"0")+":"+String(consumedAt.getMinutes()).padStart(2,"0"));
+  setConfirmDeleteId(null);
+ };
+ const saveEntry=async()=>{
+  if(!editingEntryId)return;
+  const amount=Number(editMl);
+  if(!Number.isInteger(amount)||amount<1||amount>3000){toast.error("Introduce una cantidad entre 1 y 3000 ml.");return;}
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(editTime)){toast.error("Introduce una hora válida.");return;}
+  if(editType==="other"&&!editName.trim()){toast.error("Escribe el nombre de la bebida.");return;}
+  try{
+   await hydration.update.mutateAsync({id:editingEntryId,beverage_type:editType,amount_ml:amount,note:editType==="other"?editName.trim():null,icon:editIcon,consumed_time:editTime});
+   setEditingEntryId(null);
+  }catch{}
+ };
+ const deleteEntry=async(id:string)=>{
+  try{await hydration.remove.mutateAsync(id);setConfirmDeleteId(null);setEditingEntryId(null);}catch{}
+ };
+ const saveSchedule=async()=>{
+  if(!profile||savingSchedule)return;
+  const startTime=normalizeHydrationTime(schedule.start_time);
+  const endTime=normalizeHydrationTime(schedule.end_time);
+  if(!startTime||!endTime){
+   toast.error("Introduce horas válidas, por ejemplo 9:30 y 23:30.");return;
+  }
+  if(hydrationMinutes(endTime)<=hydrationMinutes(startTime)){
+   toast.error("La hora final debe ser posterior a la hora inicial.");return;
+  }
+  const normalizedSchedule={...schedule,start_time:startTime,end_time:endTime};
+  setSchedule(normalizedSchedule);
+  setSavingSchedule(true);
+  try{
+   const preferences={...(profile.notification_preferences||{}),hydration:normalizedSchedule};
+   await profileMutations.save.mutateAsync({notification_preferences:preferences});
+   const{data:{session}}=await supabase.auth.getSession();
+   if(!session)throw new Error("Inicia sesión de nuevo para sincronizar los avisos.");
+   const response=await fetch("/api/hydration-preferences",{
+    method:"POST",headers:{"content-type":"application/json",Authorization:"Bearer "+session.access_token},body:JSON.stringify(normalizedSchedule),
+   });
+   const result=await response.json() as {error?:string;scheduled?:number;pushRequired?:boolean;enabled?:boolean};
+   if(!response.ok)throw new Error(result.error||"No se pudieron sincronizar los avisos.");
+   if(!normalizedSchedule.enabled)toast.success("Recordatorios de hidratación desactivados.");
+   else if(result.pushRequired)toast.info("Avisos locales activos mientras POS esté abierto. Activa las notificaciones push para recibirlos con POS cerrado.");
+   else toast.success("Recordatorios en segundo plano programados.");
+  }catch(error){toast.error(error instanceof Error?error.message:"No se pudieron guardar los recordatorios.");}
+  finally{setSavingSchedule(false);}
+ };
+ const activatePush=async()=>{
+  setPushBusy(true);
+  try{
+   const result=await subscribeToBackgroundPush();
+   if(result==="subscribed")toast.success("Notificaciones en segundo plano activadas.");
+   else if(result==="missing-key")toast.error("Falta configurar VAPID en Cloudflare; POS mantendrá los avisos locales mientras esté abierto.");
+   else if(result==="permission-denied")toast.error("Permite las notificaciones del navegador para continuar.");
+   else if(result==="unsupported")toast.error("Este navegador no admite notificaciones push.");
+   else toast.error("No se pudo activar la suscripción de notificaciones.");
+  }catch(error){toast.error(error instanceof Error?error.message:"No se pudieron activar las notificaciones.");}
+  finally{setPushBusy(false);}
+ };
+ const disabled=busy||entries.isLoading;
+ const reminderWaterOptions=WATER_OPTIONS.filter(glasses=>glasses>0).map(glasses=>({glasses,amount_ml:Math.round(waterGlassesToMl(glasses))}));
+ return <section className="glass space-y-4 rounded-2xl p-4">
+  <div className="flex flex-wrap items-center justify-between gap-3">
+   <div><h2 className="flex items-center gap-1 font-semibold">💧 Hidratación <HelpTip helpKey="hydration.daily" /></h2><p className="text-xs text-muted-foreground">Agua simple y otras bebidas se registran por separado.</p></div>
+   <div className="text-right"><p className="text-sm font-semibold tabular-nums">{(waterMl/1000).toLocaleString("es-CO",{maximumFractionDigits:2})} / 2,00 L</p><p className="text-[11px] text-muted-foreground">agua simple</p></div>
+  </div>
+  <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-sky-500 transition-all" style={{width:Math.min(100,Math.max(0,waterMl/2000*100))+"%"}}/></div>
+  <div className="flex flex-wrap gap-2 text-xs">
+   <span className="rounded-full bg-sky-500/10 px-2.5 py-1 text-sky-700 dark:text-sky-300">Agua: {fmt(waterMl)} ml</span>
+   <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-amber-800 dark:text-amber-300">Café y otras bebidas: {fmt(otherFluidMl)} ml</span>
+   <span className="rounded-full bg-muted px-2.5 py-1 text-foreground">Líquidos registrados: {fmt(totalFluidMl)} ml</span>
+  </div>
+  <div className="flex flex-wrap items-center gap-2">
+   {WATER_OPTIONS.filter(glasses=>glasses>0).map(glasses=>{const ml=Math.round(waterGlassesToMl(glasses));return <Button key={glasses} size="sm" variant={glasses===1?"default":"outline"} disabled={disabled} onClick={()=>void addDrink("water",ml)}>+{formatGlasses(glasses)} agua</Button>})}
+   <Button size="sm" variant="outline" className="gap-1" disabled={disabled} onClick={()=>void addDrink("coffee",50)}><Coffee className="h-3.5 w-3.5"/> +1/2 taza de café</Button>
+   <Button size="sm" variant="outline" className="gap-1" disabled={disabled} onClick={()=>void addDrink("coffee",100)}><Coffee className="h-3.5 w-3.5"/> +1 taza de café</Button>
+   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("tea",240,"Té","🍵")}>+1 taza de té</Button>
+   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("other",325,"Frutiño","🧃")}>+{formatGlasses(1)} Frutiño</Button>
+   <Button size="sm" variant="outline" disabled={disabled} onClick={()=>void addDrink("other",325,"Agua de panela","🧉")}>+{formatGlasses(1)} agua de panela</Button>
+  </div>
+  <div className="space-y-2">
+   <div className="grid grid-cols-[minmax(0,1fr)_100px_auto] gap-2">
+    <select aria-label="Tipo de bebida" className="h-9 min-w-0 rounded-md border border-input bg-background px-2 text-sm" value={otherType} onChange={e=>{const value=e.target.value as BeverageType;setOtherType(value);setOtherIcon(({water:"💧",coffee:"☕",tea:"🍵",milk:"🥛",other:"🥤"} as Record<BeverageType,string>)[value]);}}>
+     <option value="coffee">Café</option><option value="tea">Té</option><option value="milk">Leche</option><option value="other">Otra bebida</option>
+    </select>
+    <Input aria-label="Cantidad en mililitros" className="h-9" type="number" min="1" max="3000" step="25" value={otherMl} onChange={e=>setOtherMl(e.target.value)}/>
+    <Button size="sm" variant="outline" disabled={disabled||!Number.isInteger(Number(otherMl))||Number(otherMl)<1||Number(otherMl)>3000||(otherType==="other"&&!otherName.trim())} onClick={()=>void addDrink(otherType,Number(otherMl),otherType==="other"?otherName.trim():null,otherIcon)}>Registrar</Button>
+   </div>
+   <div className="space-y-1.5"><p className="text-xs font-medium text-muted-foreground">Icono de la bebida</p><div className="flex flex-wrap gap-1.5">{["🥤","🧃","🍹","🧋","🧉","🍶","🥛","☕","🫖","🍵","💧","🧊","🍋","🍊","🍓","🍉","🍍","🥥","🍇","🥭","🍑","🍒","🫐","🍌","🍏","🍯","🥣","🍼"].map(icon=><button key={icon} type="button" aria-label={"Elegir icono "+icon} aria-pressed={otherIcon===icon} onClick={()=>setOtherIcon(icon)} className={"grid h-9 w-9 place-items-center rounded-lg border text-xl "+(otherIcon===icon?"border-primary bg-primary/10":"border-border/60 hover:bg-accent")}>{icon}</button>)}</div></div>
+   {otherType==="other"&&<Input aria-label="Nombre de la bebida" className="h-9" placeholder="Nombre (aguapanela, Frutiño, jugo…)" value={otherName} onChange={e=>setOtherName(e.target.value)} maxLength={80}/>}
+  </div>
+  <div className="space-y-2 rounded-xl border p-3">
+   <div className="flex min-w-0 items-center justify-between gap-3">
+    <span className="min-w-0"><b className="block text-sm">{date===todayISO()?"Lo que has tomado hoy":"Bebidas registradas ese día"}</b><span className="text-xs text-muted-foreground">{historyItems.length} {historyItems.length===1?"registro":"registros"}</span></span>
+   </div>
+   <div className="space-y-2">
+   {entries.isLoading||doses.isLoading||medications.isLoading?<p className="text-xs text-muted-foreground">Cargando registros…</p>:historyItems.length===0?<p className="text-xs text-muted-foreground">Todavía no hay bebidas ni agua asociada a medicamentos registrada para esta fecha.</p>:<div className="space-y-2">
+    {historyItems.map(item=>{
+     if(item.kind==="medication"){
+      const timeLabel=new Date(item.consumed_at).toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"});
+      return <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/[.035] p-2.5">
+       <span className="flex min-w-0 flex-1 items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-300"><Droplets className="h-4 w-4"/></span><span className="min-w-0"><b className="block text-sm">Agua con {item.medicationName}</b><span className="text-xs text-muted-foreground">{timeLabel} · {formatGlasses(item.glasses)} · Se corrige en Medicamentos</span></span></span>
+       <span className="text-sm font-medium tabular-nums">{fmt(item.amount_ml)} ml</span>
+       {item.entryOrigin==="stock_estimate"&&<span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-700 dark:text-amber-300">Estimado</span>}
+      </div>;
+     }
+     const entry=item.entry;
+     const label=entry.beverage_type==="other"?(entry.note?.trim()||"Otra bebida"):beverageLabels[entry.beverage_type];
+     const Icon=entry.beverage_type==="water"?Droplets:entry.beverage_type==="coffee"?Coffee:entry.beverage_type==="tea"?Leaf:CupSoda;
+     const timeLabel=new Date(entry.consumed_at).toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"});
+     return <div key={item.id} className="rounded-lg border border-border/70 p-2.5">
+      {editingEntryId===entry.id?<div className="space-y-2">
+       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <select aria-label="Tipo de bebida al editar" className="h-9 min-w-0 rounded-md border border-input bg-background px-2 text-sm" value={editType} onChange={e=>setEditType(e.target.value as BeverageType)}>
+         <option value="water">Agua</option><option value="coffee">Café</option><option value="tea">Té</option><option value="milk">Leche</option><option value="other">Otra bebida</option>
+        </select>
+        <Input aria-label="Cantidad en mililitros al editar" className="h-9" type="number" min="1" max="3000" step="25" value={editMl} onChange={e=>setEditMl(e.target.value)}/>
+        <Input aria-label="Hora del registro" className="h-9" type="time" value={editTime} onChange={e=>setEditTime(e.target.value)}/>
+        {editType==="other"&&<div className="col-span-2 space-y-1.5 sm:col-span-4"><div className="flex flex-wrap gap-1">{["🥤","🧃","🍹","🧋","🧉","🍶","🥛","☕","🫖","🍵","💧","🧊","🍋","🍊","🍓","🍉","🍍","🥥","🍇","🥭","🍑","🍒","🫐","🍌","🍏","🍯","🥣","🍼"].map(icon=><button key={icon} type="button" aria-label={"Elegir icono "+icon} aria-pressed={editIcon===icon} onClick={()=>setEditIcon(icon)} className={"grid h-8 w-8 place-items-center rounded-md border text-lg "+(editIcon===icon?"border-primary bg-primary/10":"border-border/60")}>{icon}</button>)}</div><Input aria-label="Nombre de la bebida al editar" className="h-9" placeholder="Nombre de la bebida" value={editName} onChange={e=>setEditName(e.target.value)} maxLength={80}/></div>}
+       </div>
+       <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="ghost" onClick={()=>setEditingEntryId(null)}>Cancelar</Button>
+        <Button type="button" size="sm" disabled={hydration.update.isPending} onClick={()=>void saveEntry()}>{hydration.update.isPending?"Guardando…":"Guardar cambios"}</Button>
+       </div>
+      </div>:<div className="flex flex-wrap items-center gap-2">
+       <span className="flex min-w-0 flex-1 items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-300">{entry.icon?<span className="text-lg">{entry.icon}</span>:<Icon className="h-4 w-4"/>}</span><span className="min-w-0"><b className="text-sm">{label}</b><span className="ml-2 text-xs text-muted-foreground">{timeLabel}</span></span></span>
+       <span className="text-sm font-medium tabular-nums">{fmt(entry.amount_ml)} ml</span>
+       <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={"Editar "+label} title="Editar registro" onClick={()=>startEditing(entry)}><Pencil className="h-4 w-4"/></Button>
+       {confirmDeleteId===entry.id?<div className="flex items-center gap-1"><Button type="button" size="sm" variant="destructive" disabled={hydration.remove.isPending} onClick={()=>void deleteEntry(entry.id)}>Eliminar</Button><Button type="button" size="sm" variant="ghost" onClick={()=>setConfirmDeleteId(null)}>Cancelar</Button></div>:<Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-destructive" aria-label={"Eliminar "+label} title="Eliminar registro" onClick={()=>{setConfirmDeleteId(entry.id);setEditingEntryId(null);}}><Trash2 className="h-4 w-4"/></Button>}
+      </div>}
+     </div>;
+    })}
+   </div>}
+   <p className="text-[11px] text-muted-foreground">Puedes editar o eliminar las bebidas individuales desde aquí. El agua de cada toma se corrige desde Medicamentos; los registros antiguos agregados siguen incluidos en el total, aunque no tienen detalle individual en este historial.</p>
+   </div>
+  </div>
+  <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-muted-foreground">Ayer ({yesterdayDate}): {yesterdayEntries.isLoading?"cargando…":yesterdayEntries.isError?"sin conexión al historial":fmt(yesterdayWaterMl)+" ml de agua"}</span>{(entries.isError||yesterdayEntries.isError)&&<Button type="button" size="sm" variant="outline" className="h-7" onClick={()=>{void entries.refetch();void yesterdayEntries.refetch()}}>Reintentar carga</Button>}</div>
+  {entries.isError&&<p className="text-xs text-destructive">No se pudo cargar el registro de bebidas. Puedes intentar registrar de todas formas; el error no bloquea el formulario. Detalle: {entries.error instanceof Error?entries.error.message:"error desconocido"}</p>}
+  <Dialog open={showHydrationSettings} onOpenChange={setShowHydrationSettings}>
+   <DialogTrigger asChild><Button type="button" variant="outline" size="sm" className="gap-2" onClick={()=>setShowHydrationSettings(true)}>🔔 Configurar avisos</Button></DialogTrigger>
+   <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+    <DialogHeader><DialogTitle>Avisos para tomar agua</DialogTitle></DialogHeader>
+    <div className="space-y-4">
+     <p className="text-xs text-muted-foreground">Configura cuándo quieres recibir recordatorios. No se crea un hábito duplicado.</p>
+     <div className="flex items-center justify-between gap-3 rounded-xl border p-3"><div><p className="text-sm font-medium">Activar avisos</p><p className="text-xs text-muted-foreground">Puedes pausarlos cuando quieras.</p></div><Switch checked={schedule.enabled} onCheckedChange={enabled=>setSchedule(current=>({...current,enabled}))}/></div>
+     {schedule.enabled&&<div className="grid grid-cols-2 gap-3">
+      <label className="space-y-1 text-xs text-muted-foreground">Desde<Input type="time" value={schedule.start_time} onChange={e=>setSchedule(current=>({...current,start_time:e.target.value}))}/></label>
+      <label className="space-y-1 text-xs text-muted-foreground">Hasta<Input type="time" value={schedule.end_time} onChange={e=>setSchedule(current=>({...current,end_time:e.target.value}))}/></label>
+      <label className="space-y-1 text-xs text-muted-foreground">Cada<select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={schedule.interval_minutes} onChange={e=>setSchedule(current=>({...current,interval_minutes:Number(e.target.value)}))}>{[30,45,60,90,120,180].map(value=><option key={value} value={value}>{value} min</option>)}</select></label>
+      <label className="space-y-1 text-xs text-muted-foreground">Cantidad<select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={schedule.amount_ml} onChange={e=>setSchedule(current=>({...current,amount_ml:Number(e.target.value)}))}>{!reminderWaterOptions.some(option=>option.amount_ml===schedule.amount_ml)&&<option value={schedule.amount_ml}>{schedule.amount_ml} ml · valor guardado</option>}{reminderWaterOptions.map(({glasses,amount_ml})=><option key={glasses} value={amount_ml}>{formatGlasses(glasses)}</option>)}</select></label>
+     </div>}
+     <div className="flex flex-wrap items-center gap-2">
+      <Button size="sm" disabled={savingSchedule||profileQuery.isLoading} onClick={()=>void saveSchedule()}>{savingSchedule?"Guardando…":"Guardar avisos"}</Button>
+      <Button size="sm" variant="outline" disabled={pushBusy} onClick={()=>void activatePush()}>{pushBusy?"Activando…":"Activar avisos en segundo plano"}</Button>
+      <Link to="/perfil" search={(prev:Record<string,unknown>)=>prev} className="text-xs text-primary hover:underline">Configuración completa</Link>
+     </div>
+     <p className="text-[11px] text-muted-foreground">{schedule.background_push?"Push confirmado: los avisos pueden llegar con POS cerrado.":"Avisos locales: aparecen mientras Personal OS está abierto. Activa push para recibirlos con el navegador cerrado."}</p>
+    </div>
+   </DialogContent>
+  </Dialog>
+  <p className="text-xs text-muted-foreground">El agua asociada a medicamentos también suma al total de agua simple, pero se corrige desde la toma del medicamento. Los registros antiguos agregados siguen visibles en el total; esta lista permite editar los registros individuales de bebidas.</p>
+ </section>;
+}
+
+function Medications(){const{date}=useGlobalDate();const meds=useMedications();const doses=useDoses(date);const taken=useTakenCounts();const stock=useMedicationStockTotals();const m=useMedicationMutations();const[restockInputs,setRestockInputs]=useState<Record<string,string>>({});const[physicalCountInputs,setPhysicalCountInputs]=useState<Record<string,string>>({});const[showPaused,setShowPaused]=useState(false);const medicationList=meds.data??[];const displayedMeds=medicationList.filter((item:any)=>showPaused||item.active);const pausedCount=medicationList.filter((item:any)=>!item.active).length;const[historyDays,setHistoryDays]=useState(90);const[historyPage,setHistoryPage]=useState(0);const historyFrom=useMemo(()=>{const d=new Date(date+"T12:00:00");d.setDate(d.getDate()-historyDays+1);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")},[date,historyDays]);useEffect(()=>setHistoryPage(0),[date,historyFrom]);const history=useDoseHistory(historyFrom,date,historyPage,50);const historyRows=history.data?.rows??[];const historyTotal=history.data?.total??0;const historyPageCount=Math.max(1,Math.ceil(historyTotal/50));const[open,setOpen]=useState(false);const[editing,setEditing]=useState<Medication|null>(null);const[waterByDose,setWaterByDose]=useState<Record<string,number>>({});const[actualTimes,setActualTimes]=useState<Record<string,string>>({});useEffect(()=>{setActualTimes(current=>{const next={...current};for(const dose of doses.data||[]){if(!(dose.id in next)){const taken=dose.taken_at?new Date(dose.taken_at):null;next[dose.id]=taken?String(taken.getHours()).padStart(2,"0")+":"+String(taken.getMinutes()).padStart(2,"0"):""}}return next})},[doses.data]);const todayDoses=doses.data||[];const activeTodayDoses=todayDoses.filter((d:any)=>(meds.data||[]).some((item:any)=>item.id===d.medication_id&&item.active));const waterGlasses=medicationWater(todayDoses);const navigate=useNavigate();const locationSearch=useRouterState({select:(state)=>state.location.search as Record<string,unknown>});const handledPushAction=useRef<string|null>(null);const pushDoseId=typeof locationSearch["dose"]==="string"?locationSearch["dose"]:null;const pushAction=locationSearch["action"]==="take"||locationSearch["action"]==="snooze"?locationSearch["action"]:null;useEffect(()=>{if(!pushDoseId||!pushAction){handledPushAction.current=null;return}const key=pushDoseId+":"+pushAction;if(handledPushAction.current===key)return;handledPushAction.current=key;m.setStatus.mutate({id:pushDoseId,status:pushAction==="take"?"taken":"snoozed"},{onSuccess:()=>{toast.success(pushAction==="take"?"Toma registrada desde la notificación.":"Dosis pospuesta 10 minutos.");void navigate({to:"/salud",search:(prev:Record<string,unknown>)=>({...prev,dose:undefined,action:undefined})})},onError:()=>{void navigate({to:"/salud",search:(prev:Record<string,unknown>)=>({...prev,dose:undefined,action:undefined})})}})},[pushDoseId,pushAction,m.setStatus.mutate,navigate]);return <section className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-muted-foreground">{showPaused?"Mostrando medicamentos activos y pausados":`${medicationList.filter((item:any)=>item.active).length} medicamentos activos`}</p><div className="flex flex-wrap gap-2">{pausedCount>0&&<Button type="button" size="sm" variant="outline" onClick={()=>setShowPaused((value)=>!value)}>{showPaused?"Ocultar pausados":`Mostrar pausados (${pausedCount})`}</Button>}<Button onClick={()=>{setEditing(null);setOpen(true)}}><Plus className="mr-1 h-4 w-4"/>Medicamento</Button></div></div><section className="glass space-y-3 rounded-2xl p-4"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><Pill className="h-4 w-4"/><h2 className="font-semibold">{date===todayISO()?"Tomas de hoy":`Tomas del ${date}`}</h2></div><p className="text-xs text-muted-foreground">Agua con medicamentos: {formatGlasses(waterGlasses)} <HelpTip helpKey="hydration.medication"/></p></div>{doses.isError&&<div className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">No se pudieron cargar las tomas programadas. <Button type="button" size="sm" variant="outline" className="ml-2" onClick={()=>void doses.refetch()}>Reintentar</Button><p className="mt-1 text-xs">{doses.error instanceof Error?doses.error.message:"Error desconocido"}</p></div>}{doses.isLoading&&activeTodayDoses.length===0&&<p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">Cargando tomas programadas…</p>}{!doses.isLoading&&!doses.isError&&meds.isSuccess&&activeTodayDoses.length===0&&<p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">No se generaron tomas para {date}. Comprueba la fecha de inicio y los horarios del medicamento.</p>}{activeTodayDoses.map((d:any)=>{const med=(meds.data||[]).find((x:any)=>x.id===d.medication_id);const actual=d.taken_at?new Date(d.taken_at):null;const persistedTime=actual?String(actual.getHours()).padStart(2,"0")+":"+String(actual.getMinutes()).padStart(2,"0"):"";const localActual=actualTimes[d.id]??persistedTime;return <div key={d.id} className="rounded-xl border p-3"><div className="flex items-center gap-2"><span className="flex-1"><b>{med?.name||"Medicamento"}</b><span className="ml-2 text-xs text-muted-foreground">programada {formatTime12(new Date(d.scheduled_at))}</span></span><div className="flex flex-wrap items-center gap-2">{d.status==="taken"&&d.entry_origin==="stock_estimate"?<span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300">Estimación por existencias · confirma</span>:d.status==="taken"?<span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">Registrada como tomada</span>:d.status==="skipped"?<span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300">Registrada como omitida</span>:<span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">{d.status==="snoozed"?"Pospuesta":"Pendiente"}</span>}<Button size="sm" variant={d.status==="taken"&&d.entry_origin!=="stock_estimate"?"default":"outline"} onClick={()=>{const timeValue=localActual||new Date().toTimeString().slice(0,5);setActualTimes(current=>({...current,[d.id]:timeValue}));m.setStatus.mutate({id:d.id,status:"taken",water:waterByDose[d.id]??Number(d.water_glasses??lastWater()),takenAt:new Date(date+"T"+timeValue).toISOString()})}}>Sí la tomé</Button><Button size="sm" variant={d.status==="skipped"?"destructive":"outline"} onClick={()=>m.setStatus.mutate({id:d.id,status:"skipped"},{onSuccess:()=>toast.success("Toma corregida: quedó como no tomada.")})}>No la tomé</Button></div></div><div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>Hora real</span><Input className="h-8 w-28" type="time" aria-label={"Hora real de toma de "+(med?.name||"medicamento")} value={localActual} onChange={e=>{const value=e.target.value;setActualTimes(current=>({...current,[d.id]:value}));if(d.status==="taken"&&value)m.setStatus.mutate({id:d.id,status:"taken",water:waterByDose[d.id]??Number(d.water_glasses??lastWater()),takenAt:new Date(date+"T"+value).toISOString()})}} placeholder="12:45"/>{actual&&<span>tomada a las {localActual}{new Date(d.taken_at).getTime()>new Date(d.scheduled_at).getTime()?" · después de la hora programada":""}</span>}{!actual&&localActual&&<span>Se usará al marcar la toma</span>}</div><div className="mt-3 flex flex-wrap items-center gap-2"><label className="flex items-center gap-2 text-xs text-muted-foreground">¿Con cuánta agua la tomaste? <HelpTip helpKey="medication.water"/><select className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground" value={waterByDose[d.id]??Number(d.water_glasses??lastWater())} onChange={e=>{const value=Number(e.target.value);setWaterByDose(current=>({...current,[d.id]:value}));if(d.status==="taken")m.setWater.mutate({id:d.id,glasses:value})}}>{WATER_OPTIONS.map(value=><option key={value} value={value}>{value===0?"Sin agua":formatGlasses(value)}</option>)}</select></label></div></div>})}<div className="space-y-2 border-t border-border pt-3">
+<div><p className="flex items-center gap-1 font-semibold text-sm">Historial de medicamentos <HelpTip helpKey="health.medicationHistory"/></p><p className="mt-1 text-xs text-muted-foreground">Solo aparecen tomas confirmadas u omitidas del ciclo actual. Las dosis que quedaron pendientes no se cuentan como consumo.</p></div>
+{history.isError ? (
+  <p className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive" role="alert">No se pudo cargar el historial de tomas. Revisa la conexión e inténtalo de nuevo.</p>
+) : history.isLoading ? (
+  <p className="text-sm text-muted-foreground">Cargando historial…</p>
+) : historyRows.length===0 ? (
+  <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">No hay tomas en este rango de fechas.</p>
+) : (
+  <div className="max-h-80 space-y-2 overflow-y-auto">
+  {historyRows.map((d:any)=>{const med=(meds.data||[]).find((x:any)=>x.id===d.medication_id);return <div key={d.id} className="flex items-center gap-2 rounded-xl border p-2 text-xs"><span className="flex-1"><b>{med?.name||"Medicamento"}</b><span className="ml-2 text-muted-foreground">{d.dose_date} · programada {formatTime12(new Date(d.scheduled_at))}{d.taken_at?" · tomada "+formatTime12(new Date(d.taken_at)):""}</span></span><span className={d.status==="taken"?"text-success":"text-muted-foreground"}>{d.status==="taken"?"Tomada":d.status==="skipped"?"Omitida":d.status==="snoozed"?"Pospuesta":"Pendiente"}</span>{d.entry_origin==="stock_estimate"&&<span className="rounded bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-700 dark:text-amber-300">Estimado por existencias</span>}{d.entry_origin==="restored_snapshot"&&<span className="rounded bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">Restaurado de captura</span>}{d.status==="skipped"&&<Button type="button" size="sm" variant="outline" disabled={m.setStatus.isPending} title="Corrige una omisión accidental; registra la hora programada y no suma agua." onClick={()=>m.setStatus.mutate({id:d.id,status:"taken",water:0,takenAt:d.scheduled_at})}>Marcar tomada</Button>}{d.status==="taken"&&<Button type="button" size="sm" variant="outline" disabled={m.setStatus.isPending} title="Corrige una toma marcada por error. Elimina la hora real y el agua asociada." onClick={()=>m.setStatus.mutate({id:d.id,status:"skipped"},{onSuccess:()=>toast.success("Toma corregida: quedó como omitida.")})}>No la tomé</Button>}</div>})}
+  </div>
+)}
+<div className="flex flex-wrap items-center justify-between gap-2">
+  <p className="text-xs text-muted-foreground">Rango: últimos {historyDays} días · {historyTotal} tomas encontradas · página {historyPage+1} de {historyPageCount} · Tomas confirmadas en el ciclo actual: {Object.values(taken.data||{}).reduce((a,b)=>a+b,0)}.</p>
+  <div className="flex flex-wrap items-center gap-2">
+    <Button size="sm" variant="outline" disabled={historyPage===0||history.isFetching} onClick={()=>setHistoryPage(page=>Math.max(0,page-1))}>Anterior</Button>
+    <Button size="sm" variant="outline" disabled={historyPage+1>=historyPageCount||history.isFetching} onClick={()=>setHistoryPage(page=>Math.min(historyPageCount-1,page+1))}>Siguiente</Button>
+    <Button size="sm" variant="outline" disabled={historyDays>=3650||history.isFetching} onClick={()=>{setHistoryPage(0);setHistoryDays(days=>Math.min(3650,days+90))}}>{historyDays>=3650?"Máximo cargado":"Ver 90 días más"}</Button>
+  </div>
+</div>
+</div></section><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{displayedMeds.map((x:any)=>{const remaining=remainingQuantity(x,Number(taken.data?.[x.id]??0),Number(stock.data?.[x.id]??0));const days=remaining===null?null:durationDays({...x,total_quantity:remaining});return <article key={x.id} className={"glass rounded-2xl border p-4 "+(x.active?"border-border":"border-dashed border-muted-foreground/40 opacity-90")}><div className="flex items-start gap-3"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{x.name}</h2><span className={"rounded-full px-2 py-0.5 text-[10px] font-semibold "+(x.active?"bg-primary/10 text-primary":"bg-muted text-muted-foreground")}>{x.active?"Activo":"Pausado"}</span></div><p className="text-xs text-muted-foreground">{medicationScheduleLabel(x)}</p>{remaining!==null&&<p className="mt-2 text-sm">Restantes: <b>{formatStockQuantity(remaining,x.stock_unit||"unidades")}</b> <HelpTip helpKey="medication.remaining"/></p>}{days!==null&&<p className="text-xs text-muted-foreground">Duración estimada: {days} días aproximados </p>}</div></div>{remaining!==null&&remaining<=0&&<p className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300">Sin existencias. El registro y los recordatorios siguen activos; repón el inventario cuando compres más.</p>}<div className="mt-3 space-y-2 border-t border-border pt-3"><div className="grid grid-cols-[1fr_auto] gap-2"><Input aria-label={"Cantidad para reponer "+x.name} type="number" min="0.001" step="0.001" className="h-9" placeholder={"Reponer ("+(x.stock_unit||"unidades")+")"} value={restockInputs[x.id]??""} onChange={e=>setRestockInputs(current=>({...current,[x.id]:e.target.value}))}/><Button size="sm" variant="outline" disabled={!Number.isFinite(Number(restockInputs[x.id]))||Number(restockInputs[x.id])<=0||m.addStock.isPending} onClick={()=>void m.addStock.mutateAsync({medicationId:x.id,quantity:Number(restockInputs[x.id])}).then(()=>setRestockInputs(current=>({...current,[x.id]:""})))}><Plus className="mr-1 h-3.5 w-3.5"/>Reponer</Button></div><div className="grid grid-cols-[1fr_auto] gap-2"><Input aria-label={"Conteo físico actual de "+x.name} type="number" min="0" step="0.001" inputMode="decimal" className="h-9" placeholder={"Conteo físico ("+(x.stock_unit||"unidades")+")"} value={physicalCountInputs[x.id]??""} onChange={e=>setPhysicalCountInputs(current=>({...current,[x.id]:e.target.value}))}/><Button size="sm" variant="secondary" disabled={physicalCountInputs[x.id]===undefined||physicalCountInputs[x.id]===""||!Number.isFinite(Number(physicalCountInputs[x.id]))||Number(physicalCountInputs[x.id])<0||m.adjustStock.isPending} onClick={()=>void m.adjustStock.mutateAsync({medicationId:x.id,countedQuantity:Number(physicalCountInputs[x.id])}).then(()=>setPhysicalCountInputs(current=>({...current,[x.id]:""})))}><Pencil className="mr-1 h-3.5 w-3.5"/>Ajustar conteo</Button></div><p className="text-[11px] text-muted-foreground">Registra aquí lo que tienes físicamente. POS calcula la diferencia y guarda el ajuste en el historial, sin inventar tomas.</p></div><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>{setEditing(x);setOpen(true)}}><Pencil className="mr-1 h-3.5 w-3.5"/>Editar</Button><Button size="sm" variant={x.active?"ghost":"default"} onClick={()=>{if(x.active){void m.remove.mutateAsync(x.id).catch(()=>undefined)}else{setEditing({...x,active:true,start_date:x.start_date<todayISO()?todayISO():x.start_date,end_date:null});setOpen(true)}}}>{x.active?"Pausar medicamento":"Reactivar medicamento"}</Button></div></article>})}</div>{displayedMeds.length===0&&<p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{showPaused?"No hay medicamentos registrados todavía.":"No tienes medicamentos activos. Puedes mostrar los pausados o registrar uno nuevo."}</p>}<MedicationDialog open={open} onOpenChange={o=>{setOpen(o);if(!o)setEditing(null)}} medication={editing} pending={m.create.isPending||m.update.isPending} onSubmit={async input=>{if(editing)await m.update.mutateAsync({id:editing.id,patch:input});else await m.create.mutateAsync(input);}}/></section>}
+function cycleShiftDate(value: string, offset: number) {
+  const date = new Date(value + "T12:00:00");
+  date.setDate(date.getDate() + offset);
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+}
+
+function cycleMonthShift(value: string, offset: number) {
+  const date = new Date(value.slice(0, 7) + "-01T12:00:00");
+  date.setMonth(date.getMonth() + offset);
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), "01"].join("-");
+}
+
+const CYCLE_SYMPTOMS = [
+  { label: "Cólicos", icon: "🤕" },
+  { label: "Dolor lumbar", icon: "🧍" },
+  { label: "Dolor de cabeza", icon: "🤯" },
+  { label: "Sensibilidad mamaria", icon: "💗" },
+  { label: "Hinchazón", icon: "🎈" },
+  { label: "Cansancio", icon: "🥱" },
+  { label: "Cambios de ánimo", icon: "🎭" },
+  { label: "Acné", icon: "🫧" },
+  { label: "Náuseas", icon: "🤢" },
+  { label: "Cambios de apetito", icon: "🍽️" },
+  { label: "Diarrea o estreñimiento", icon: "🚽" },
+  { label: "Otro", icon: "✨" },
+];
+
+const CYCLE_SEXUALITY = [
+  { label: "Deseo sexual", icon: "🔥" },
+  { label: "Sexo sin protección", icon: "⚠️" },
+  { label: "Sexo protegido", icon: "🛡️" },
+  { label: "Relaciones sexuales", icon: "💞" },
+];
+
+const CYCLE_FLOW_OPTIONS = [
+  ["none", "Sin sangrado"], ["spotting", "Manchado"], ["light", "Leve"],
+  ["medium", "Moderado"], ["heavy", "Abundante"],
+] as const;
+
+function Cycle() {
+  const q = useLGList("menstrual_profiles");
+  const records = useLGList("menstrual_records", "start_date");
+  const dailyLogs = useLGList("menstrual_daily_logs", "log_date");
+  const m = useLGMutations("menstrual_profiles");
+  const rm = useLGMutations("menstrual_records");
+  const dm = useLGMutations("menstrual_daily_logs");
+  const { user } = useAuth();
+  const [subject, setSubject] = useState("");
+  const [type, setType] = useState("self");
+  const profiles = q.data || [];
+
+  return (
+    <section className="space-y-4">
+      <div className="glass space-y-3 rounded-2xl p-4">
+        <div className="flex items-center gap-2">
+          <CalendarHeart className="h-4 w-4" />
+          <h2 className="font-semibold">Registro menstrual</h2>
+          <HelpTip helpKey="health.cycle" />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Registra el inicio cuando ocurra. No necesitas saber cuánto durará: cerrarás el período cuando termine y podrás anotar síntomas cada día.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-[1fr_190px_auto]">
+          <Input placeholder="Nombre o referencia (ej. Yo, Angie…)" value={subject} onChange={(event) => setSubject(event.target.value)} />
+          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={type} onChange={(event) => setType(event.target.value)}>
+            <option value="self">Yo</option>
+            <option value="partner">Pareja</option>
+            <option value="family">Familiar</option>
+            <option value="other">Otra persona</option>
+          </select>
+          <Button
+            disabled={!subject.trim() || m.create.isPending}
+            onClick={() => void m.create.mutateAsync({
+              user_id: user?.id,
+              subject_name: subject.trim(),
+              subject_type: type,
+              average_cycle_days: 28,
+              average_period_days: 5,
+              notes: null,
+            }).then(() => setSubject(""))}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Crear perfil
+          </Button>
+        </div>
+      </div>
+
+      {q.isError && <p className="text-sm text-destructive">No se pudieron cargar los perfiles menstruales.</p>}
+      {records.isError && <p className="text-sm text-destructive">No se pudo cargar el historial de períodos.</p>}
+      {dailyLogs.isError && <p className="text-sm text-destructive">No se pudieron cargar los registros diarios.</p>}
+      {profiles.length === 0 && (
+        <div className="glass rounded-2xl p-4 text-sm text-muted-foreground">
+          No hay perfiles menstruales registrados. Esta sección es opcional; no necesitas crear uno si no la vas a utilizar.
+        </div>
+      )}
+      {profiles.map((profile: any) => (
+        <CycleProfile
+          key={profile.id}
+          profile={profile}
+          records={records.data || []}
+          dailyLogs={dailyLogs.data || []}
+          profileMutations={m}
+          periodMutations={rm}
+          dailyMutations={dm}
+        />
+      ))}
+    </section>
+  );
+}
+
+function CycleProfile({
+  profile, records, dailyLogs, profileMutations, periodMutations, dailyMutations,
+}: {
+  profile: any;
+  records: any[];
+  dailyLogs: any[];
+  profileMutations: any;
+  periodMutations: any;
+  dailyMutations: any;
+}) {
+  const { user } = useAuth();
+  const today = todayISO();
+  const [selectingStart, setSelectingStart] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [month, setMonth] = useState(today.slice(0, 7) + "-01");
+  const [flow, setFlow] = useState("none");
+  const [symptoms, setSymptoms] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
+  const [historyFormOpen, setHistoryFormOpen] = useState(false);
+  const [historyDrafts, setHistoryDrafts] = useState<Array<{ startDate: string; endDate: string }>>([{ startDate: "", endDate: "" }]);
+  const [editingPeriodId, setEditingPeriodId] = useState<string | null>(null);
+  const [editPeriodStart, setEditPeriodStart] = useState("");
+  const [editPeriodEnd, setEditPeriodEnd] = useState("");
+  const ownRecords = records
+    .filter((record: any) => record.profile_id === profile.id)
+    .sort((a: any, b: any) => a.start_date.localeCompare(b.start_date));
+  const ownLogs = dailyLogs.filter((log: any) => log.profile_id === profile.id);
+  const activePeriod = [...ownRecords].reverse().find((record: any) => !record.end_date);
+  const selectedPeriod = ownRecords.find((record: any) =>
+    selectedDate >= record.start_date && (!record.end_date ? selectedDate <= today : selectedDate <= record.end_date)
+  );
+  const selectedLog = ownLogs.find((log: any) =>
+    log.record_id === selectedPeriod?.id && log.log_date === selectedDate
+  );
+
+  useEffect(() => {
+    setFlow(selectedLog?.flow || "none");
+    setSymptoms(Array.isArray(selectedLog?.symptoms) ? selectedLog.symptoms : []);
+    setNotes(selectedLog?.notes || "");
+  }, [selectedPeriod?.id, selectedDate, selectedLog?.id, selectedLog?.updated_at]);
+
+  const actualIntervals = ownRecords
+    .map((record: any, index: number) => index > 0
+      ? Math.round((new Date(record.start_date + "T12:00:00").getTime() - new Date(ownRecords[index - 1].start_date + "T12:00:00").getTime()) / 86400000)
+      : null)
+    .filter((days: number | null) => days !== null && days >= 15 && days <= 60) as number[];
+  const estimatedCycle = actualIntervals.length
+    ? Math.round(actualIntervals.slice(-3).reduce((sum, days) => sum + days, 0) / Math.min(3, actualIntervals.length))
+    : null;
+  const latestRecord = ownRecords[ownRecords.length - 1];
+  const nextEstimate = latestRecord && estimatedCycle
+    ? cycleShiftDate(latestRecord.start_date, estimatedCycle)
+    : null;
+  const closedPeriods = ownRecords.filter((record: any) => record.end_date);
+  const averageBleedingDays = closedPeriods.length
+    ? Math.round(closedPeriods.reduce((sum: number, record: any) => {
+        const duration = Math.round((new Date(record.end_date + "T12:00:00").getTime() - new Date(record.start_date + "T12:00:00").getTime()) / 86400000) + 1;
+        return sum + duration;
+      }, 0) / closedPeriods.length)
+    : null;
+  const predictedBleedingDays = Math.max(1, averageBleedingDays ?? (Number(profile.average_period_days) || 5));
+
+  const monthDate = new Date(month + "T12:00:00");
+  const year = monthDate.getFullYear();
+  const monthNumber = monthDate.getMonth() + 1;
+  const daysInMonth = new Date(year, monthNumber, 0).getDate();
+  const mondayFirstOffset = (new Date(year, monthNumber - 1, 1).getDay() + 6) % 7;
+  const monthTitle = new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" }).format(monthDate);
+  const calendarCells = [
+    ...Array.from({ length: mondayFirstOffset }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+  ];
+  const isPeriodDay = (date: string) => ownRecords.some((record: any) =>
+    date >= record.start_date && date <= (record.end_date || today)
+  );
+  const isPredictedPeriodDay = (date: string) => {
+    if (isPeriodDay(date)) return false;
+    if (activePeriod) {
+      const predictedEnd = cycleShiftDate(activePeriod.start_date, predictedBleedingDays - 1);
+      return date > today && date <= predictedEnd;
+    }
+    if (nextEstimate) {
+      const predictedEnd = cycleShiftDate(nextEstimate, predictedBleedingDays - 1);
+      return date >= nextEstimate && date <= predictedEnd;
+    }
+    return false;
+  };
+
+  const startPeriod = async (startDate: string) => {
+    if (!startDate || startDate > today) {
+      toast.error("Elige en el calendario el primer día que ya haya ocurrido.");
+      return;
+    }
+    const overlap = ownRecords.some((record: any) =>
+      startDate >= record.start_date && startDate <= (record.end_date || today)
+    );
+    if (overlap) {
+      toast.error("Esa fecha ya pertenece a un período registrado.");
+      return;
+    }
+    try {
+      await periodMutations.create.mutateAsync({
+        user_id: user?.id,
+        profile_id: profile.id,
+        start_date: startDate,
+        end_date: null,
+        flow: null,
+        notes: null,
+      });
+      setMonth(startDate.slice(0, 7) + "-01");
+      setSelectedDate(startDate);
+      setSelectingStart(false);
+      toast.success("Inicio del período registrado. Los próximos días se muestran como predicción.");
+    } catch {
+      // Mutation displays its own error.
+    }
+  };
+
+  const finishPeriodOnSelectedDate = async () => {
+    if (!activePeriod || selectedDate < activePeriod.start_date || selectedDate > today) return;
+    try {
+      await periodMutations.update.mutateAsync({
+        id: activePeriod.id,
+        patch: { end_date: selectedDate },
+      });
+      toast.success("Último día de sangrado guardado.");
+    } catch {
+      // Mutation displays its own error.
+    }
+  };
+
+  const saveHistoricalPeriods = async () => {
+    const entries = historyDrafts.map((entry) => ({
+      startDate: entry.startDate,
+      endDate: entry.endDate,
+    }));
+    if (!entries.length || entries.some((entry) => !entry.startDate || !entry.endDate)) {
+      toast.error("Completa la fecha de inicio y de fin de cada período.");
+      return;
+    }
+
+    const sorted = [...entries].sort((a, b) => a.startDate.localeCompare(b.startDate));
+    for (const entry of sorted) {
+      if (entry.startDate > today || entry.endDate > today) {
+        toast.error("Los períodos anteriores deben tener fechas que ya hayan ocurrido.");
+        return;
+      }
+      if (entry.endDate < entry.startDate) {
+        toast.error("La fecha final no puede ser anterior a la fecha de inicio.");
+        return;
+      }
+    }
+    for (let index = 1; index < sorted.length; index += 1) {
+      if (sorted[index]!.startDate <= sorted[index - 1]!.endDate) {
+        toast.error("Dos períodos nuevos se cruzan. Ajusta sus fechas para que no se superpongan.");
+        return;
+      }
+    }
+    const overlapsExisting = sorted.some((entry) => ownRecords.some((record: any) =>
+      entry.startDate <= (record.end_date || today) && entry.endDate >= record.start_date
+    ));
+    if (overlapsExisting) {
+      toast.error("Alguna fecha ya pertenece a un período registrado. Revisa el historial antes de guardar.");
+      return;
+    }
+
+    let saved = 0;
+    try {
+      for (const entry of sorted) {
+        await periodMutations.create.mutateAsync({
+          user_id: user?.id,
+          profile_id: profile.id,
+          start_date: entry.startDate,
+          end_date: entry.endDate,
+          flow: null,
+          notes: null,
+        });
+        saved += 1;
+      }
+    } catch {
+      if (saved > 0) {
+        toast.error("Se guardaron " + saved + " de " + sorted.length + " períodos. Revisa el historial antes de volver a intentar.");
+      }
+      return;
+    }
+
+    const latest = sorted[sorted.length - 1]!;
+    setSelectedDate(latest.startDate);
+    setMonth(latest.startDate.slice(0, 7) + "-01");
+    setHistoryFormOpen(false);
+    setHistoryDrafts([{ startDate: "", endDate: "" }]);
+    toast.success(saved + " períodos anteriores guardados. La predicción se actualizará con sus fechas de inicio.");
+  };
+
+  const savePeriodDates = async (record: any) => {
+    const startDate = editPeriodStart;
+    const endDate = editPeriodEnd || null;
+    if (!startDate || startDate > today) {
+      toast.error("El inicio debe ser una fecha que ya haya ocurrido.");
+      return;
+    }
+    if (endDate && (endDate < startDate || endDate > today)) {
+      toast.error("La fecha final debe ser igual o posterior al inicio y no puede estar en el futuro.");
+      return;
+    }
+    const effectiveEnd = endDate || today;
+    const overlaps = ownRecords.some((other: any) =>
+      other.id !== record.id &&
+      startDate <= (other.end_date || today) &&
+      effectiveEnd >= other.start_date
+    );
+    if (overlaps) {
+      toast.error("Ese rango se cruza con otro período. Ajusta las fechas para evitar solapamientos.");
+      return;
+    }
+    try {
+      await periodMutations.update.mutateAsync({
+        id: record.id,
+        patch: { start_date: startDate, end_date: endDate },
+      });
+      setEditingPeriodId(null);
+      setSelectedDate(startDate);
+      setMonth(startDate.slice(0, 7) + "-01");
+      toast.success("Fechas del período actualizadas. La predicción se recalculó.");
+    } catch {
+      // Mutation displays its own error.
+    }
+  };
+
+  const saveDailyLog = async () => {
+    if (!selectedPeriod || !user?.id) return;
+    const input = {
+      user_id: user.id,
+      profile_id: profile.id,
+      record_id: selectedPeriod.id,
+      log_date: selectedDate,
+      flow,
+      symptoms,
+      notes: notes.trim() || null,
+    };
+    try {
+      if (selectedLog) {
+        await dailyMutations.update.mutateAsync({ id: selectedLog.id, patch: input });
+        toast.success("Registro del día actualizado.");
+      } else {
+        await dailyMutations.create.mutateAsync(input);
+        toast.success("Registro del día guardado.");
+      }
+    } catch {
+      // Mutation displays its own error.
+    }
+  };
+
+  const toggleSymptom = (symptom: string) => {
+    setSymptoms((current) => current.includes(symptom)
+      ? current.filter((item) => item !== symptom)
+      : [...current, symptom]);
+  };
+
+  return (
+    <article className="glass space-y-4 rounded-2xl p-4">
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-semibold">{profile.subject_name}</h3>
+          <p className="text-xs text-muted-foreground">{ownRecords.length} períodos registrados{averageBleedingDays ? " · duración media real: " + averageBleedingDays + " días" : ""}</p>
+        </div>
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label={"Eliminar perfil " + profile.subject_name}
+          onClick={() => {
+            if (window.confirm("¿Eliminar el perfil y todo su historial menstrual? Esta acción no se puede deshacer.")) {
+              void profileMutations.remove.mutateAsync(profile.id);
+            }
+          }}
+        >
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </header>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h4 className="font-semibold">Calendario del ciclo</h4>
+            <p className="text-xs text-muted-foreground">
+              {selectingStart
+                ? "Toca el primer día de sangrado en el calendario."
+                : activePeriod
+                  ? "Período en curso desde " + activePeriod.start_date + ". Los días rosados claros son una predicción."
+                  : "Pulsa Registrar y selecciona en el calendario el primer día de sangrado."}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {!activePeriod && (
+              <Button size="sm" onClick={() => setSelectingStart((value) => !value)} variant={selectingStart ? "secondary" : "default"}>
+                {selectingStart ? "Cancelar" : "Registrar"}
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSelectingStart(false);
+                setHistoryDrafts([{ startDate: "", endDate: "" }]);
+                setHistoryFormOpen((value) => !value);
+              }}
+            >
+              {historyFormOpen ? "Cerrar carga" : "Añadir varios ciclos"}
+            </Button>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="outline" aria-label="Mes anterior" onClick={() => setMonth(cycleMonthShift(month, -1))}><ChevronLeft className="h-4 w-4" /></Button>
+            <Button size="icon" variant="outline" aria-label="Mes siguiente" onClick={() => setMonth(cycleMonthShift(month, 1))}><ChevronRight className="h-4 w-4" /></Button>
+          </div>
+        </div>
+        <div className="mx-auto w-full md:w-1/2 rounded-xl border border-border/70 p-3">
+          <p className="mb-3 text-center text-sm font-semibold capitalize">{monthTitle}</p>
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground">
+            {["L", "M", "M", "J", "V", "S", "D"].map((label, index) => <span key={label + index}>{label}</span>)}
+          </div>
+          <div className="mt-2 grid grid-cols-7 gap-1">
+            {calendarCells.map((day, index) => {
+              if (day === null) return <span key={"blank-" + index} className="aspect-square" />;
+              const date = year + "-" + String(monthNumber).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+              const isRed = isPeriodDay(date);
+              const isForecast = isPredictedPeriodDay(date);
+              const isSelected = selectedDate === date;
+              const isToday = today === date;
+              const canStartHere = selectingStart && date <= today && !isRed;
+              const hasLog = ownLogs.some((log: any) => log.log_date === date);
+              return (
+                <button
+                  key={date}
+                  type="button"
+                  onClick={() => {
+                    if (canStartHere) void startPeriod(date);
+                    else setSelectedDate(date);
+                  }}
+                  disabled={date > today || (selectingStart ? !canStartHere : !isRed)}
+                  aria-pressed={isSelected}
+                  aria-label={date + (isRed ? ", día registrado de período" : isForecast ? ", predicción de período" : "") + (hasLog ? ", con registro diario" : "")}
+                  className={[
+                    "relative aspect-square rounded-lg text-xs font-medium transition",
+                    isRed ? "bg-destructive text-destructive-foreground hover:opacity-90" : isForecast ? "bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:hover:bg-rose-900/70" : "text-muted-foreground hover:bg-muted",
+                    canStartHere ? "outline outline-1 outline-offset-1 outline-rose-300" : "",
+                    isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "",
+                    isToday ? "outline outline-1 outline-offset-1 outline-primary" : "",
+                    date > today ? "cursor-default" : "",
+                  ].join(" ")}
+                >
+                  {day}
+                  {hasLog && <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-white" />}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-destructive" /> Días registrados</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-rose-100 ring-1 ring-rose-200 dark:bg-rose-950/50 dark:ring-rose-900" /> Predicción</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> Día seleccionado</span>
+            <span className="inline-flex items-center gap-1.5">• Punto blanco: registro diario guardado</span>
+          </div>
+        </div>
+      </section>
+
+      {historyFormOpen && (
+        <section className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-3">
+          <div>
+            <h4 className="font-semibold">Cargar ciclos anteriores</h4>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Cada fila representa un período ya terminado: indica el primer y el último día de sangrado. Puedes añadir tantos registros como necesites; los síntomas diarios son opcionales.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              La próxima fecha se estima a partir de los intervalos entre inicios de ciclo, usando hasta los últimos tres intervalos válidos.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {historyDrafts.map((draft, index) => (
+              <div key={index} className="grid gap-2 rounded-xl border border-border/70 bg-background p-3 sm:grid-cols-[1fr_1fr_auto]">
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  <span className="block font-medium">Ciclo {index + 1} · Inicio</span>
+                  <Input
+                    type="date"
+                    max={today}
+                    value={draft.startDate}
+                    onChange={(event) => setHistoryDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, startDate: event.target.value } : item))}
+                  />
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  <span className="block font-medium">Último día</span>
+                  <Input
+                    type="date"
+                    min={draft.startDate || undefined}
+                    max={today}
+                    value={draft.endDate}
+                    onChange={(event) => setHistoryDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, endDate: event.target.value } : item))}
+                  />
+                </label>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="w-full sm:w-auto"
+                    aria-label={"Quitar ciclo " + (index + 1)}
+                    disabled={historyDrafts.length === 1}
+                    onClick={() => setHistoryDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" /> Quitar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setHistoryDrafts((current) => [...current, { startDate: "", endDate: "" }])}
+            >
+              <Plus className="mr-1 h-4 w-4" /> Añadir otro ciclo
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={periodMutations.create.isPending}
+              onClick={() => void saveHistoricalPeriods()}
+            >
+              Guardar {historyDrafts.length} {historyDrafts.length === 1 ? "ciclo" : "ciclos"}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setHistoryFormOpen(false)}>
+              Cancelar
+            </Button>
+          </div>
+        </section>
+      )}
+
+      {selectedPeriod ? (
+        <section className="space-y-3 rounded-xl border border-border/70 p-3">
+          {editingPeriodId === selectedPeriod.id && (
+            <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
+              <div>
+                <h4 className="font-semibold">Editar fechas del período</h4>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Al guardar, los intervalos y la próxima predicción se calcularán de nuevo. Deja el último día vacío solo si el período sigue en curso.
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  <span className="block font-medium">Primer día</span>
+                  <Input type="date" max={today} value={editPeriodStart} onChange={(event) => setEditPeriodStart(event.target.value)} />
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  <span className="block font-medium">Último día</span>
+                  <Input type="date" min={editPeriodStart || undefined} max={today} value={editPeriodEnd} onChange={(event) => setEditPeriodEnd(event.target.value)} />
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={periodMutations.update.isPending}
+                  onClick={() => void savePeriodDates(selectedPeriod)}
+                >
+                  Guardar fechas
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setEditingPeriodId(null)}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+          <div>
+            <h4 className="font-semibold">Síntomas y flujo del día</h4>
+            <p className="text-xs text-muted-foreground">{selectedDate} · Cada fecha tiene su propio registro.</p>
+          </div>
+          <label className="block space-y-1 text-xs text-muted-foreground">
+            Cantidad de flujo
+            <select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={flow} onChange={(event) => setFlow(event.target.value)}>
+              {CYCLE_FLOW_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <h5 className="flex items-center gap-2 text-sm font-semibold"><span className="text-2xl" aria-hidden>🩺</span> Síntomas</h5>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {CYCLE_SYMPTOMS.map((symptom) => (
+                  <button
+                    key={symptom.label}
+                    type="button"
+                    aria-pressed={symptoms.includes(symptom.label)}
+                    onClick={() => toggleSymptom(symptom.label)}
+                    className={"flex min-h-[82px] flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-center transition " + (symptoms.includes(symptom.label) ? "border-primary bg-primary/10 text-foreground" : "border-border/70 bg-muted/35 hover:bg-muted/70")}
+                  >
+                    <span className="text-[27px] leading-none" aria-hidden>{symptom.icon}</span>
+                    <span className="text-[11px] font-medium leading-tight">{symptom.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h5 className="flex items-center gap-2 text-sm font-semibold"><span className="text-2xl" aria-hidden>💗</span> Sexualidad</h5>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {CYCLE_SEXUALITY.map((symptom) => (
+                  <button
+                    key={symptom.label}
+                    type="button"
+                    aria-pressed={symptoms.includes(symptom.label)}
+                    onClick={() => toggleSymptom(symptom.label)}
+                    className={"flex min-h-[82px] flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-center transition " + (symptoms.includes(symptom.label) ? "border-primary bg-primary/10 text-foreground" : "border-border/70 bg-muted/35 hover:bg-muted/70")}
+                  >
+                    <span className="text-[27px] leading-none" aria-hidden>{symptom.icon}</span>
+                    <span className="text-[11px] font-medium leading-tight">{symptom.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <label className="block space-y-1 text-xs text-muted-foreground">
+            Notas de este día
+            <textarea className="min-h-20 w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Cómo se sintió hoy, intensidad, cambios o cualquier detalle…" />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => void saveDailyLog()} disabled={dailyMutations.create.isPending || dailyMutations.update.isPending}>
+              Guardar registro de este día
+            </Button>
+            {activePeriod?.id === selectedPeriod.id && (
+              <Button type="button" variant="outline" onClick={() => void finishPeriodOnSelectedDate()} disabled={periodMutations.update.isPending}>
+                Marcar como último día
+              </Button>
+            )}
+          </div>
+        </section>
+      ) : (
+        <p className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
+          Selecciona un día registrado del calendario para consultar o completar su flujo y síntomas. Pulsa Registrar para marcar el primer día de un nuevo período.
+        </p>
+      )}
+
+      {nextEstimate ? (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
+          <b>Próxima fecha orientativa:</b> {nextEstimate}
+          <p className="mt-1 text-xs text-muted-foreground">Calculada con {actualIntervals.length} intervalos reales entre inicios (promedio reciente: {estimatedCycle} días). Es una estimación, no una fecha confirmada.</p>
+        </div>
+      ) : (
+        <p className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
+          La próxima fecha estimada aparecerá cuando haya al menos dos inicios registrados y podamos calcular un intervalo real.
+        </p>
+      )}
+
+      {ownRecords.length > 0 && (
+        <section className="space-y-2">
+          <h4 className="text-sm font-semibold">Historial de períodos</h4>
+          {[...ownRecords].reverse().map((record: any) => {
+            const duration = record.end_date
+              ? Math.round((new Date(record.end_date + "T12:00:00").getTime() - new Date(record.start_date + "T12:00:00").getTime()) / 86400000) + 1
+              : null;
+            return (
+              <div key={record.id} className="flex items-center gap-2 rounded-xl border border-border/70 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate(record.start_date);
+                    setMonth(record.start_date.slice(0, 7) + "-01");
+                  }}
+                  className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left text-sm"
+                >
+                  <span className="min-w-0"><b>{record.start_date}</b><span className="ml-2 text-xs text-muted-foreground">{record.end_date ? "hasta " + record.end_date : "En curso"}</span></span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{duration ? duration + (duration === 1 ? " día" : " días") : "Abierto"}</span>
+                </button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label={"Editar período iniciado el " + record.start_date}
+                  onClick={() => {
+                    setSelectedDate(record.start_date);
+                    setMonth(record.start_date.slice(0, 7) + "-01");
+                    setEditingPeriodId(record.id);
+                    setEditPeriodStart(record.start_date);
+                    setEditPeriodEnd(record.end_date || "");
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
+            );
+          })}
+        </section>
+      )}
+    </article>
+  );
+}
+
+
+function Appointments() {
+  const q = useLGList("medical_appointments", "appointment_at");
+  const m = useLGMutations("medical_appointments");
+  const { user } = useAuth();
+  const today = todayISO();
+  const plannerCategories = usePlannerCategories();
+  const plannerItems = usePlannerItemsRange(addDaysISO(today, -365), addDaysISO(today, 365 * 5));
+  const plannerMutations = usePlannerMutations(today);
+  const medicalCategory = plannerCategories.data?.find((category) =>
+    category.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es").trim() === "cita medica",
+  );
+  const plannedAppointments = (plannerItems.data ?? []).filter((item) =>
+    item.type === "event" && item.category_id === medicalCategory?.id,
+  );
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [provider, setProvider] = useState("");
+  const [location, setLocation] = useState("");
+  const [notes, setNotes] = useState("");
+
+  return (
+    <section className="glass space-y-3 rounded-2xl p-4">
+      <div className="flex items-center gap-2"><ClipboardList className="h-4 w-4"/><h2 className="font-semibold">Citas médicas</h2></div>
+      <p className="text-xs text-muted-foreground">Las citas marcadas desde el Planeador aparecen aquí automáticamente.</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Input placeholder="Cita / examen" value={title} onChange={e=>setTitle(e.target.value)}/>
+        <Input type="datetime-local" value={date} onChange={e=>setDate(e.target.value)}/>
+        <Input placeholder="Profesional / clínica" value={provider} onChange={e=>setProvider(e.target.value)}/>
+        <Input placeholder="Lugar" value={location} onChange={e=>setLocation(e.target.value)}/>
+      </div>
+      <RichTextEditor value={notes} onChange={setNotes} placeholder="Indicaciones, preparación o preguntas…"/>
+      <Button disabled={!title.trim()||!date} onClick={()=>void m.create.mutateAsync({user_id:user?.id,title:title.trim(),appointment_at:new Date(date).toISOString(),provider:provider||null,location:location||null,notes:notes||null,reminder_minutes:[10080,1440,60,0],alarm_enabled:true}).then(()=>setTitle(""))}><Plus className="mr-1 h-4 w-4"/>Guardar cita</Button>
+
+      {(q.data ?? []).map((appointment: any) => (
+        <div key={"legacy-" + appointment.id} className="flex gap-2 rounded-xl border p-3">
+          <span className="min-w-0 flex-1"><b>{appointment.title}</b><span className="ml-2 text-xs text-muted-foreground">{new Date(appointment.appointment_at).toLocaleString("es-CO")}</span></span>
+          <Button size="icon" variant="ghost" aria-label="Eliminar cita" onClick={()=>void m.remove.mutateAsync(appointment.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+        </div>
+      ))}
+      {plannedAppointments.map((appointment) => {
+        const appointmentAt = appointment.scheduled_on + "T" + (appointment.start_time?.slice(0, 5) || "09:00") + ":00-05:00";
+        return (
+          <div key={"planner-" + appointment.id} className="flex gap-2 rounded-xl border border-sky-500/25 bg-sky-500/[.04] p-3">
+            <span className="min-w-0 flex-1">
+              <b>{appointment.title}</b>
+              <span className="ml-2 text-xs text-muted-foreground">{new Date(appointmentAt).toLocaleString("es-CO")}</span>
+              <span className="mt-1 block text-[11px] text-sky-700 dark:text-sky-300">Agendada desde Planeador{appointment.location ? " · " + appointment.location : ""}</span>
+            </span>
+            <Button size="icon" variant="ghost" aria-label="Eliminar cita del Planeador" onClick={()=>void plannerMutations.deleteItem.mutateAsync(appointment.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+          </div>
+        );
+      })}
+      {plannerItems.isLoading && <p className="text-xs text-muted-foreground">Consultando citas del Planeador…</p>}
+    </section>
+  );
+}
+function Nutrition(){const q=useLGList("nutrition_logs","log_date");const m=useLGMutations("nutrition_logs");const{user}=useAuth();const{date}=useGlobalDate();const[meal,setMeal]=useState(""),[cal,setCal]=useState(""),[protein,setProtein]=useState(""),[notes,setNotes]=useState("");useEffect(()=>{setMeal("");setCal("");setProtein("");setNotes("")},[date]);const clearForm=()=>{setMeal("");setCal("");setProtein("");setNotes("")};const hasNutritionInput=[meal,cal,protein,notes].some(v=>v.trim().length>0);return <section className="glass space-y-3 rounded-2xl p-4"><div className="flex items-center gap-2"><HeartPulse className="h-4 w-4"/><h2 className="flex items-center gap-2 font-semibold">Nutrición <HelpTip helpKey="health.nutrition" /></h2></div><div className="grid gap-2 sm:grid-cols-4"><Input placeholder="Comida (desayuno…)" value={meal} onChange={e=>setMeal(e.target.value)}/><Input type="number" placeholder="kcal" value={cal} onChange={e=>setCal(e.target.value)}/><Input type="number" placeholder="Proteína g" value={protein} onChange={e=>setProtein(e.target.value)}/></div><RichTextEditor value={notes} onChange={setNotes} placeholder="Alimentos, porciones y notas…"/><Button disabled={!hasNutritionInput||m.create.isPending} onClick={()=>void m.create.mutateAsync({user_id:user?.id,log_date:date,meal_type:meal.trim()||null,calories:cal.trim()?Number(cal):null,protein_g:protein.trim()?Number(protein):null,notes:notes.trim()||null}).then(clearForm)}><Plus className="mr-1 h-4 w-4"/>{m.create.isPending?"Guardando…":"Registrar"}</Button>{(q.data||[]).filter((x:any)=>x.log_date===date).map((x:any)=><div key={x.id} className="rounded-xl border p-3"><b>{x.meal_type||"Comida"}</b><span className="ml-2 text-xs text-muted-foreground">{x.calories||0} kcal · {x.protein_g||0} g proteína</span></div>)}</section>}
