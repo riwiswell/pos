@@ -254,7 +254,8 @@ function CategoryExplorer({
 function FinancePage() {
   const { date } = useGlobalDate();
   const navigate = useNavigate();
-  const requestedCapture = useRouterState({ select: (state) => (state.location.search as Record<string, unknown>).capture });
+  const routerSearch = useRouterState({ select: (state) => state.location.search as Record<string, unknown> });
+  const requestedCapture = routerSearch.capture;
   const [captureType, setCaptureType] = useState<TransactionType>("expense");
   const [periodKind, setPeriodKind] = useState<PeriodKind>("month");
   const [custom, setCustom] = useState({ start: date, end: date });
