@@ -5,7 +5,9 @@ type CachedPhoto = {
   url: string;
   resolvedAt: number;
   expiresAt: number;
-  decodedImage?: HTMLImageElement;\n  decoded: boolean;\n  ready: Promise<void>;
+  decodedImage?: HTMLImageElement;
+  decoded: boolean;
+  ready: Promise<void>;
 };
 
 const SIGNED_URL_CACHE_MS = 55 * 60 * 1000;
