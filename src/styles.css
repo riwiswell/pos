@@ -78,13 +78,13 @@
   --secondary-foreground: oklch(0.97 0.004 260);
 
   --muted: oklch(0.26 0.014 264);
-  --muted-foreground: oklch(0.72 0.014 262);
+  --muted-foreground: oklch(0.80 0.014 262);
 
   --accent: oklch(0.3 0.018 264);
-  --accent-foreground: oklch(0.98 0.003 260);
+  --accent-foreground: oklch(0.99 0.003 260);
 
-  --destructive: oklch(0.55 0.19 22);
-  --destructive-foreground: oklch(0.98 0.003 260);
+  --destructive: #B91C1C;
+  --destructive-foreground: #FFFFFF;
 
   --success: oklch(0.72 0.14 155);
   --success-foreground: oklch(0.18 0.02 160);
@@ -132,25 +132,25 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.24 0.018 65);
 
-  --primary: oklch(0.55 0.15 252);
-  --primary-foreground: oklch(0.99 0.003 255);
+  --primary: #1D4ED8;
+  --primary-foreground: #FFFFFF;
 
   --secondary: oklch(0.95 0.012 85);
   --secondary-foreground: oklch(0.28 0.018 65);
 
   --muted: oklch(0.955 0.01 85);
-  --muted-foreground: oklch(0.42 0.018 65);
+  --muted-foreground: #57534E;
 
   --accent: oklch(0.94 0.025 82);
   --accent-foreground: oklch(0.24 0.018 65);
 
-  --destructive: oklch(0.53 0.19 25);
-  --destructive-foreground: oklch(0.99 0.003 255);
+  --destructive: #B91C1C;
+  --destructive-foreground: #FFFFFF;
 
-  --success: oklch(0.53 0.13 155);
-  --success-foreground: oklch(0.99 0.003 255);
-  --chart-income: oklch(0.48 0.14 155);
-  --chart-expense: oklch(0.52 0.18 22);
+  --success: #166534;
+  --success-foreground: #FFFFFF;
+  --chart-income: #166534;
+  --chart-expense: #B91C1C;
 
   --border: oklch(0.34 0.018 65 / 12%);
   --border-strong: oklch(0.34 0.018 65 / 22%);
@@ -1026,13 +1026,13 @@ html[data-skin="lego"] [role="progressbar"] > div {
 .skin-mark--nintendo i{background:#E60012}
 .skin-mark--nintendo b{display:block;width:.62rem;height:.9rem;border:2px solid #768392;border-radius:.12rem;background:#202A36}
 .skin-mark--nintendo::after{background:#00A6E4}
-html[data-skin="nintendo"]{--background:#1B222C;--foreground:#F7F9FC;--surface:#F1F4F7;--surface-base:#F1F4F7;--surface-foreground:#202A36;--card:#F8FAFC;--card-base:#F8FAFC;--card-foreground:#202A36;--popover:#F8FAFC;--popover-foreground:#202A36;--primary:#E60012;--primary-foreground:#fff;--secondary:#00A6E4;--secondary-foreground:#fff;--muted:#E5E9EF;--muted-foreground:#566171;--accent:#DDE3EA;--accent-foreground:#26313E;--border:#C7CFD9;--border-strong:#AEB8C5;--input:#C0C9D4;--ring:#00A6E4;--sidebar:#252F3C;--sidebar-foreground:#F7F9FC;--sidebar-primary:#00A6E4;--sidebar-primary-foreground:#fff;--sidebar-accent:#354456;--sidebar-accent-foreground:#fff;--sidebar-border:#455365;--sidebar-ring:#00A6E4;--radius:.78rem;--skin-font:"Arial","Segoe UI",sans-serif}
+html[data-skin="nintendo"]{--background:#1B222C;--foreground:#F7F9FC;--surface:#F1F4F7;--surface-base:#F1F4F7;--surface-foreground:#202A36;--card:#F8FAFC;--card-base:#F8FAFC;--card-foreground:#202A36;--popover:#F8FAFC;--popover-foreground:#202A36;--primary:#E60012;--primary-foreground:#fff;--secondary:#00A6E4;--secondary-foreground:#fff;--muted:#354456;--muted-foreground:#D4DCE6;--accent:#435367;--accent-foreground:#FFFFFF;--border:#C7CFD9;--border-strong:#AEB8C5;--input:#C0C9D4;--ring:#00A6E4;--sidebar:#252F3C;--sidebar-foreground:#F7F9FC;--sidebar-primary:#00A6E4;--sidebar-primary-foreground:#fff;--sidebar-accent:#354456;--sidebar-accent-foreground:#fff;--sidebar-border:#455365;--sidebar-ring:#00A6E4;--radius:.78rem;--skin-font:"Arial","Segoe UI",sans-serif}
 html.theme-light[data-skin="nintendo"]{--background:#EEF1F4;--foreground:#202A36;--surface:#fff;--surface-base:#fff;--surface-foreground:#202A36;--card:#fff;--card-base:#fff;--card-foreground:#202A36;--popover:#fff;--popover-foreground:#202A36;--secondary:#DDF3FB;--secondary-foreground:#145A78;--muted:#E8ECF1;--muted-foreground:#5B6675;--accent:#DFE6ED;--accent-foreground:#26313E;--border:#D1D8E0;--border-strong:#B7C1CD;--input:#C7D0DA;--sidebar:#303A48;--sidebar-foreground:#fff;--sidebar-primary:#00A6E4;--sidebar-primary-foreground:#fff;--sidebar-accent:#435367;--sidebar-accent-foreground:#fff;--sidebar-border:#566578}
 html[data-skin="nintendo"] .skin-branding__symbol{background:#E6EAF0;border:1px solid #fff;border-radius:.55rem;color:#fff;box-shadow:0 2px 8px rgb(0 0 0 / 18%)}
 html[data-skin="nintendo"] .skin-branding__copy strong{letter-spacing:.07em;font-weight:850;color:var(--foreground)}
 html[data-skin="nintendo"] .app-shell-main{background-image:linear-gradient(90deg,transparent 49.8%,rgb(90 107 128 / 5%) 50%,transparent 50.2%),linear-gradient(0deg,transparent 49.8%,rgb(90 107 128 / 4%) 50%,transparent 50.2%);background-size:44px 44px}
 html[data-skin="nintendo"] .glass{background:var(--card);color:var(--card-foreground);border:1px solid #D4DBE3;border-radius:.8rem;box-shadow:0 5px 16px -13px rgb(18 28 41 / 45%)}
-html[data-skin="nintendo"] .inicio-hero{border:1px solid #7D8998;background:linear-gradient(110deg,#303A48 0 42%,#F4F6F8 42% 58%,#303A48 58%)!important;box-shadow:0 4px 12px rgb(0 0 0 / 12%)}
+html[data-skin="nintendo"] .inicio-hero{border:1px solid #7D8998;background:linear-gradient(110deg,#303A48,#202A36)!important;box-shadow:0 4px 12px rgb(0 0 0 / 12%)}
 html[data-skin="nintendo"] .weather-card{border:1px solid #AEB8C5;background:linear-gradient(135deg,#E8EDF2,#D7EAF2);color:#202A36}
 
 /* Formula 1 — pit lane, carbon asphalt, racing red and checkered flag. */
@@ -1918,3 +1918,17 @@ html[data-skin="mario"] { --chart-bar: #ef3340; }
 html[data-skin="chess"] { --chart-bar: #805238; }
 html[data-skin="lumen"] { --chart-bar: #5d9fc9; }
 html[data-skin="orchid"] { --chart-bar: #9c76a7; }
+
+/* Nintendo dark mode: neutral ink belongs on its light cards; bright semantic text belongs on the dark canvas. */
+html.dark[data-skin="nintendo"] .glass .text-muted-foreground,
+html.dark[data-skin="nintendo"] .glass [class*="text-slate-300"],
+html.dark[data-skin="nintendo"] .glass [class*="text-slate-400"],
+html.dark[data-skin="nintendo"] .weather-card .text-muted-foreground,
+html.dark[data-skin="nintendo"] .weather-card [class*="text-slate-300"],
+html.dark[data-skin="nintendo"] .weather-card [class*="text-slate-400"] {
+  color: #566171 !important;
+}
+html.dark[data-skin="nintendo"] .weather-card .text-white,
+html.dark[data-skin="nintendo"] .weather-card [class*="text-sky-300"] {
+  color: #145A78 !important;
+}

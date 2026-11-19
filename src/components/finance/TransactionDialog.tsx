@@ -59,6 +59,7 @@ interface Props {
   categories: FinanceCategory[];
   frequentCategoryIds?: { expense: string[]; income: string[] };
   transaction?: FinanceTransaction | null;
+  initialType?: TransactionType;
   onSubmit: (input: TransactionInput) => void | Promise<void>;
   pending?: boolean;
 }
@@ -94,6 +95,7 @@ export function TransactionDialog({
   categories,
   frequentCategoryIds = { expense: [], income: [] },
   transaction,
+  initialType = "expense",
   onSubmit,
   pending,
 }: Props) {
@@ -128,11 +130,11 @@ export function TransactionDialog({
       setShowAllCategories(false);
       setIsNow(false);
     } else {
-      setForm(emptyInput(date, accounts[0]?.id ?? null));
+      setForm({ ...emptyInput(date, accounts[0]?.id ?? null), type: initialType });
       setShowAllCategories(false);
       setIsNow(false);
     }
-  }, [open, transaction, date]);
+  }, [open, transaction, date, initialType]);
 
   // If accounts arrive after the dialog opens, choose a default without resetting
   // a partially completed transaction when the account query refreshes.

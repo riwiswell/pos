@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Plus, X, Heart, Lightbulb, MessageSquareText, Sparkles, BookOpen, Bookmark, Wallet, Activity, Users, ListChecks, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import type { JournalEntryInput } from "@/domain/journal";
 import { EMOTIONS } from "@/domain/emotions";
 import { toast } from "sonner";
 
-type CaptureKind = "thought" | "idea" | "gratitude" | "emotion" | "dream" | "memory" | "finance" | "health" | "habit" | "relationship" | "planning";
+type CaptureKind = "thought" | "idea" | "gratitude" | "emotion" | "dream" | "memory" | "finance" | "expense" | "income" | "health" | "habit" | "relationship" | "planning";
 const CAPTURE_OPTIONS = [
   { kind: "thought" as const, label: "Pensamiento o nota", description: "Guardar algo que no quieres olvidar.", icon: MessageSquareText },
   { kind: "idea" as const, label: "Idea o proyecto", description: "Capturar algo que quieres desarrollar.", icon: Lightbulb },
@@ -21,7 +21,7 @@ const CAPTURE_OPTIONS = [
   { kind: "gratitude" as const, label: "Gratitud", description: "Anotar algo que agradeces.", icon: Sparkles },
   { kind: "dream" as const, label: "Sueño", description: "Guardar un sueño que recuerdes.", icon: BookOpen },
   { kind: "memory" as const, label: "Recuerdo", description: "Guardar un recuerdo importante.", icon: Bookmark },
-  { kind: "finance" as const, label: "Movimiento financiero", description: "Ir al registro de ingresos y gastos.", icon: Wallet },
+  { kind: "expense" as const, label: "Nuevo gasto", description: "Abrir directamente el formulario para registrar un gasto.", icon: Wallet },\n  { kind: "income" as const, label: "Nuevo ingreso", description: "Abrir directamente el formulario para registrar un ingreso.", icon: Wallet },
   { kind: "health" as const, label: "Dato de salud", description: "Registrar una medición o dato.", icon: Activity },
   { kind: "habit" as const, label: "Hábito o actividad", description: "Abrir el registro de hábitos.", icon: ListChecks },
   { kind: "relationship" as const, label: "Interacción", description: "Registrar algo relacionado con una persona.", icon: Users },
@@ -30,6 +30,7 @@ const CAPTURE_OPTIONS = [
 
 export function UniversalCapture() {
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { date } = useGlobalDate();
   const mutations = useJournalMutations();
   const [open, setOpen] = useState(false);
@@ -44,8 +45,7 @@ export function UniversalCapture() {
     setKind(null); setTitle(""); setContent(""); setEmotion(""); setIntensity(3); setSaving(false);
   }
 
-  function choose(next: CaptureKind) {
-    if (["finance", "health", "habit", "relationship", "planning"].includes(next)) {
+  function choose(next: CaptureKind) {\n    if (next === "expense" || next === "income") {\n      setOpen(false);\n      void navigate({ to: "/finanzas", search: (previous: Record<string, unknown>) => ({ ...previous, capture: next }) } as never);\n      return;\n    }\n    if (["finance", "health", "habit", "relationship", "planning"].includes(next)) {
       setOpen(false);
       const destinations: Partial<Record<CaptureKind, "/finanzas" | "/salud" | "/organizacion" | "/relaciones">> = {
         finance: "/finanzas", health: "/salud", habit: "/organizacion", relationship: "/relaciones", planning: "/organizacion",
@@ -84,10 +84,12 @@ export function UniversalCapture() {
 
   return (
     <>
-      <Button type="button" size="icon" aria-label="Registro universal" title="Registrar rápidamente" onClick={() => { reset(); setOpen(true); }}
-        className="fixed bottom-24 right-3 z-40 h-12 w-12 rounded-full shadow-lg md:bottom-6 md:right-6 md:h-14 md:w-14">
-        <Plus className="h-6 w-6" />
-      </Button>
+      {pathname !== "/finanzas" && (
+        <Button type="button" size="icon" aria-label="Registro universal" title="Registrar rápidamente" onClick={() => { reset(); setOpen(true); }}
+          className="fixed bottom-24 right-3 z-40 h-12 w-12 rounded-full shadow-lg md:bottom-6 md:right-6 md:h-14 md:w-14">
+          <Plus className="h-6 w-6" />
+        </Button>
+      )}
       <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) reset(); }}>
         <DialogContent className="max-h-[90vh] w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-xl">
           <DialogHeader>

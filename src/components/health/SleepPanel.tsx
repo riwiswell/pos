@@ -456,28 +456,34 @@ export function SleepPanel() {
         ) : (
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={history} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 3" />
+              <BarChart data={history} margin={{ top: 8, right: 8, left: -8, bottom: 8 }}>
+                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="label"
                   tickLine={false}
                   axisLine={false}
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                  interval="preserveStartEnd"
+                  tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                  interval={0}
+                  minTickGap={0}
+                  angle={-32}
+                  textAnchor="end"
+                  height={44}
                 />
                 <YAxis
                   domain={[0, maxHours]}
+                  tickCount={4}
                   tickLine={false}
                   axisLine={false}
-                  width={34}
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                  width={38}
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                   tickFormatter={(value: number) => `${value} h`}
                 />
                 <Tooltip
-                  cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+                  cursor={{ fill: "color-mix(in srgb, var(--muted) 30%, transparent)" }}
                   contentStyle={{
-                    background: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
+                    background: "var(--popover)",
+                    color: "var(--popover-foreground)",
+                    border: "1px solid var(--border)",
                     borderRadius: 12,
                     fontSize: 12,
                   }}

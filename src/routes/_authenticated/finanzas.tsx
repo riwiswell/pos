@@ -1,10 +1,10 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 
 const CategoryDonut = lazy(() => import("@/components/finance/FinanceCharts").then((module) => ({ default: module.CategoryDonut })));
 const DailyBars = lazy(() => import("@/components/finance/FinanceCharts").then((module) => ({ default: module.DailyBars })));
 const FinanceAdvancedPanel = lazy(() => import("@/components/finance/FinanceAdvancedPanel").then((module) => ({ default: module.FinanceAdvancedPanel })));
 import { ArrowLeft, Eye, EyeOff, Plus, Search, Settings2, Tags, Wallet } from "lucide-react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -253,6 +253,9 @@ function CategoryExplorer({
 
 function FinancePage() {
   const { date } = useGlobalDate();
+  const navigate = useNavigate();
+  const requestedCapture = useRouterState({ select: (state) => (state.location.search as Record<string, unknown>).capture });
+  const [captureType, setCaptureType] = useState<TransactionType>("expense");
   const [periodKind, setPeriodKind] = useState<PeriodKind>("month");
   const [custom, setCustom] = useState({ start: date, end: date });
   const period = useMemo(
@@ -283,6 +286,19 @@ function FinancePage() {
     open: boolean;
     account: FinanceAccount | null;
   }>({ open: false, account: null });
+
+  useEffect(() => {
+    if (requestedCapture !== "expense" && requestedCapture !== "income") return;
+    setCaptureType(requestedCapture);
+    setTab(requestedCapture === "expense" ? "gastos" : "ingresos");
+    setEditing(null);
+    setDialogOpen(true);
+    void navigate({
+      to: "/finanzas",
+      search: (previous: Record<string, unknown>) => ({ ...previous, capture: undefined }),
+      replace: true,
+    } as never);
+  }, [requestedCapture, navigate]);
 
   const list = transactions.data ?? [];
   const accountList = accounts.data ?? [];
@@ -732,6 +748,7 @@ function FinancePage() {
         className="fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full shadow-lg sm:bottom-8 sm:right-8"
         aria-label="Nuevo movimiento"
         onClick={() => {
+          setCaptureType("expense");
           setEditing(null);
           setDialogOpen(true);
         }}
@@ -761,6 +778,7 @@ function FinancePage() {
         categories={categoryList}
         frequentCategoryIds={frequentCategoryIds}
         transaction={editing}
+        initialType={captureType}
         pending={mutations.createTransaction.isPending || mutations.updateTransaction.isPending}
         onSubmit={async (input) => {
           if (editing) {
