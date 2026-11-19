@@ -2309,6 +2309,7 @@ html[data-skin="simpsons"] {
   --border:#58738E;--border-strong:#8DA8C1;--input:#6C88A2;--ring:#F5D84B;
   --sidebar:#10253A;--sidebar-foreground:#F8FAFC;--sidebar-primary:#F5D84B;--sidebar-primary-foreground:#263247;
   --sidebar-accent:#254765;--sidebar-accent-foreground:#fff;--sidebar-border:#3E5F7C;--sidebar-ring:#F5D84B;
+  --chart-income:#166534;--chart-expense:#B91C1C;
 }
 html.theme-light[data-skin="simpsons"] {
   --background:#FFF5C8;--foreground:#243247;--surface:#FFFBE8;--surface-base:#FFFBE8;--surface-foreground:#243247;
@@ -2325,10 +2326,10 @@ html[data-skin="simpsons"] .app-shell-main{background-image:radial-gradient(circ
 html[data-skin="nba"] {
   --background:#101820;--foreground:#F5F7FA;--surface:#1B2934;--surface-base:#1B2934;--surface-foreground:#F5F7FA;
   --card:#1D2B36;--card-base:#1D2B36;--card-foreground:#F5F7FA;--popover:#1D2B36;--popover-foreground:#F5F7FA;
-  --primary:#F46A19;--primary-foreground:#fff;--secondary:#314654;--secondary-foreground:#F5F7FA;
+  --primary:#F46A19;--primary-foreground:#171717;--secondary:#314654;--secondary-foreground:#F5F7FA;
   --muted:#2C3A44;--muted-foreground:#C8D2DA;--accent:#00A6A6;--accent-foreground:#06292A;
   --border:#455866;--border-strong:#687E8E;--input:#526878;--ring:#F46A19;
-  --sidebar:#0A1118;--sidebar-foreground:#F5F7FA;--sidebar-primary:#F46A19;--sidebar-primary-foreground:#fff;
+  --sidebar:#0A1118;--sidebar-foreground:#F5F7FA;--sidebar-primary:#F46A19;--sidebar-primary-foreground:#171717;
   --sidebar-accent:#1D2B36;--sidebar-accent-foreground:#fff;--sidebar-border:#344754;--sidebar-ring:#F46A19;
 }
 html.theme-light[data-skin="nba"] {
@@ -2336,7 +2337,7 @@ html.theme-light[data-skin="nba"] {
   --card:#fff;--card-base:#fff;--card-foreground:#17232C;--popover:#fff;--popover-foreground:#17232C;
   --secondary:#E1E7EC;--secondary-foreground:#253643;--muted:#E6EBEF;--muted-foreground:#4D5C67;
   --accent:#FCE5D5;--accent-foreground:#6D3010;--border:#CDD6DD;--border-strong:#AEBBC4;--input:#B7C4CE;
-  --sidebar:#1D2B36;--sidebar-foreground:#F5F7FA;--sidebar-primary:#F46A19;--sidebar-primary-foreground:#fff;
+  --sidebar:#1D2B36;--sidebar-foreground:#F5F7FA;--sidebar-primary:#F46A19;--sidebar-primary-foreground:#171717;
   --sidebar-accent:#314654;--sidebar-accent-foreground:#fff;--sidebar-border:#536978;
 }
 html[data-skin="nba"] .skin-branding__symbol{background:#F46A19;border:2px solid #fff;color:#fff}
@@ -2346,7 +2347,7 @@ html[data-skin="nba"] .app-shell-main{background-image:linear-gradient(90deg,tra
 html[data-skin="barbie"] {
   --background:#25172D;--foreground:#FFF6FB;--surface:#39213F;--surface-base:#39213F;--surface-foreground:#FFF6FB;
   --card:#39213F;--card-base:#39213F;--card-foreground:#FFF6FB;--popover:#39213F;--popover-foreground:#FFF6FB;
-  --primary:#F72585;--primary-foreground:#fff;--secondary:#63345F;--secondary-foreground:#FFF6FB;
+  --primary:#F72585;--primary-foreground:#301025;--secondary:#63345F;--secondary-foreground:#FFF6FB;
   --muted:#47294B;--muted-foreground:#E8C9DF;--accent:#FF91C2;--accent-foreground:#40172F;
   --border:#70436A;--border-strong:#9A638C;--input:#845879;--ring:#FF91C2;
   --sidebar:#1B1022;--sidebar-foreground:#FFF6FB;--sidebar-primary:#FF91C2;--sidebar-primary-foreground:#42142F;
