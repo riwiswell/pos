@@ -213,6 +213,7 @@ export interface HydrationEntry {
 }
 
 export function formatGlasses(n: number): string {
+  if (n === 0.5) return "1/2 vaso";
   const v = String(n).replace(".", ",");
   return `${v} ${n === 1 ? "vaso" : "vasos"}`;
 }
