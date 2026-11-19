@@ -21,7 +21,8 @@ const CAPTURE_OPTIONS = [
   { kind: "gratitude" as const, label: "Gratitud", description: "Anotar algo que agradeces.", icon: Sparkles },
   { kind: "dream" as const, label: "Sueño", description: "Guardar un sueño que recuerdes.", icon: BookOpen },
   { kind: "memory" as const, label: "Recuerdo", description: "Guardar un recuerdo importante.", icon: Bookmark },
-  { kind: "expense" as const, label: "Nuevo gasto", description: "Abrir directamente el formulario para registrar un gasto.", icon: Wallet },\n  { kind: "income" as const, label: "Nuevo ingreso", description: "Abrir directamente el formulario para registrar un ingreso.", icon: Wallet },
+  { kind: "expense" as const, label: "Nuevo gasto", description: "Abrir directamente el formulario para registrar un gasto.", icon: Wallet },
+  { kind: "income" as const, label: "Nuevo ingreso", description: "Abrir directamente el formulario para registrar un ingreso.", icon: Wallet },
   { kind: "health" as const, label: "Dato de salud", description: "Registrar una medición o dato.", icon: Activity },
   { kind: "habit" as const, label: "Hábito o actividad", description: "Abrir el registro de hábitos.", icon: ListChecks },
   { kind: "relationship" as const, label: "Interacción", description: "Registrar algo relacionado con una persona.", icon: Users },
@@ -45,7 +46,13 @@ export function UniversalCapture() {
     setKind(null); setTitle(""); setContent(""); setEmotion(""); setIntensity(3); setSaving(false);
   }
 
-  function choose(next: CaptureKind) {\n    if (next === "expense" || next === "income") {\n      setOpen(false);\n      void navigate({ to: "/finanzas", search: (previous: Record<string, unknown>) => ({ ...previous, capture: next }) } as never);\n      return;\n    }\n    if (["finance", "health", "habit", "relationship", "planning"].includes(next)) {
+  function choose(next: CaptureKind) {
+    if (next === "expense" || next === "income") {
+      setOpen(false);
+      void navigate({ to: "/finanzas", search: (previous: Record<string, unknown>) => ({ ...previous, capture: next }) } as never);
+      return;
+    }
+    if (["finance", "health", "habit", "relationship", "planning"].includes(next)) {
       setOpen(false);
       const destinations: Partial<Record<CaptureKind, "/finanzas" | "/salud" | "/organizacion" | "/relaciones">> = {
         finance: "/finanzas", health: "/salud", habit: "/organizacion", relationship: "/relaciones", planning: "/organizacion",
