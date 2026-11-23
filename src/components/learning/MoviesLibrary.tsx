@@ -36,8 +36,14 @@ export function MoviesLibrary() {
   const { date } = useGlobalDate();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
-  const [duration, setDuration] = useState("");
+  const [durationHours, setDurationHours] = useState("2");
+  const [durationMinutes, setDurationMinutes] = useState("0");
   const [genre, setGenre] = useState("");
+  const [releaseYear, setReleaseYear] = useState("");
+  const [watchDate, setWatchDate] = useState(date);
+  const [companionId, setCompanionId] = useState("alone");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const createCoverInput = useRef<HTMLInputElement>(null);
   const [posterCandidate, setPosterCandidate] = useState("");
   const [searchingPoster, setSearchingPoster] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,8 +60,13 @@ export function MoviesLibrary() {
 
   const resetForm = () => {
     setTitle("");
-    setDuration("");
+    setDurationHours("2");
+    setDurationMinutes("0");
     setGenre("");
+    setReleaseYear("");
+    setWatchDate(date);
+    setCompanionId("alone");
+    setCoverFile(null);
     setPosterCandidate("");
     setAdding(false);
   };
@@ -85,13 +96,25 @@ export function MoviesLibrary() {
       toast.error("Escribe el nombre de la película.");
       return;
     }
-    const minutes = Number(duration);
-    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1000) {
-      toast.error("La duración debe estar entre 1 y 1000 minutos.");
+    const hours = Number(durationHours || 0);
+    const remainder = Number(durationMinutes || 0);
+    const minutes = hours * 60 + remainder;
+    if (!Number.isInteger(hours) || !Number.isInteger(remainder) || hours < 0 || remainder < 0 || remainder > 59 || minutes < 1 || minutes > 1000) {
+      toast.error("Indica una duración válida en horas y minutos.");
+      return;
+    }
+    const parsedYear = releaseYear.trim() ? Number(releaseYear) : null;
+    if (parsedYear !== null && (!Number.isInteger(parsedYear) || parsedYear < 1888 || parsedYear > 2100)) {
+      toast.error("Indica un año de estreno válido.");
+      return;
+    }
+    const parsedDate = new Date(`${watchDate}T12:00:00-05:00`);
+    if (!watchDate || Number.isNaN(parsedDate.getTime()) || watchDate > date) {
+      toast.error("Selecciona una fecha de visualización válida.");
       return;
     }
     if (genre.trim().length > 80) {
-      toast.error("El género no puede superar 80 caracteres.");
+      toast.error("Selecciona un género válido.");
       return;
     }
     if (movies.some((item: any) => String(item.title).trim().toLocaleLowerCase("es") === title.trim().toLocaleLowerCase("es"))) {
@@ -101,19 +124,22 @@ export function MoviesLibrary() {
     setSaving(true);
     try {
       let coverPath = posterCandidate || null;
-      if (!coverPath) coverPath = await lookupLearningCover({ kind: "movie", title: title.trim() });
-      await itemMutation.create.mutateAsync({
+      if (coverFile) coverPath = await privateMediaService.uploadPhoto(coverFile);
+      else if (!coverPath) coverPath = await lookupLearningCover({ kind: "movie", title: title.trim() });
+      const createdMovie = await itemMutation.create.mutateAsync({
         user_id: user?.id,
         title: title.trim(),
         kind: "movie",
         status: "active",
         target_minutes: minutes,
-        genre: genre.trim() || null,
+        genre: genre || null,
+        publication_year: parsedYear,
         cover_path: coverPath,
         progress: 0,
         minutes_total: 0,
       });
-      toast.success(coverPath ? "Película agregada con póster." : "Película agregada. Puedes subir el póster desde su ficha.");
+      await recordWatch(createdMovie, watchDate, companionId === "alone" ? null : companionId);
+      if (coverFile) toast.success("Póster subido desde la galería y guardado en la ficha.");
       resetForm();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo agregar la película.");
@@ -181,12 +207,46 @@ export function MoviesLibrary() {
       </Button>
     </div>
     {adding && <div className="glass max-w-3xl space-y-3 rounded-2xl p-3">
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1.4fr_150px_1fr_auto]">
+      <div className="grid gap-2 sm:grid-cols-2">
         <Input placeholder="Nombre de la película" value={title} onChange={(event) => { setTitle(event.target.value); setPosterCandidate(""); }} />
-        <Input type="number" min="1" max="1000" placeholder="Duración (min)" value={duration} onChange={(event) => setDuration(event.target.value)} />
-        <Input placeholder="Género (drama, aventura…)" value={genre} onChange={(event) => setGenre(event.target.value)} />
-        <Button size="sm" disabled={!title.trim() || saving || itemMutation.create.isPending} onClick={() => void addMovie()}>
-          <Plus className="mr-1 h-4 w-4" />Agregar
+        <label className="space-y-1 text-xs text-muted-foreground">Año de estreno
+          <Input type="number" min="1888" max="2100" placeholder="Ej. 2024" value={releaseYear} onChange={(event) => setReleaseYear(event.target.value)} />
+        </label>
+        <label className="space-y-1 text-xs text-muted-foreground">Género
+          <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground" value={genre} onChange={(event) => setGenre(event.target.value)}>
+            <option value="">Selecciona un género…</option>
+            {["Acción","Aventura","Animación","Ciencia ficción","Comedia","Crimen","Documental","Drama","Fantasía","Musical","Misterio","Romance","Suspenso","Terror","Thriller psicológico","Bélica","Western"].map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+        <div className="space-y-1 text-xs text-muted-foreground">Duración
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex items-center gap-2"><Input type="number" min="0" max="16" value={durationHours} onChange={(event) => setDurationHours(event.target.value)} /><span>horas</span></label>
+            <label className="flex items-center gap-2"><Input type="number" min="0" max="59" value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)} /><span>min</span></label>
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="space-y-1 text-xs text-muted-foreground">¿Cuándo la viste?
+          <Input type="date" value={watchDate} max={date} onChange={(event) => setWatchDate(event.target.value)} />
+        </label>
+        <label className="space-y-1 text-xs text-muted-foreground">¿Con quién la viste?
+          <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground" value={companionId} onChange={(event) => setCompanionId(event.target.value)}>
+            <option value="alone">La vi solo/a</option>
+            {people.map((person: any) => <option key={person.id} value={person.id}>{person.name}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" type="button" variant="outline" onClick={() => createCoverInput.current?.click()}>
+          <ImagePlus className="mr-1 h-3.5 w-3.5" />{coverFile ? "Cambiar imagen de galería" : "Subir póster desde galería"}
+        </Button>
+        <input ref={createCoverInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" className="sr-only" onChange={(event) => { setCoverFile(event.target.files?.[0] ?? null); setPosterCandidate(""); }} />
+        {coverFile && <span className="max-w-full truncate text-xs text-muted-foreground">{coverFile.name}</span>}
+        <Button size="sm" type="button" variant="ghost" disabled={!title.trim() || searchingPoster || Boolean(coverFile)} onClick={() => void searchPoster()}>
+          <Search className="mr-1 h-3.5 w-3.5" />{searchingPoster ? "Buscando…" : "Buscar póster"}
+        </Button>
+        <Button size="sm" className="ml-auto" disabled={!title.trim() || saving || itemMutation.create.isPending} onClick={() => void addMovie()}>
+          <Plus className="mr-1 h-4 w-4" />{saving ? "Guardando…" : "Agregar película"}
         </Button>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -239,6 +299,7 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
   const [newTitle, setNewTitle] = useState(String(movie.title ?? ""));
   const [newDuration, setNewDuration] = useState(String(movie.target_minutes ?? ""));
   const [newGenre, setNewGenre] = useState(String(movie.genre ?? ""));
+  const [newYear, setNewYear] = useState(String(movie.publication_year ?? ""));
   const [findingPoster, setFindingPoster] = useState(false);
   const [uploading, setUploading] = useState(false);
   const orderedSessions = [...sessions].sort((a: any, b: any) => String(b.session_date ?? "").localeCompare(String(a.session_date ?? "")) || String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
@@ -247,6 +308,7 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
   useEffect(() => setNewTitle(String(movie.title ?? "")), [movie.title]);
   useEffect(() => setNewDuration(String(movie.target_minutes ?? "")), [movie.target_minutes]);
   useEffect(() => setNewGenre(String(movie.genre ?? "")), [movie.genre]);
+  useEffect(() => setNewYear(String(movie.publication_year ?? "")), [movie.publication_year]);
 
   const findPoster = async () => {
     setFindingPoster(true);
@@ -296,10 +358,15 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
       return;
     }
     if (newGenre.trim().length > 80) {
-      toast.error("El género no puede superar 80 caracteres.");
+      toast.error("Selecciona un género válido.");
       return;
     }
-    await onUpdate({ title: newTitle.trim(), target_minutes: minutes, genre: newGenre.trim() || null });
+    const year = newYear.trim() ? Number(newYear) : null;
+    if (year !== null && (!Number.isInteger(year) || year < 1888 || year > 2100)) {
+      toast.error("Indica un año de estreno válido.");
+      return;
+    }
+    await onUpdate({ title: newTitle.trim(), target_minutes: minutes, genre: newGenre.trim() || null, publication_year: year });
     setEditing(false);
     toast.success("Ficha de película actualizada.");
   };
@@ -344,7 +411,7 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-2 font-semibold leading-snug">{movie.title}</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">{formatRuntime(movie.target_minutes)}{movie.genre ? ` · ${movie.genre}` : ""}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{formatRuntime(movie.target_minutes)}{movie.genre ? ` · ${movie.genre}` : ""}{movie.publication_year ? ` · ${movie.publication_year}` : ""}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {sessions.length ? `${sessions.length} visualización${sessions.length === 1 ? "" : "es"} · última: ${orderedSessions[0]?.session_date}` : "Aún no la has marcado como vista"}
             </p>
@@ -386,10 +453,16 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
     </div>}
     {editing && <div className="space-y-2 border-t bg-muted/20 p-3">
       <p className="text-sm font-semibold">Editar ficha</p>
-      <div className="grid gap-2 sm:grid-cols-[1.4fr_150px_1fr]">
+      <div className="grid gap-2 sm:grid-cols-2">
         <Input aria-label="Nombre de la película" value={newTitle} onChange={(event) => setNewTitle(event.target.value)} />
         <Input aria-label="Duración en minutos" type="number" min="1" max="1000" value={newDuration} onChange={(event) => setNewDuration(event.target.value)} />
-        <Input aria-label="Género" value={newGenre} onChange={(event) => setNewGenre(event.target.value)} placeholder="Género" />
+        <label className="space-y-1 text-xs text-muted-foreground">Género
+          <select aria-label="Género" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground" value={newGenre} onChange={(event) => setNewGenre(event.target.value)}>
+            <option value="">Sin especificar</option>
+            {["Acción","Aventura","Animación","Ciencia ficción","Comedia","Crimen","Documental","Drama","Fantasía","Musical","Misterio","Romance","Suspenso","Terror","Thriller psicológico","Bélica","Western"].map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+        <Input aria-label="Año de estreno" type="number" min="1888" max="2100" placeholder="Año de estreno" value={newYear} onChange={(event) => setNewYear(event.target.value)} />
       </div>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" onClick={() => void saveDetails()}><Save className="mr-1 h-3.5 w-3.5" />Guardar</Button>
