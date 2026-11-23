@@ -297,7 +297,8 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
   const [companionId, setCompanionId] = useState("alone");
   const [editing, setEditing] = useState(false);
   const [newTitle, setNewTitle] = useState(String(movie.title ?? ""));
-  const [newDuration, setNewDuration] = useState(String(movie.target_minutes ?? ""));
+  const [newDurationHours, setNewDurationHours] = useState(String(Math.floor((Number(movie.target_minutes) || 0) / 60)));
+  const [newDurationMinutes, setNewDurationMinutes] = useState(String((Number(movie.target_minutes) || 0) % 60));
   const [newGenre, setNewGenre] = useState(String(movie.genre ?? ""));
   const [newYear, setNewYear] = useState(String(movie.publication_year ?? ""));
   const [findingPoster, setFindingPoster] = useState(false);
@@ -306,7 +307,10 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
 
   useEffect(() => setWatchDate(date), [date]);
   useEffect(() => setNewTitle(String(movie.title ?? "")), [movie.title]);
-  useEffect(() => setNewDuration(String(movie.target_minutes ?? "")), [movie.target_minutes]);
+  useEffect(() => {
+    setNewDurationHours(String(Math.floor((Number(movie.target_minutes) || 0) / 60)));
+    setNewDurationMinutes(String((Number(movie.target_minutes) || 0) % 60));
+  }, [movie.target_minutes]);
   useEffect(() => setNewGenre(String(movie.genre ?? "")), [movie.genre]);
   useEffect(() => setNewYear(String(movie.publication_year ?? "")), [movie.publication_year]);
 
@@ -352,9 +356,11 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
       toast.error("El nombre no puede quedar vacío.");
       return;
     }
-    const minutes = Number(newDuration);
-    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1000) {
-      toast.error("La duración debe estar entre 1 y 1000 minutos.");
+    const hours = Number(newDurationHours || 0);
+    const remainder = Number(newDurationMinutes || 0);
+    const minutes = hours * 60 + remainder;
+    if (!Number.isInteger(hours) || !Number.isInteger(remainder) || hours < 0 || remainder < 0 || remainder > 59 || minutes < 1 || minutes > 1000) {
+      toast.error("Indica una duración válida en horas y minutos.");
       return;
     }
     if (newGenre.trim().length > 80) {
@@ -455,7 +461,14 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
       <p className="text-sm font-semibold">Editar ficha</p>
       <div className="grid gap-2 sm:grid-cols-2">
         <Input aria-label="Nombre de la película" value={newTitle} onChange={(event) => setNewTitle(event.target.value)} />
-        <Input aria-label="Duración en minutos" type="number" min="1" max="1000" value={newDuration} onChange={(event) => setNewDuration(event.target.value)} />
+        <div className="grid grid-cols-2 gap-2">
+          <label className="space-y-1 text-xs text-muted-foreground">Horas
+            <Input aria-label="Duración en horas" type="number" min="0" max="16" value={newDurationHours} onChange={(event) => setNewDurationHours(event.target.value)} />
+          </label>
+          <label className="space-y-1 text-xs text-muted-foreground">Minutos
+            <Input aria-label="Duración en minutos" type="number" min="0" max="59" value={newDurationMinutes} onChange={(event) => setNewDurationMinutes(event.target.value)} />
+          </label>
+        </div>
         <label className="space-y-1 text-xs text-muted-foreground">Género
           <select aria-label="Género" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground" value={newGenre} onChange={(event) => setNewGenre(event.target.value)}>
             <option value="">Sin especificar</option>
