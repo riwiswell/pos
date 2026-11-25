@@ -384,12 +384,11 @@ export function BibleReadingPanel({ learningItemId }: { learningItemId: string }
               const flags = [Boolean(row?.first_done), Boolean(row?.second_done), Boolean(row?.third_done)];
               const completedCount = flags.filter(Boolean).length;
               const completed = completedCount === 3;
-              const assignedDate = addDaysISO(activeCycle.start_date, day.dayNumber - 1);
               return (
                 <article ref={day.dayNumber === currentDayNumber ? todayCardRef : undefined} key={day.dayNumber} aria-current={day.dayNumber === currentDayNumber ? "date" : undefined} className={"min-w-0 rounded-xl border p-3 " + (day.dayNumber === currentDayNumber ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20" : "bg-background/65")}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold">Día {day.dayNumber} · {displayDate(assignedDate)}</p>
+                      <p className="text-sm font-semibold">Día {day.dayNumber} · {day.dayOfMonth} de {month?.name.slice(0, 3).toLowerCase()}</p>
                       <p className="text-[11px] text-muted-foreground">{day.dayOfMonth} de {month?.name}</p>
                     </div>
                     <span className={"shrink-0 rounded-full px-2 py-1 text-[11px] font-medium " + (completed ? "bg-emerald-500/10 text-emerald-600" : completedCount ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
