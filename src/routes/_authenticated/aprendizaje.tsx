@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { BookOpen,Check,ChevronDown,ChevronUp,Clock,FileText,ImagePlus,NotebookPen,Pencil,Plus,Save,Search,Trash2,X } from "lucide-react";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input";
 import { GlobalDateHeader } from "@/components/common/GlobalDateHeader"; import { HelpTip } from "@/components/common/HelpTip"; import { RichTextEditor } from "@/components/common/RichTextEditor";
@@ -475,7 +475,7 @@ function BookCard({book,notes,coverPath,hasCompletionReward,onSave,onRecordSessi
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:progress+"%"}}/></div>{total>0&&progress>=100&&<p className="text-[11px] font-medium text-emerald-600">{isBible?"Capítulos registrados completos":"Lectura completada"}</p>}
         <div className="flex flex-wrap gap-1.5">
-          {isBible?<><a href="/biblia" target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"><BookOpen className="mr-1 h-3.5 w-3.5"/>Abrir Plan Bíblico <span className="ml-1">↗</span></a></>:<>
+          {isBible?<><Link to="/biblia" search={(previous: Record<string, unknown>) => previous} className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"><BookOpen className="mr-1 h-3.5 w-3.5"/>Abrir Plan Bíblico</Link></>:<>
               <Button size="sm" variant={panel==="progress"?"default":"outline"} onClick={()=>setPanel(panel==="progress"?null:"progress")}><Save className="mr-1 h-3.5 w-3.5"/>Páginas</Button>
               <Button size="sm" variant={panel==="reading"?"default":"outline"} onClick={()=>setPanel(panel==="reading"?null:"reading")}><Clock className="mr-1 h-3.5 w-3.5"/>Registrar lectura</Button>
               <Button size="sm" variant={book.status==="completed"?"secondary":"outline"} onClick={()=>void markFinished()} disabled={book.status==="completed"||completionSaving}><Check className="mr-1 h-3.5 w-3.5"/> {book.status==="completed"?"Terminado":"Marcar terminado"}</Button>
