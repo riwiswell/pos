@@ -590,7 +590,8 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
   const[findingCover,setFindingCover]=useState(false);
   const[readyRemoteGameCoverUrl,setReadyRemoteGameCoverUrl]=useState<string|null>(null);
   const[recording,setRecording]=useState(false);
-  const[sessionMinutes,setSessionMinutes]=useState("30");
+  const[sessionHours,setSessionHours]=useState("0");
+  const[sessionMinutePart,setSessionMinutePart]=useState("30");
   const[sessionDate,setSessionDate]=useState(todayISO());
   const[sessionSource,setSessionSource]=useState("chess.com");
   const[sessionProgress,setSessionProgress]=useState(String(item.progress??0));
@@ -635,8 +636,10 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
     }finally{setSavingEditId(null);}
   };
   const saveRecordedSession=async()=>{
-    const value=Number(sessionMinutes);
-    if(!Number.isInteger(value)||value<1||value>1440){toast.error("La duración debe estar entre 1 y 1440 minutos.");return;}
+    const hours=Number(sessionHours);
+    const minutePart=Number(sessionMinutePart);
+    const value=hours*60+minutePart;
+    if(!Number.isInteger(hours)||!Number.isInteger(minutePart)||hours<0||minutePart<0||minutePart>59||value<1||value>1440){toast.error("La duración debe ser válida (máximo 24 horas).");return;}
     const selectedDate=(isChess||isGame)?sessionDate:todayISO();
     const nextProgress=Number(sessionProgress);
     if((isChess||isGame)&&(!selectedDate||selectedDate>todayISO())){toast.error("Selecciona una fecha válida que no sea futura.");return;}
@@ -646,7 +649,8 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
       await onRecordSession(value,selectedDate,isChess?sessionSource:undefined,isGame?nextProgress:undefined);
       toast.success(isChess?"Tiempo de ajedrez registrado.":isGame?"Sesión de videojuego registrada y avance actualizado.":"Tiempo jugado guardado.");
       setRecording(false);
-      setSessionMinutes("30");
+      setSessionHours("0");
+      setSessionMinutePart("30");
       setSessionDate(todayISO());
       setSessionSource("chess.com");
       setSessionProgress(String(item.progress??0));
@@ -782,11 +786,11 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
           {(isChess||isGame)&&<label className="min-w-[130px] flex-1 text-[11px] text-muted-foreground">Fecha de juego
             <Input className="mt-1 h-9" type="date" max={todayISO()} value={sessionDate} onChange={event=>setSessionDate(event.target.value)}/>
           </label>}
-          <label className="min-w-[110px] flex-1 text-[11px] text-muted-foreground">Duración (minutos)
-            {(isChess||isGame)?<Input className="mt-1 h-9" type="number" min="1" max="1440" step="1" value={sessionMinutes} onChange={event=>setSessionMinutes(event.target.value)}/>:<select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionMinutes} onChange={event=>setSessionMinutes(event.target.value)}>
-              <option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option><option value="90">1 h 30 min</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="240">4 horas</option>
-            </select>}
-          </label>
+          {(isChess||isGame)?<div className="min-w-[150px] flex-1 text-[11px] text-muted-foreground">Duración
+            <div className="mt-1 grid grid-cols-2 gap-1"><label>Horas<Input className="h-9" type="number" min="0" max="24" value={sessionHours} onChange={event=>setSessionHours(event.target.value)}/></label><label>Minutos<Input className="h-9" type="number" min="0" max="59" value={sessionMinutePart} onChange={event=>setSessionMinutePart(event.target.value)}/></label></div>
+          </div>:<label className="min-w-[110px] flex-1 text-[11px] text-muted-foreground">Duración
+            <select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionMinutePart} onChange={event=>setSessionMinutePart(event.target.value)}><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option><option value="90">1 h 30 min</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="240">4 horas</option></select>
+          </label>}
           {isGame&&<label className="min-w-[120px] flex-1 text-[11px] text-muted-foreground">Avance actual (%)
             <Input className="mt-1 h-9" type="number" min="0" max="100" step="1" value={sessionProgress} onChange={event=>setSessionProgress(event.target.value)}/>
           </label>}
