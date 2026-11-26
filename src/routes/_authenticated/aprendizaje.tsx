@@ -830,7 +830,7 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
           </label>}
           {isChess&&<label className="block text-[11px] text-muted-foreground">Modalidad<select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionSource} onChange={event=>setSessionSource(event.target.value)}><option value="chess.com">chess.com · online</option><option value="duolingo">Duolingo · práctica</option><option value="presencial">Presencial</option></select></label>}
           <div className="flex flex-wrap gap-2"><Button size="sm" disabled={savingSession} onClick={()=>void saveRecordedSession()}>{savingSession?"Guardando…":"Guardar"}</Button><Button size="sm" variant="ghost" disabled={savingSession} onClick={()=>setRecording(false)}>Cancelar</Button></div>
-        </div>/div>:<Button size="sm" variant="outline" className="w-full" onClick={()=>{setSessionDate(todayISO());setSessionSource("chess.com");setSessionProgress(String(item.progress??0));setRecording(true)}}><Clock className="mr-1 h-3.5 w-3.5"/>{isChess?"Registrar tiempo de ajedrez":isGame?"Registrar sesión y avance":"Registrar tiempo jugado"}</Button>}
+      :<Button size="sm" variant="outline" className="w-full" onClick={()=>{setSessionDate(todayISO());setSessionSource("chess.com");setSessionProgress(String(item.progress??0));setRecording(true)}}><Clock className="mr-1 h-3.5 w-3.5"/>{isChess?"Registrar tiempo de ajedrez":isGame?"Registrar sesión y avance":"Registrar tiempo jugado"}</Button>}
       </div>}{isGame&&<div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           {hasCompletionReward?<span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">🏆 Juego terminado · +20 XP registrados</span>:<Button size="sm" variant="outline" disabled={savingGameCompletion} onClick={async()=>{if(!window.confirm("¿Confirmas que terminaste \""+item.title+"\"?"))return;setSavingGameCompletion(true);try{await onCompleteGame();toast.success("¡Videojuego terminado! +20 XP y trofeo desbloqueado.");}catch(error){toast.error(error instanceof Error?error.message:"No se pudo registrar el final del juego.");}finally{setSavingGameCompletion(false);}}}>{savingGameCompletion?"Guardando…":"🏆 Terminé este videojuego · +20 XP"}</Button>}
         </div>}{item.notes&&<p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{plainTextFromRichValue(item.notes)}</p>}</div>
@@ -943,7 +943,6 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
             const oldEntry=playedSessions.find((entry:any)=>entry.id===id);
             const oldSum=playedSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);
             const nextSum=Math.max(0,oldSum+(Number(patch.minutes??oldEntry?.minutes??0)-Number(oldEntry?.minutes??0)));
-            const currentTotal=Math.max(oldSum,Math.max(0,Number(item.minutes_total)||0));
             await sessionMutation.update.mutateAsync({id,patch});
             const legacy=Math.max(0,Math.max(0,Number(item.minutes_total)||0)-oldSum);
             await m.update.mutateAsync({id:item.id,patch:{minutes_total:legacy+nextSum}});
