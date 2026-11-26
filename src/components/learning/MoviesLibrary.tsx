@@ -383,6 +383,9 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
       toast.error("Selecciona una fecha válida.");
       return;
     }
+    if (watchSaving) return;
+    const alreadyOnDate = sessions.some((entry: any) => entry.session_date === watchDate);
+    if (!window.confirm(`¿Confirmas que viste «${movie.title}» el ${watchDate}?${alreadyOnDate ? "\\n\\nComprueba que no sea un registro duplicado." : ""}`)) return;
     setWatchSaving(true);
     try {
       const selectedPerson = companionId === "alone" ? null : people.find((person: any) => person.id === companionId);
@@ -427,7 +430,7 @@ function MovieCard({ movie, sessions, people, date, onUpdate, onDelete, onRecord
           </Button>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <Button size="sm" onClick={() => { setWatchDate(date); setCompanionId("alone"); setWatching((value) => !value); }}>
+          <Button size="sm" disabled={watchSaving} onClick={() => { setWatchDate(date); setCompanionId("alone"); setWatching((value) => !value); }}>
             <Check className="mr-1 h-3.5 w-3.5" />{watching ? "Cerrar" : "Marcar como vista"}
           </Button>
           <Button size="sm" type="button" variant="outline" onClick={() => setEditing((value) => !value)}>
