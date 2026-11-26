@@ -478,6 +478,7 @@ function HomePage() {
 
 function CurrentBookCard() {
   const query = useLGList("learning_items", "updated_at");
+  const sessionQuery = useLGList("learning_sessions", "session_date");
   const progressOf = (item: any) => {
     const total = Number(item.total_pages ?? 0);
     const page = Number(item.current_page ?? 0);
@@ -494,11 +495,9 @@ function CurrentBookCard() {
       progressOf(item) < 100,
   ) as any[];
   const book = [...activeBooks].sort((a, b) => {
-    const byProgress = progressOf(b) - progressOf(a);
-    return byProgress !== 0
-      ? byProgress
-      : (Date.parse(b.updated_at ?? b.created_at ?? "") || 0) -
-          (Date.parse(a.updated_at ?? a.created_at ?? "") || 0);
+    const lastActivity = (item: any) => (sessionQuery.data ?? []).filter((entry: any) => entry.learning_item_id === item.id && entry.activity_type === "reading").reduce((latest: number, entry: any) => Math.max(latest, Date.parse(entry.session_date ?? entry.created_at ?? "") || 0), 0);
+    const byActivity = lastActivity(b) - lastActivity(a);
+    return byActivity !== 0 ? byActivity : (Date.parse(b.updated_at ?? b.created_at ?? "") || 0) - (Date.parse(a.updated_at ?? a.created_at ?? "") || 0);
   })[0];
   const total = Number(book?.total_pages ?? 0);
   const page = Number(book?.current_page ?? 0);
@@ -551,6 +550,7 @@ function CurrentBookCard() {
 
 function CurrentGameCard() {
   const query = useLGList("learning_items", "updated_at");
+  const sessionQuery = useLGList("learning_sessions", "session_date");
   const activeGames = (query.data ?? []).filter(
     (item: any) =>
       (item.kind === "game" || item.kind === "video_game") &&
@@ -559,9 +559,9 @@ function CurrentGameCard() {
       Number(item.progress ?? 0) < 100,
   ) as any[];
   const game = [...activeGames].sort((a, b) => {
-    const byProgress = Number(b.progress ?? 0) - Number(a.progress ?? 0);
-    if (byProgress !== 0) return byProgress;
-    return (Date.parse(b.updated_at ?? b.created_at ?? "") || 0) - (Date.parse(a.updated_at ?? a.created_at ?? "") || 0);
+    const lastActivity = (item: any) => (sessionQuery.data ?? []).filter((entry: any) => entry.learning_item_id === item.id && entry.activity_type === "game").reduce((latest: number, entry: any) => Math.max(latest, Date.parse(entry.session_date ?? entry.created_at ?? "") || 0), 0);
+    const byActivity = lastActivity(b) - lastActivity(a);
+    return byActivity !== 0 ? byActivity : (Date.parse(b.updated_at ?? b.created_at ?? "") || 0) - (Date.parse(a.updated_at ?? a.created_at ?? "") || 0);
   })[0];
   const progress = Math.min(100, Math.max(0, Number(game?.progress ?? 0)));
   const progressLabel = progress.toLocaleString("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
