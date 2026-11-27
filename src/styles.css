@@ -2404,3 +2404,37 @@ html[data-skin="barbie"] .app-shell-main{background-image:radial-gradient(circle
     padding-right: clamp(1.5rem, 2.5vw, 2.75rem);
   }
 }
+
+/* Dashboard: reduce visual crowding without hiding existing information. */
+.inicio-dashboard {
+  gap: clamp(1.1rem, 2.4vw, 1.65rem) !important;
+}
+.inicio-dashboard .inicio-hero {
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  border-radius: 1.75rem;
+}
+.inicio-dashboard :is(.inicio-learning-card, .inicio-game-card, .inicio-hydration-card) {
+  padding: clamp(1rem, 2vw, 1.35rem);
+  border-radius: 1.5rem;
+}
+.inicio-dashboard :is(.inicio-learning-card, .inicio-game-card, .inicio-hydration-card) h2 {
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.inicio-dashboard :is(.inicio-learning-card, .inicio-game-card, .inicio-hydration-card) button {
+  min-height: 2.5rem;
+}
+.sidebar-nav-group {
+  margin-block: 0.15rem;
+}
+@media (max-width: 767px) {
+  .inicio-dashboard {
+    gap: 1.1rem !important;
+  }
+  .inicio-dashboard .inicio-hero {
+    border-radius: 1.4rem;
+  }
+  .inicio-dashboard :is(.inicio-learning-card, .inicio-game-card, .inicio-hydration-card) {
+    border-radius: 1.25rem;
+  }
+}
