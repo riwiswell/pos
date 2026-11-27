@@ -365,6 +365,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <div className="border-t border-sidebar-border bg-sidebar/35 p-3 backdrop-blur-sm">
           <ProfileBlock collapsed={collapsed} />
+          {installPrompt && <Button type="button" variant="outline" size="sm" onClick={() => void installApp()} className={cn("mt-2 w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")}><Download className="h-4 w-4" />{!collapsed && <span>Instalar POS</span>}</Button>}
           <Button
             variant="ghost"
             size="sm"
@@ -381,6 +382,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SkinBranding skin={skin} compact />
         <div className="flex items-center gap-1">
           <HelpTip helpKey={currentHelpKey} />
+          {installPrompt && <Button type="button" variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl px-2" onClick={() => void installApp()}><Download className="h-4 w-4" /><span className="text-xs">Instalar</span></Button>}
           <ProfileBlock collapsed />
           <Button variant="ghost" size="icon" onClick={() => void signOut()} aria-label="Cerrar sesión">
             <LogOut className="h-4 w-4" />
