@@ -1011,7 +1011,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
             if(isGameItem(item)&&typeof progress==="number"&&progress!==Number(item.progress??0))await m.update.mutateAsync({id:item.id,patch:{progress}});
           }}
           onCompleteGame={async()=>{
-            await m.update.mutateAsync({id:item.id,patch:{progress:100,status:"completed",completed_on:todayISO()}});
+            await m.update.mutateAsync({id:item.id,patch:{status:"completed",completed_on:todayISO()}});
             await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:todayISO(),minutes:0,activity_type:"game_completion",notes:"Videojuego terminado: "+item.title});
           }}
           onDelete={async()=>{if(item.cover_path&&!/^https?:\/\//i.test(String(item.cover_path)))await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}}
