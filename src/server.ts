@@ -702,7 +702,7 @@ async function handleSteamConnect(request:Request,env:Env){
    const vanityUrl=new URL("https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/");
    vanityUrl.searchParams.set("key",env.STEAM_API_KEY);vanityUrl.searchParams.set("vanityurl",normalized.vanity!);
    const resolved=await steamApi(vanityUrl.toString());
-   if(Number(resolved?.response?.success)!==1||!/^\\d{17}$/.test(String(resolved?.response?.steamid??"")))return json({error:"No encontré ese perfil de Steam. Comprueba el enlace o el nombre público."},404);
+   if(Number(resolved?.response?.success)!==1||!/^\d{17}$/.test(String(resolved?.response?.steamid??"")))return json({error:"No encontré ese perfil de Steam. Comprueba el enlace o el nombre público."},404);
    steamid=String(resolved.response.steamid);
   }
   const profileUrl=new URL("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/");
