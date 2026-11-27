@@ -96,7 +96,7 @@ function ProfileBlock({ collapsed }: { collapsed: boolean }) {
         collapsed && "justify-center",
       )}
     >
-      <Avatar className="h-9 w-9 border border-sidebar-border">
+      <Avatar className="h-10 w-10 border border-sidebar-border">
         {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
         <AvatarFallback className="bg-sidebar-accent text-xs text-sidebar-foreground">
           {name.slice(0, 2).toUpperCase()}
@@ -279,8 +279,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </button>}
         <Link to={item.to} search={(p: Record<string, unknown>) => ({ ...p, ...item.search })} title={item.label}
           onClick={options.onNavigate}
-          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", options.compact && "h-[28px] py-1", !expanded && "flex-none justify-center px-0", isActive && "bg-sidebar-accent")}>
-          <item.icon className="h-4 w-4 shrink-0" />
+          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", options.compact && "min-h-[40px] py-2", !expanded && "flex-none justify-center px-0", isActive && "bg-sidebar-accent")}>
+          <item.icon className="h-[19px] w-[19px] shrink-0" />
           {expanded && <span className="truncate">{item.label}</span>}
         </Link>
         {menuEditing ? <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" disabled={menuSaving}
@@ -298,14 +298,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border md:flex",
-          collapsed ? "w-[80px]" : "w-[272px]",
+          collapsed ? "w-[76px]" : "w-[248px]",
         )}
         style={sidebarStyle}
       >
         <div
           className={cn(
             "sidebar-branding-header relative flex shrink-0 flex-col items-center justify-start gap-2 border-b border-sidebar-border bg-sidebar/35 px-4 pb-2 pt-2 backdrop-blur-sm",
-            collapsed ? "sidebar-branding-header--collapsed h-[112px] min-h-[112px]" : "sidebar-branding-header--expanded h-[176px] min-h-[176px]",
+            collapsed ? "sidebar-branding-header--collapsed h-[104px] min-h-[104px]" : "sidebar-branding-header--expanded h-[148px] min-h-[148px]",
           )}
         >
           <SkinBranding skin={skin} collapsed={collapsed} sidebar />
@@ -320,7 +320,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
 
-        <nav aria-label="Navegación de escritorio" className="sidebar-nav sidebar-nav--direct flex min-h-0 flex-1 flex-col gap-1 overflow-hidden bg-sidebar p-2">
+        <nav aria-label="Navegación de escritorio" className="sidebar-nav sidebar-nav--direct flex min-h-0 flex-1 flex-col gap-1 overflow-hidden bg-sidebar px-2 py-3">
           <div className="mb-1 flex items-center justify-between">
             {!collapsed && <span className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/55">Espacios</span>}
             <Button type="button" size="icon" variant={menuEditing ? "secondary" : "ghost"} className="h-8 w-8"
@@ -348,14 +348,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div
                   aria-label={group.label}
                   className={cn(
-                    "sidebar-area-label flex h-5 w-full items-center gap-2 rounded-lg px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/65",
+                    "sidebar-area-label flex h-6 w-full items-center gap-2 rounded-lg px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/65",
                     collapsed && "justify-center px-0",
                   )}
                 >
                   <group.icon className="h-3.5 w-3.5 shrink-0" />
                   {!collapsed && <span className="min-w-0 truncate">{group.label}</span>}
                 </div>
-                <div className="ml-2 flex min-w-0 flex-col gap-0 border-l border-sidebar-border pl-1">
+                <div className="ml-2 flex min-w-0 flex-col gap-0.5 border-l border-sidebar-border pl-1">
                   {groupItems.map((item) => renderMenuItem(item, { reorderable: false, hideHelp: true, compact: true }))}
                 </div>
               </section>
@@ -392,8 +392,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         className={cn(
           "app-shell-main w-full px-4 pb-28 pt-4 md:pb-10 md:pt-8 md:px-8",
           collapsed
-            ? "md:ml-[80px] md:w-[calc(100%_-_80px)]"
-            : "md:ml-[272px] md:w-[calc(100%_-_272px)]",
+            ? "md:ml-[76px] md:w-[calc(100%_-_76px)]"
+            : "md:ml-[248px] md:w-[calc(100%_-_248px)]",
         )}
       >
         <div className="mx-auto w-full max-w-none">{children}</div>
@@ -409,11 +409,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             title={item.label}
             aria-current={pathname.startsWith(item.to) ? "page" : undefined}
             className={cn(
-              "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-medium",
+              "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-3 text-[11px] font-semibold",
               pathname.startsWith(item.to) ? "text-primary" : "text-muted-foreground",
             )}
           >
-            <item.icon className="h-5 w-5" />
+            <item.icon className="h-6 w-6" />
             <span className="max-w-full truncate">{item.label}</span>
           </Link>
         ))}
@@ -425,7 +425,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             aria-haspopup="dialog"
             aria-expanded={moreOpen}
             className={cn(
-              "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-medium",
+              "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-3 text-[11px] font-semibold",
               moreActive ? "text-primary" : "text-muted-foreground",
             )}
           >
@@ -464,8 +464,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
                 onClick={() => setMoreOpen(false)}
                 aria-current={pathname.startsWith(item.to) ? "page" : undefined}
-                className={cn("flex min-h-12 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
-                <item.icon className="h-5 w-5 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
+                className={cn("flex min-h-16 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
+                <item.icon className="h-6 w-6 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
               </Link>
             ))}
           </div>}
