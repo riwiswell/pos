@@ -922,7 +922,6 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     resetForm();
   };
   return <section className="space-y-3">
-    <div className="flex flex-wrap items-center justify-between gap-2">
     {isGames&&<div className="glass space-y-3 rounded-2xl p-3">
       <div className="flex items-center gap-3">
         {steamConnection?.avatar_url&&<img src={steamConnection.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover"/>}
@@ -933,6 +932,8 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
       {steamMessage&&<p className="text-xs text-emerald-700 dark:text-emerald-300">{steamMessage}</p>}
       <p className="text-[11px] text-muted-foreground">Tu clave de Steam está protegida en el servidor de POS. No necesitas abrir Cloudflare. Los detalles de juegos de tu perfil deben ser públicos. Las cuentas prestadas y los juegos móviles pueden seguir registrándose manualmente.</p>
     </div>}
+    <div className="flex flex-wrap items-center justify-between gap-2">
+
       <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, tiempo jugado y progreso de cada historia.":"Cursos, podcasts, videos y certificaciones."}</p></div><div className="flex flex-wrap items-center gap-2">
       <LearningSortControl value={sort} onChange={setSort} includeGenre={isGames}/>
       <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setGameMinutes("0");setPlatform("");setGenre("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
