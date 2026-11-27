@@ -674,11 +674,11 @@ async function steamApi(url:string){
 }
 function normalizeSteamInput(raw:string){
  const value=raw.trim();
- if(/^\\d{17}$/.test(value))return {steamid:value};
+ if(/^\d{17}$/.test(value))return {steamid:value};
  try{
-  const url=new URL(/^https?:\\/\\//i.test(value)?value:"https://steamcommunity.com/id/"+value);
+  const url=new URL(/^https?:\/\//i.test(value)?value:"https://steamcommunity.com/id/"+value);
   const parts=url.pathname.split("/").filter(Boolean);
-  if(parts[0]==="profiles"&&/^\\d{17}$/.test(parts[1]??""))return {steamid:parts[1]};
+  if(parts[0]==="profiles"&&/^\d{17}$/.test(parts[1]??""))return {steamid:parts[1]};
   if(parts[0]==="id"&&parts[1])return {vanity:parts[1]};
  }catch{}
  if(/^[a-zA-Z0-9_-]{2,64}$/.test(value))return {vanity:value};
