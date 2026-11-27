@@ -685,8 +685,13 @@ function normalizeSteamInput(raw:string){
  return null;
 }
 async function handleSteamConnect(request:Request,env:Env){
- if(request.method!=="POST")return json({error:"Método no permitido."},405);
+ if(request.method!=="POST"&&request.method!=="GET")return json({error:"Método no permitido."},405);
  const user=await userFromBearer(request,env);if(!user)return json({error:"Inicia sesión para conectar Steam."},401);
+ if(request.method==="GET"){
+  const saved=await supabaseFetch(env,"steam_connections?user_id=eq."+encodeURIComponent(user.id)+"&select=steam_id64,personaname,avatar_url,last_synced_at&limit=1");
+  if(!saved.ok)return json({error:"No se pudo consultar la conexión de Steam."},500);
+  const rows=await saved.json() as any[];return json({connection:rows[0]??null});
+ }
  if(!env.STEAM_API_KEY)return json({error:"La integración de Steam no está configurada en el servidor."},503);
  let body:{steamId?:string};try{body=await request.json() as typeof body}catch{return json({error:"Solicitud no válida."},400)}
  const normalized=normalizeSteamInput(String(body.steamId??""));
