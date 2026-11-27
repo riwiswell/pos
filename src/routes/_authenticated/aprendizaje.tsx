@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BookOpen,Check,ChevronDown,ChevronUp,Clock,FileText,ImagePlus,NotebookPen,Pencil,Plus,Save,Search,Trash2,X } from "lucide-react";
@@ -844,8 +845,45 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const m=useLGMutations("learning_items");
   const sessionMutation=useLGMutations("learning_sessions");
   const[sort,setSort]=useState<LearningSort>("used_desc");
-  const{user}=useAuth();
+  const{user,session}=useAuth();
   const isGames=mode==="games";
+  const[steamInput,setSteamInput]=useState("");
+  const[steamConnection,setSteamConnection]=useState<any>(null);
+  const[steamBusy,setSteamBusy]=useState(false);
+  const[steamMessage,setSteamMessage]=useState("");
+  useEffect(()=>{if(!isGames||!session?.access_token)return;let active=true;fetch("/api/steam/connect",{headers:{Authorization:"Bearer "+session.access_token,Accept:"application/json"},cache:"no-store"}).then(r=>r.json()).then(data=>{if(active)setSteamConnection(data.connection??null)}).catch(()=>{});return()=>{active=false}},[isGames,session?.access_token]);
+  const connectSteam=async()=>{
+    if(!session?.access_token){toast.error("Inicia sesión para conectar Steam.");return;}
+    if(!steamInput.trim()){toast.error("Escribe tu Steam ID o pega el enlace de tu perfil.");return;}
+    setSteamBusy(true);setSteamMessage("");
+    try{
+      const response=await fetch("/api/steam/connect",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({steamId:steamInput.trim()})});
+      const payload=await response.json();if(!response.ok)throw new Error(payload.error||"No se pudo conectar Steam.");
+      setSteamConnection({steam_id64:payload.profile.steamid,personaname:payload.profile.personaname,avatar_url:payload.profile.avatar,last_synced_at:new Date().toISOString()});
+      let imported=0,updated=0,newMinutes=0;
+      for(const game of payload.games||[]){
+        const existing=(q.data||[]).find((item:any)=>Number(item.steam_appid)===Number(game.appid));
+        if(!existing){
+          await m.create.mutateAsync({user_id:user?.id,title:game.name,kind:"video_game",status:"active",minutes_total:game.playtime_forever,steam_appid:game.appid,steam_playtime_minutes:game.playtime_forever,platform:"Steam (PC)",progress:0,cover_path:"https://cdn.cloudflare.steamstatic.com/steam/apps/"+game.appid+"/header.jpg"});
+          imported++;
+        }else{
+          const before=existing.steam_playtime_minutes==null?null:Math.max(0,Number(existing.steam_playtime_minutes)||0);
+          const after=Math.max(0,Number(game.playtime_forever)||0);
+          if(before!==null&&after>before){
+            const delta=after-before;
+            await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:existing.id,session_date:todayISO(),minutes:delta,activity_type:"game",notes:"Steam · sincronización automática",steam_playtime_before_minutes:before,steam_playtime_after_minutes:after});
+            await m.update.mutateAsync({id:existing.id,patch:{steam_playtime_minutes:after,minutes_total:Math.max(0,Number(existing.minutes_total)||0)+delta}});
+            newMinutes+=delta;
+          }else if(before===null){await m.update.mutateAsync({id:existing.id,patch:{steam_appid:game.appid,steam_playtime_minutes:after,minutes_total:Math.max(0,Number(existing.minutes_total)||0,after)}});}
+          else if(after<before){await m.update.mutateAsync({id:existing.id,patch:{steam_playtime_minutes:after}});}
+          updated++;
+        }
+      }
+      setSteamMessage("Biblioteca sincronizada: "+imported+" juegos nuevos, "+updated+" actualizados"+(newMinutes?" y "+Math.floor(newMinutes/60)+" h "+(newMinutes%60)+" min nuevos registrados.":"."));
+      setSteamInput("");toast.success("Steam conectado y biblioteca sincronizada.");
+    }catch(error){toast.error(error instanceof Error?error.message:"No se pudo sincronizar Steam.");}
+    finally{setSteamBusy(false);}
+  };
   const[adding,setAdding]=useState(false);
   const[editingId,setEditingId]=useState<string|null>(null);
   const[title,setTitle]=useState("");
@@ -886,6 +924,16 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   };
   return <section className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
+    {isGames&&<div className="glass space-y-3 rounded-2xl p-3">
+      <div className="flex items-center gap-3">
+        {steamConnection?.avatar_url&&<img src={steamConnection.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover"/>}
+        <div className="min-w-0 flex-1"><p className="font-semibold">🎮 Conectar Steam</p><p className="text-xs text-muted-foreground">{steamConnection?"Conectado como "+steamConnection.personaname:"Escribe tu Steam ID o pega el enlace público de tu perfil."}</p></div>
+        {steamConnection&&<span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300">Conectado</span>}
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row"><Input value={steamInput} onChange={e=>setSteamInput(e.target.value)} placeholder="Steam ID o https://steamcommunity.com/profiles/…" /><Button size="sm" disabled={steamBusy||!steamInput.trim()} onClick={()=>void connectSteam()}>{steamBusy?"Sincronizando…":steamConnection?"Cambiar cuenta / sincronizar":"Conectar y sincronizar"}</Button></div>
+      {steamMessage&&<p className="text-xs text-emerald-700 dark:text-emerald-300">{steamMessage}</p>}
+      <p className="text-[11px] text-muted-foreground">Tu clave de Steam está protegida en el servidor de POS. No necesitas abrir Cloudflare. Los detalles de juegos de tu perfil deben ser públicos. Las cuentas prestadas y los juegos móviles pueden seguir registrándose manualmente.</p>
+    </div>}
       <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, tiempo jugado y progreso de cada historia.":"Cursos, podcasts, videos y certificaciones."}</p></div><div className="flex flex-wrap items-center gap-2">
       <LearningSortControl value={sort} onChange={setSort} includeGenre={isGames}/>
       <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setGameMinutes("0");setPlatform("");setGenre("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
