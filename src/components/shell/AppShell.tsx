@@ -23,7 +23,9 @@ import { SkinBranding } from "@/components/shell/SkinBranding";
 import { SleepAbsencePrompt } from "@/components/health/SleepAbsencePrompt";
 import { UniversalCapture } from "@/components/common/UniversalCapture";
 
-type BeforeInstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };\n\nconst STORAGE_KEY = "personal-os:sidebar-collapsed";
+type BeforeInstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
+
+const STORAGE_KEY = "personal-os:sidebar-collapsed";
 const LEGACY_ORGANIZATION_KEYS = ["habitos", "planeador", "trabajo"];
 const LEGACY_DEFAULT_MODULE_ORDER = ["inicio","habitos","planeador","salud","finanzas","diario","alarmas","vida","aprendizaje","relaciones","trabajo","espiritualidad","ia","gamificacion","perfil"];
 function isMenuModuleHidden(key: string, hidden: string[]) {
