@@ -848,6 +848,7 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const isGames=mode==="games";
   const[steamInput,setSteamInput]=useState("");
   const[steamConnection,setSteamConnection]=useState<any>(null);
+  const[steamExpanded,setSteamExpanded]=useState(false);
   const[steamBusy,setSteamBusy]=useState(false);
   const[steamMessage,setSteamMessage]=useState("");
   useEffect(()=>{if(!isGames||!session?.access_token)return;let active=true;fetch("/api/steam/connect",{headers:{Authorization:"Bearer "+session.access_token,Accept:"application/json"},cache:"no-store"}).then(r=>r.json()).then(data=>{if(active)setSteamConnection(data.connection??null)}).catch(()=>{});return()=>{active=false}},[isGames,session?.access_token]);
@@ -924,13 +925,15 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   return <section className="space-y-3">
     {isGames&&<div className="glass space-y-3 rounded-2xl p-3">
       <div className="flex items-center gap-3">
-        {steamConnection?.avatar_url&&<img src={steamConnection.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover"/>}
-        <div className="min-w-0 flex-1"><p className="font-semibold">🎮 Conectar Steam</p><p className="text-xs text-muted-foreground">{steamConnection?"Conectado como "+steamConnection.personaname:"Escribe tu Steam ID o pega el enlace público de tu perfil."}</p></div>
-        {steamConnection&&<span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300">Conectado</span>}
+        {steamConnection?.avatar_url&&<img src={steamConnection.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover"/>}
+        <div className="min-w-0 flex-1"><p className="font-semibold">🎮 Steam</p><p className="text-xs text-muted-foreground">{steamConnection?"Conectado como "+steamConnection.personaname:"Conecta tu cuenta para sincronizar tus juegos y tiempo jugado."}</p></div>
+        {steamConnection?<><span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300">Conectado</span><Button size="sm" variant="outline" onClick={()=>setSteamExpanded(value=>!value)}>{steamExpanded?"Cerrar":"Administrar"}</Button></>:null}
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row"><Input value={steamInput} onChange={e=>setSteamInput(e.target.value)} placeholder="Steam ID o https://steamcommunity.com/profiles/…" /><Button size="sm" disabled={steamBusy||!steamInput.trim()} onClick={()=>void connectSteam()}>{steamBusy?"Sincronizando…":steamConnection?"Cambiar cuenta / sincronizar":"Conectar y sincronizar"}</Button></div>
+      {(!steamConnection||steamExpanded)&&<div className="space-y-2">
+        <div className="flex flex-col gap-2 sm:flex-row"><Input value={steamInput} onChange={e=>setSteamInput(e.target.value)} placeholder="Steam ID o enlace de tu perfil"/><Button size="sm" disabled={steamBusy||!steamInput.trim()} onClick={()=>void connectSteam()}>{steamBusy?"Sincronizando…":steamConnection?"Cambiar cuenta / sincronizar":"Conectar y sincronizar"}</Button></div>
+        <p className="text-[11px] text-muted-foreground">Tu clave está protegida en el servidor. Los detalles de juegos deben ser públicos. Las cuentas prestadas y los juegos móviles pueden seguir registrándose manualmente.</p>
+      </div>}
       {steamMessage&&<p className="text-xs text-emerald-700 dark:text-emerald-300">{steamMessage}</p>}
-      <p className="text-[11px] text-muted-foreground">Tu clave de Steam está protegida en el servidor de POS. No necesitas abrir Cloudflare. Los detalles de juegos de tu perfil deben ser públicos. Las cuentas prestadas y los juegos móviles pueden seguir registrándose manualmente.</p>
     </div>}
     <div className="flex flex-wrap items-center justify-between gap-2">
 
