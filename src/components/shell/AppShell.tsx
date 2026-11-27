@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
+import { Download, Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,7 +23,7 @@ import { SkinBranding } from "@/components/shell/SkinBranding";
 import { SleepAbsencePrompt } from "@/components/health/SleepAbsencePrompt";
 import { UniversalCapture } from "@/components/common/UniversalCapture";
 
-const STORAGE_KEY = "personal-os:sidebar-collapsed";
+type BeforeInstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };\n\nconst STORAGE_KEY = "personal-os:sidebar-collapsed";
 const LEGACY_ORGANIZATION_KEYS = ["habitos", "planeador", "trabajo"];
 const LEGACY_DEFAULT_MODULE_ORDER = ["inicio","habitos","planeador","salud","finanzas","diario","alarmas","vida","aprendizaje","relaciones","trabajo","espiritualidad","ia","gamificacion","perfil"];
 function isMenuModuleHidden(key: string, hidden: string[]) {
@@ -126,7 +126,7 @@ function useSignOut() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { collapsed, toggle } = useCollapsed();
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);\n  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [menuEditing, setMenuEditing] = useState(false);
   const [menuSaving, setMenuSaving] = useState(false);
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
@@ -143,7 +143,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { theme, skin } = useTheme();
   useMedicationReminders();
   useHydrationReminders();
-  useAppointmentReminders();
+  useAppointmentReminders();\n\n  useEffect(() => {\n    const onBeforeInstall = (event: Event) => {\n      event.preventDefault();\n      setInstallPrompt(event as BeforeInstallPromptEvent);\n    };\n    const onInstalled = () => setInstallPrompt(null);\n    window.addEventListener("beforeinstallprompt", onBeforeInstall);\n    window.addEventListener("appinstalled", onInstalled);\n    return () => {\n      window.removeEventListener("beforeinstallprompt", onBeforeInstall);\n      window.removeEventListener("appinstalled", onInstalled);\n    };\n  }, []);\n\n  const installApp = async () => {\n    if (!installPrompt) return;\n    await installPrompt.prompt();\n    const choice = await installPrompt.userChoice;\n    if (choice.outcome === "accepted") toast.success("POS se está instalando en tu dispositivo.");\n    setInstallPrompt(null);\n  };
 
   const allItems = useMemo(() => orderedAllItems(profile?.module_order), [profile?.module_order]);
   const orderedItems = allItems;
