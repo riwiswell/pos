@@ -128,7 +128,8 @@ function useSignOut() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { collapsed, toggle } = useCollapsed();
-  const [moreOpen, setMoreOpen] = useState(false);\n  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [menuEditing, setMenuEditing] = useState(false);
   const [menuSaving, setMenuSaving] = useState(false);
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
@@ -145,7 +146,29 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { theme, skin } = useTheme();
   useMedicationReminders();
   useHydrationReminders();
-  useAppointmentReminders();\n\n  useEffect(() => {\n    const onBeforeInstall = (event: Event) => {\n      event.preventDefault();\n      setInstallPrompt(event as BeforeInstallPromptEvent);\n    };\n    const onInstalled = () => setInstallPrompt(null);\n    window.addEventListener("beforeinstallprompt", onBeforeInstall);\n    window.addEventListener("appinstalled", onInstalled);\n    return () => {\n      window.removeEventListener("beforeinstallprompt", onBeforeInstall);\n      window.removeEventListener("appinstalled", onInstalled);\n    };\n  }, []);\n\n  const installApp = async () => {\n    if (!installPrompt) return;\n    await installPrompt.prompt();\n    const choice = await installPrompt.userChoice;\n    if (choice.outcome === "accepted") toast.success("POS se está instalando en tu dispositivo.");\n    setInstallPrompt(null);\n  };
+  useAppointmentReminders();
+
+  useEffect(() => {
+    const onBeforeInstall = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+    const onInstalled = () => setInstallPrompt(null);
+    window.addEventListener("beforeinstallprompt", onBeforeInstall);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  const installApp = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    if (choice.outcome === "accepted") toast.success("POS se está instalando en tu dispositivo.");
+    setInstallPrompt(null);
+  };
 
   const allItems = useMemo(() => orderedAllItems(profile?.module_order), [profile?.module_order]);
   const orderedItems = allItems;
