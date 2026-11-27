@@ -6,7 +6,7 @@ type ChatRole="system"|"user"|"assistant";
 type WorkersAiBinding={
  run:(model:string,input:{messages:Array<{role:ChatRole;content:string}>;max_tokens?:number;temperature?:number})=>Promise<unknown>;
 };
-type Env={SUPABASE_URL?:string;SUPABASE_SECRET_KEY?:string;SUPABASE_SERVICE_ROLE_KEY?:string;SUPABASE_PUBLISHABLE_KEY?:string;VITE_SUPABASE_PUBLISHABLE_KEY?:string;VAPID_PUBLIC_KEY?:string;VAPID_PRIVATE_KEY?:string;VAPID_SUBJECT?:string;AI?:WorkersAiBinding};
+type Env={SUPABASE_URL?:string;SUPABASE_SECRET_KEY?:string;SUPABASE_SERVICE_ROLE_KEY?:string;SUPABASE_PUBLISHABLE_KEY?:string;VITE_SUPABASE_PUBLISHABLE_KEY?:string;VAPID_PUBLIC_KEY?:string;VAPID_PRIVATE_KEY?:string;VAPID_SUBJECT?:string;STEAM_API_KEY?:string;AI?:WorkersAiBinding};
 type ServerEntry={fetch:(request:Request,env:unknown,ctx:unknown)=>Promise<Response>|Response};
 const ALLOWED_PUSH_HOSTS = [
  "fcm.googleapis.com",
@@ -664,8 +664,68 @@ async function handleLearningCover(request:Request):Promise<Response>{
  }
 }
 
+
+async function steamApi(url:string){
+ const response=await fetch(url,{headers:{Accept:"application/json","User-Agent":"POS-Personal-OS/1.0"}});
+ if(!response.ok)throw new Error("Steam respondió con estado "+response.status);
+ const payload=await response.json() as any;
+ if(payload?.response?.error)throw new Error(String(payload.response.error));
+ return payload;
+}
+function normalizeSteamInput(raw:string){
+ const value=raw.trim();
+ if(/^\\d{17}$/.test(value))return {steamid:value};
+ try{
+  const url=new URL(/^https?:\\/\\//i.test(value)?value:"https://steamcommunity.com/id/"+value);
+  const parts=url.pathname.split("/").filter(Boolean);
+  if(parts[0]==="profiles"&&/^\\d{17}$/.test(parts[1]??""))return {steamid:parts[1]};
+  if(parts[0]==="id"&&parts[1])return {vanity:parts[1]};
+ }catch{}
+ if(/^[a-zA-Z0-9_-]{2,64}$/.test(value))return {vanity:value};
+ return null;
+}
+async function handleSteamConnect(request:Request,env:Env){
+ if(request.method!=="POST")return json({error:"Método no permitido."},405);
+ const user=await userFromBearer(request,env);if(!user)return json({error:"Inicia sesión para conectar Steam."},401);
+ if(!env.STEAM_API_KEY)return json({error:"La integración de Steam no está configurada en el servidor."},503);
+ let body:{steamId?:string};try{body=await request.json() as typeof body}catch{return json({error:"Solicitud no válida."},400)}
+ const normalized=normalizeSteamInput(String(body.steamId??""));
+ if(!normalized)return json({error:"Escribe un Steam ID de 17 dígitos o pega el enlace público de tu perfil."},400);
+ try{
+  let steamid=normalized.steamid;
+  if(!steamid){
+   const vanityUrl=new URL("https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/");
+   vanityUrl.searchParams.set("key",env.STEAM_API_KEY);vanityUrl.searchParams.set("vanityurl",normalized.vanity!);
+   const resolved=await steamApi(vanityUrl.toString());
+   if(Number(resolved?.response?.success)!==1||!/^\\d{17}$/.test(String(resolved?.response?.steamid??"")))return json({error:"No encontré ese perfil de Steam. Comprueba el enlace o el nombre público."},404);
+   steamid=String(resolved.response.steamid);
+  }
+  const profileUrl=new URL("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/");
+  profileUrl.searchParams.set("key",env.STEAM_API_KEY);profileUrl.searchParams.set("steamids",steamid!);
+  const profilePayload=await steamApi(profileUrl.toString());
+  const profile=profilePayload?.response?.players?.[0];
+  if(!profile)return json({error:"Steam no devolvió un perfil público para ese ID."},404);
+  const gamesUrl=new URL("https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/");
+  gamesUrl.searchParams.set("key",env.STEAM_API_KEY);gamesUrl.searchParams.set("steamid",steamid!);
+  gamesUrl.searchParams.set("include_appinfo","1");gamesUrl.searchParams.set("include_played_free_games","1");
+  const gamesPayload=await steamApi(gamesUrl.toString());
+  const games=Array.isArray(gamesPayload?.response?.games)?gamesPayload.response.games:[];
+  if(!gamesPayload?.response||!Number.isFinite(Number(gamesPayload.response.game_count)))return json({error:"Steam no permitió consultar la biblioteca. Revisa que los detalles de juegos sean públicos."},403);
+  const saved=await supabaseFetch(env,"steam_connections?on_conflict=user_id",{
+   method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=representation"},
+   body:JSON.stringify({user_id:user.id,steam_id64:steamid,personaname:String(profile.personaname??"Steam"),avatar_url:String(profile.avatarfull??profile.avatar??""),last_synced_at:new Date().toISOString()})
+  });
+  if(!saved.ok){const detail=await saved.text();console.error("[steam] Could not save connection",saved.status,detail);return json({error:"No se pudo guardar la conexión de Steam."},500)}
+  return json({profile:{steamid,personaname:profile.personaname,avatar:profile.avatarfull??profile.avatar},gameCount:Number(gamesPayload.response.game_count),games:games.map((game:any)=>({appid:Number(game.appid),name:String(game.name??"Juego de Steam"),playtime_forever:Math.max(0,Number(game.playtime_forever)||0),img_icon_url:String(game.img_icon_url??"")}))});
+ }catch(error){
+  console.error("[steam] Connection failed",error instanceof Error?error.message:error);
+  return json({error:error instanceof Error?error.message:"No se pudo conectar con Steam."},502);
+ }
+}
+
 async function handleApi(request:Request,env:Env,ctx?:unknown):Promise<Response|null>{
  const url=new URL(request.url);
+ if(url.pathname==="/api/steam/connect")return handleSteamConnect(request,env);
  if(url.pathname==="/api/learning-cover-image")return handleLearningCoverImage(request,ctx);
  if(url.pathname==="/api/learning-cover")return handleLearningCover(request);
  if(url.pathname==="/api/chess/profile"&&request.method==="GET"){
