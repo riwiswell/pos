@@ -279,8 +279,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </button>}
         <Link to={item.to} search={(p: Record<string, unknown>) => ({ ...p, ...item.search })} title={item.label}
           onClick={options.onNavigate}
-          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", options.compact && "min-h-[40px] py-2", !expanded && "flex-none justify-center px-0", isActive && "bg-sidebar-accent")}>
-          <item.icon className="h-[19px] w-[19px] shrink-0" />
+          className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent", options.compact && "min-h-[32px] py-1", !expanded && "flex-none justify-center px-0", isActive && "bg-sidebar-accent")}>
+          <item.icon className="h-[18px] w-[18px] shrink-0" />
           {expanded && <span className="truncate">{item.label}</span>}
         </Link>
         {menuEditing ? <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" disabled={menuSaving}
@@ -305,7 +305,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div
           className={cn(
             "sidebar-branding-header relative flex shrink-0 flex-col items-center justify-start gap-2 border-b border-sidebar-border bg-sidebar/35 px-4 pb-2 pt-2 backdrop-blur-sm",
-            collapsed ? "sidebar-branding-header--collapsed h-[104px] min-h-[104px]" : "sidebar-branding-header--expanded h-[148px] min-h-[148px]",
+            collapsed ? "sidebar-branding-header--collapsed h-[96px] min-h-[96px]" : "sidebar-branding-header--expanded h-[128px] min-h-[128px]",
           )}
         >
           <SkinBranding skin={skin} collapsed={collapsed} sidebar />
@@ -348,7 +348,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div
                   aria-label={group.label}
                   className={cn(
-                    "sidebar-area-label flex h-6 w-full items-center gap-2 rounded-lg px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/65",
+                    "sidebar-area-label flex h-5 w-full items-center gap-2 rounded-lg px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/65",
                     collapsed && "justify-center px-0",
                   )}
                 >
