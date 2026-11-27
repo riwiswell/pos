@@ -2364,3 +2364,43 @@ html.theme-light[data-skin="barbie"] {
 html[data-skin="barbie"] .skin-branding__symbol{background:#F72585;border:2px solid #FFC3DE;color:#fff}
 html[data-skin="barbie"] .skin-branding__copy strong{letter-spacing:.08em;font-weight:900}
 html[data-skin="barbie"] .app-shell-main{background-image:radial-gradient(circle,#FF91C2 0 1.5px,transparent 2.5px);background-size:28px 28px}
+
+
+/* ── POS refresh: clearer hierarchy, room to breathe, accessible touch targets ── */
+:root {
+  --pos-content-gap: clamp(1rem, 2vw, 1.75rem);
+}
+.app-shell-main {
+  padding-top: clamp(1rem, 2.4vw, 2rem);
+}
+.app-shell-main > div {
+  width: 100%;
+}
+.app-shell-main h1 {
+  letter-spacing: -0.035em;
+}
+.app-shell-main :is(button, a[role="button"], input, select, textarea) {
+  scroll-margin-block: 5rem;
+}
+.app-shell-main :is(button, a[role="button"]) {
+  touch-action: manipulation;
+}
+@media (max-width: 767px) {
+  .app-shell-main {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+  }
+  .app-shell-main :is(.rounded-xl, .rounded-2xl) {
+    scroll-margin-top: 5rem;
+  }
+  .app-shell-main :is(button, a[role="button"]) {
+    min-height: 2.75rem;
+  }
+}
+@media (min-width: 768px) {
+  .app-shell-main {
+    padding-left: clamp(1.5rem, 2.5vw, 2.75rem);
+    padding-right: clamp(1.5rem, 2.5vw, 2.75rem);
+  }
+}
