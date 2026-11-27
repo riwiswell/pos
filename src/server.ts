@@ -672,7 +672,7 @@ async function steamApi(url:string){
  if(payload?.response?.error)throw new Error(String(payload.response.error));
  return payload;
 }
-function normalizeSteamInput(raw:string){
+function normalizeSteamInput(raw:string):{steamid?:string;vanity?:string}|null{
  const value=raw.trim();
  if(/^\d{17}$/.test(value))return {steamid:value};
  try{
