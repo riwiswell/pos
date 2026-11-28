@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Download, Eye, EyeOff, GripVertical, LogOut, MoreHorizontal, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
+import { Download, Eye, EyeOff, GripVertical, LogOut, Menu, PanelLeftClose, PanelLeftOpen, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -128,7 +128,7 @@ function useSignOut() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { collapsed, toggle } = useCollapsed();
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [menuEditing, setMenuEditing] = useState(false);
   const [menuSaving, setMenuSaving] = useState(false);
@@ -217,12 +217,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     void persistMenu(allItems.map((item) => item.key), hidden);
   };
 
-  // The first five visible modules follow the user's saved order on mobile.
-  // Reordering in the mobile drawer therefore also chooses the bottom-bar shortcuts.
-  const mobilePrimaryItems = items.slice(0, 5);
-  const mobileMoreItems = items.slice(5);
-  const mobileUngroupedItems = mobileMoreItems;
-  const moreActive = mobileMoreItems.some((item) => pathname.startsWith(item.to));
   const currentNavItem = items.find((item) => pathname.startsWith(item.to));
   const currentHelpKey = currentNavItem?.helpKey ?? "dashboard";
 
@@ -403,8 +397,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur md:hidden">
-        <SkinBranding skin={skin} compact />
+      <div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-3 backdrop-blur md:hidden">
+        <div className="flex min-w-0 items-center gap-2">
+          <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={() => setMobileMenuOpen(true)} aria-label="Abrir menú de módulos">
+            <Menu className="h-5 w-5" />
+          </Button>
+          <SkinBranding skin={skin} compact />
+        </div>
         <div className="flex items-center gap-1">
           <HelpTip helpKey={currentHelpKey} />
           {installPrompt && <Button type="button" variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl px-2" onClick={() => void installApp()}><Download className="h-4 w-4" /><span className="text-xs">Instalar</span></Button>}
@@ -417,7 +416,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main
         className={cn(
-          "app-shell-main w-full px-4 pb-28 pt-4 md:pb-10 md:pt-8 md:px-8",
+          "app-shell-main w-full px-4 pb-10 pt-4 md:pb-10 md:pt-8 md:px-8",
           collapsed
             ? "md:ml-[76px] md:w-[calc(100%_-_76px)]"
             : "md:ml-[248px] md:w-[calc(100%_-_248px)]",
@@ -426,49 +425,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto w-full max-w-none">{children}</div>
       </main>
 
-      {/* Five frequent destinations plus a compact drawer for the remaining modules. */}
-      <nav aria-label="Navegación principal móvil" className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background/95 backdrop-blur md:hidden">
-        {mobilePrimaryItems.map((item) => (
-          <Link
-            key={item.key}
-            to={item.to}
-            search={(p: Record<string, unknown>) => p}
-            title={item.label}
-            aria-current={pathname.startsWith(item.to) ? "page" : undefined}
-            className={cn(
-              "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-3 text-[11px] font-semibold",
-              pathname.startsWith(item.to) ? "text-primary" : "text-muted-foreground",
-            )}
-          >
-            <item.icon className="h-6 w-6" />
-            <span className="max-w-full truncate">{item.label}</span>
-          </Link>
-        ))}
-        {mobileMoreItems.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setMoreOpen(true)}
-            aria-label="Abrir más módulos"
-            aria-haspopup="dialog"
-            aria-expanded={moreOpen}
-            className={cn(
-              "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-3 text-[11px] font-semibold",
-              moreActive ? "text-primary" : "text-muted-foreground",
-            )}
-          >
-            <MoreHorizontal className="h-5 w-5" />
-            <span>Más</span>
-          </button>
-        )}
-      </nav>
-
-      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="max-h-[82vh] overflow-y-auto rounded-t-2xl px-4 pb-8">
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side="left" className="h-[100dvh] w-[min(88vw,360px)] overflow-y-auto px-4 pb-6 pt-[calc(env(safe-area-inset-top)+1rem)]">
           <SheetHeader className="mb-4 pr-8 text-left">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <SheetTitle>{menuEditing ? "Ordenar módulos" : "Más módulos"}</SheetTitle>
-                <SheetDescription>{menuEditing ? "Arrastra los módulos para cambiar su orden. Los cinco primeros quedarán en la barra inferior." : "Accede al resto de Personal OS sin desplazar una barra interminable."}</SheetDescription>
+                <SheetTitle>Personal OS</SheetTitle>
+                <SheetDescription>Todos tus espacios, en un solo menú.</SheetDescription>
               </div>
               <Button type="button" size="sm" variant={menuEditing ? "secondary" : "outline"} className="shrink-0"
                 disabled={menuSaving}
@@ -478,24 +441,19 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Button>
             </div>
           </SheetHeader>
-          {menuEditing ? (
-            <div className="space-y-1.5 pb-2">
-              {menuItems.map((item) => renderMenuItem(item, {
-                forceExpanded: true,
-                hideHelp: true,
-                onNavigate: () => setMoreOpen(false),
-              }))}
-            </div>
-          ) : <div className="grid grid-cols-2 gap-2">
-            {mobileUngroupedItems.map((item) => (
-              <Link key={item.key} to={item.to} search={(p: Record<string, unknown>) => p}
-                onClick={() => setMoreOpen(false)}
-                aria-current={pathname.startsWith(item.to) ? "page" : undefined}
-                className={cn("flex min-h-16 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium transition-colors hover:bg-accent", pathname.startsWith(item.to) && "border-primary bg-primary/10 text-primary")}>
-                <item.icon className="h-6 w-6 shrink-0" /><span className="min-w-0 truncate">{item.label}</span>
-              </Link>
-            ))}
-          </div>}
+          <nav aria-label="Módulos de Personal OS" className="space-y-1.5">
+            {menuItems.map((item) => renderMenuItem(item, {
+              forceExpanded: true,
+              hideHelp: true,
+              onNavigate: () => setMobileMenuOpen(false),
+            }))}
+          </nav>
+          <div className="mt-5 border-t border-border pt-4">
+            <ProfileBlock collapsed={false} />
+            <Button type="button" variant="ghost" size="sm" onClick={() => void signOut()} className="mt-2 w-full justify-start gap-2">
+              <LogOut className="h-4 w-4" />Cerrar sesión
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
       <UniversalCapture />
