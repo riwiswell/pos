@@ -104,13 +104,13 @@ export function UniversalCapture() {
             <DialogDescription>Un solo punto de entrada para guardar algo o saltar directamente al módulo correspondiente.</DialogDescription>
           </DialogHeader>
           {!quickKind ? (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {CAPTURE_OPTIONS.map((option) => {
                 const Icon = option.icon;
                 return <button key={option.kind} type="button" onClick={() => choose(option.kind)}
-                  className="flex items-start gap-3 rounded-xl border border-border p-3 text-left transition hover:border-primary hover:bg-primary/5">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted"><Icon className="h-4 w-4" /></span>
-                  <span className="min-w-0"><span className="block text-sm font-medium">{option.label}</span><span className="mt-0.5 block text-xs text-muted-foreground">{option.description}</span></span>
+                  className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border border-border p-2 text-center transition hover:border-primary hover:bg-primary/5">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-muted"><Icon className="h-5 w-5" /></span>
+                  <span className="text-xs font-medium leading-tight">{option.label}</span>
                 </button>;
               })}
             </div>

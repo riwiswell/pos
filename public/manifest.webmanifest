@@ -1,0 +1,31 @@
+{
+  "id": "/",
+  "name": "Personal OS",
+  "short_name": "POS",
+  "description": "Tu espacio personal para bienestar, organización, aprendizaje y finanzas.",
+  "lang": "es-CO",
+  "start_url": "/inicio",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#10131c",
+  "theme_color": "#10131c",
+  "icons": [
+    {
+      "src": "/pos-app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/personal-os-logo.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
