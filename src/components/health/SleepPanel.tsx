@@ -466,11 +466,11 @@ export function SleepPanel() {
                   tickLine={false}
                   axisLine={false}
                   tick={{ fontSize: 9, fill: "var(--card-foreground)" }}
-                  interval={0}
-                  minTickGap={0}
-                  angle={-32}
-                  textAnchor="end"
-                  height={44}
+                  interval="preserveStartEnd"
+                  minTickGap={24}
+                  angle={0}
+                  textAnchor="middle"
+                  height={28}
                 />
                 <YAxis
                   domain={[0, maxHours]}
