@@ -50,7 +50,7 @@ function hoursInputToMinutes(raw:string):number|null{
   return Math.round(hours*60);
 }
 type LearningSort = "used_desc" | "used_asc" | "title_asc" | "title_desc" | "recent" | "oldest" | "genre";
-const GAME_PLATFORMS = ["PC","PlayStation 5","PlayStation 4","PlayStation 3","Xbox Series X/S","Xbox One","Xbox 360","Nintendo Switch","Steam Deck","Android / iOS","Otra"];
+const GAME_PLATFORMS = ["Steam (PC)","PC","PlayStation 5","PlayStation 4","PlayStation 3","Xbox Series X/S","Xbox One","Xbox 360","Nintendo Switch","Steam Deck","Android / iOS","Otra"];
 const GAME_GENRES = ["Acción","Aventura","Acción y Aventuras","Mundo abierto","Rol (RPG)","RPG de acción","JRPG","Disparos (FPS)","Disparos en tercera persona","Terror / Survival horror","Sigilo","Plataformas","Carreras","Deportes","Estrategia","Puzles","Simulación","Lucha","Narrativo","Musical","Otro"];
 const INITIAL_READING_ORDER = [
   "los 5 lenguajes del amor",
@@ -585,7 +585,7 @@ function plainTextFromRichValue(value: unknown): string {
     .trim();
 }
 
-function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onUpdateSession,onUpdateLegacyTotal,onCompleteGame,hasCompletionReward,minutesPlayed=0,sessionCount=0,recentSessions=[],sessionHistory=[]}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;onRecordSession:(minutes:number,sessionDate?:string,source?:string,progress?:number)=>Promise<unknown>;onUpdateSession:(id:string,patch:Record<string,unknown>)=>Promise<unknown>;onUpdateLegacyTotal:(minutes:number)=>Promise<unknown>;onCompleteGame:()=>Promise<unknown>;hasCompletionReward:boolean;minutesPlayed?:number;sessionCount?:number;recentSessions?:any[];sessionHistory?:any[]}){
+function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onUpdateSession,onUpdateSteamBaseline,onDeleteSession,onUpdateLegacyTotal,onCompleteGame,hasCompletionReward,minutesPlayed=0,sessionCount=0,recentSessions=[],sessionHistory=[]}:{item:any;onEdit:()=>void;onDelete:()=>Promise<unknown>;onSaveCover:(path:string)=>Promise<unknown>;onRecordSession:(minutes:number,sessionDate?:string,source?:string,progress?:number,metadata?:Record<string,unknown>)=>Promise<unknown>;onUpdateSteamBaseline:(minutes:number)=>Promise<unknown>;onDeleteSession:(id:string)=>Promise<unknown>;onUpdateSession:(id:string,patch:Record<string,unknown>)=>Promise<unknown>;onUpdateLegacyTotal:(minutes:number)=>Promise<unknown>;onCompleteGame:()=>Promise<unknown>;hasCompletionReward:boolean;minutesPlayed?:number;sessionCount?:number;recentSessions?:any[];sessionHistory?:any[]}){
   const[uploading,setUploading]=useState(false);
   const[findingCover,setFindingCover]=useState(false);
   const[readyRemoteGameCoverUrl,setReadyRemoteGameCoverUrl]=useState<string|null>(null);
@@ -595,6 +595,11 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
   const[sessionDate,setSessionDate]=useState(todayISO());
   const[sessionSource,setSessionSource]=useState("chess.com");
   const[sessionProgress,setSessionProgress]=useState(String(item.progress??0));
+  const[sessionMethod,setSessionMethod]=useState("steam");
+  const[steamHours,setSteamHours]=useState("0");
+  const[steamMinutes,setSteamMinutes]=useState("0");
+  const[mobileStart,setMobileStart]=useState("18:00");
+  const[mobileEnd,setMobileEnd]=useState("19:00");
   const[savingSession,setSavingSession]=useState(false);
   const[savingGameCompletion,setSavingGameCompletion]=useState(false);
   const[historyOpen,setHistoryOpen]=useState(false);
@@ -636,24 +641,49 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
     }finally{setSavingEditId(null);}
   };
   const saveRecordedSession=async()=>{
-    const hours=Number(sessionHours);
-    const minutePart=Number(sessionMinutePart);
-    const value=hours*60+minutePart;
-    if(!Number.isInteger(hours)||!Number.isInteger(minutePart)||hours<0||minutePart<0||minutePart>59||value<1||value>1440){toast.error("La duración debe ser válida (máximo 24 horas).");return;}
+    let value=0;
     const selectedDate=(isChess||isGame)?sessionDate:todayISO();
     const nextProgress=Number(sessionProgress);
+    let metadata:Record<string,unknown>={};
     if((isChess||isGame)&&(!selectedDate||selectedDate>todayISO())){toast.error("Selecciona una fecha válida que no sea futura.");return;}
     if(isGame&&(!Number.isFinite(nextProgress)||nextProgress<0||nextProgress>100)){toast.error("El avance debe estar entre 0 y 100 %.");return;}
+    if(isGame&&sessionMethod==="steam"){
+      const h=Number(steamHours),m=Number(steamMinutes);
+      const counter=h*60+m;
+      if(!Number.isInteger(h)||!Number.isInteger(m)||h<0||m<0||m>59||counter<0){toast.error("Escribe el contador acumulado de Steam en horas y minutos.");return;}
+      const baseline=Number.isFinite(Number(item.steam_playtime_minutes))&&item.steam_playtime_minutes!==null
+        ?Number(item.steam_playtime_minutes)
+        :(sessionCount===0&&minutesPlayed>0?minutesPlayed:null);
+      if(baseline===null){
+        setSavingSession(true);
+        try{await onUpdateSteamBaseline(counter);toast.success("Contador inicial de Steam guardado. La próxima vez POS calculará automáticamente el tiempo de juego.");setRecording(false);}
+        catch(error){toast.error(error instanceof Error?error.message:"No se pudo guardar el contador inicial.");}
+        finally{setSavingSession(false);}
+        return;
+      }
+      if(counter<baseline){toast.error("El contador de Steam es inferior al último guardado. Corrige el contador o actualiza la referencia antes de registrar.");return;}
+      value=counter-baseline;
+      if(value===0){toast.info("Steam no muestra tiempo nuevo desde el último registro.");return;}
+      metadata={steam_playtime_before_minutes:baseline,steam_playtime_after_minutes:counter};
+    }else if(isGame&&sessionMethod==="mobile"){
+      const startAt=new Date(selectedDate+"T"+mobileStart);
+      let endAt=new Date(selectedDate+"T"+mobileEnd);
+      if(!mobileStart||!mobileEnd||Number.isNaN(startAt.getTime())||Number.isNaN(endAt.getTime())){toast.error("Indica una hora de inicio y finalización válidas.");return;}
+      if(endAt<=startAt)endAt=new Date(endAt.getTime()+24*60*60*1000);
+      value=Math.round((endAt.getTime()-startAt.getTime())/60000);
+      if(value<1||value>1440){toast.error("La sesión debe durar entre 1 minuto y 24 horas.");return;}
+      metadata={started_at:startAt.toISOString(),ended_at:endAt.toISOString()};
+    }else{
+      const hours=Number(sessionHours),minutePart=Number(sessionMinutePart);
+      value=hours*60+minutePart;
+      if(!Number.isInteger(hours)||!Number.isInteger(minutePart)||hours<0||minutePart<0||minutePart>59||value<1||value>1440){toast.error("La duración debe ser válida (máximo 24 horas).");return;}
+    }
     setSavingSession(true);
     try{
-      await onRecordSession(value,selectedDate,isChess?sessionSource:undefined,isGame?nextProgress:undefined);
-      toast.success(isChess?"Tiempo de ajedrez registrado.":isGame?"Sesión de videojuego registrada y avance actualizado.":"Tiempo jugado guardado.");
-      setRecording(false);
-      setSessionHours("0");
-      setSessionMinutePart("30");
-      setSessionDate(todayISO());
-      setSessionSource("chess.com");
-      setSessionProgress(String(item.progress??0));
+      await onRecordSession(value,selectedDate,isChess?sessionSource:undefined,isGame?nextProgress:undefined,metadata);
+      if(isGame&&sessionMethod==="steam")await onUpdateSteamBaseline(Number(steamHours)*60+Number(steamMinutes));
+      toast.success(isChess?"Tiempo de ajedrez registrado.":isGame?"Sesión de videojuego registrada y tiempo acumulado actualizado.":"Tiempo jugado guardado.");
+      setRecording(false);setSessionHours("0");setSessionMinutePart("30");setSessionDate(todayISO());setSessionSource("chess.com");setSessionProgress(String(item.progress??0));
     }catch{/* El hook informa el error de guardado. */}
     finally{setSavingSession(false);}
   };
@@ -769,11 +799,10 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
                   : <div className="flex items-center gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium">{entry.session_date}</p>
-                        <p className="text-[11px] text-muted-foreground">{Number(entry.minutes)>0?entry.minutes+" min":"Duración sin registrar"}</p>
+                        <p className="text-[11px] text-muted-foreground">{Number(entry.minutes)>0?entry.minutes+" min":"Duración sin registrar"}{entry.started_at&&entry.ended_at?" · "+new Date(entry.started_at).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"})+"–"+new Date(entry.ended_at).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"}):""}</p>
                       </div>
-                      <Button size="sm" variant="outline" onClick={()=>{setEditingSessionId(entry.id);setEditSessionMinutes(String(entry.minutes||30));setEditSessionDate(String(entry.session_date||todayISO()));}}>
-                        <Pencil className="mr-1 h-3 w-3"/>Editar
-                      </Button>
+                      <Button size="sm" variant="outline" onClick={()=>{setEditingSessionId(entry.id);setEditSessionMinutes(String(entry.minutes||30));setEditSessionDate(String(entry.session_date||todayISO()));}}><Pencil className="mr-1 h-3 w-3"/>Editar</Button>
+                      <Button size="icon" variant="ghost" aria-label="Eliminar sesión" onClick={()=>{if(window.confirm("¿Eliminar esta sesión?"))void onDeleteSession(entry.id);}}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                     </div>}
               </div>)}
             </div>)}
@@ -782,23 +811,25 @@ function OtherLearningCard({item,onEdit,onDelete,onSaveCover,onRecordSession,onU
           <p className="text-[11px] font-medium text-muted-foreground">Últimos registros</p>
           {recentSessions.slice(0,4).map((entry:any)=><div key={entry.id} className="flex items-center justify-between gap-2 text-[11px]"><span className="text-muted-foreground">{entry.session_date} · {String(entry.notes||"").includes("Duolingo")?"Duolingo · práctica":String(entry.notes||"").includes("chess.com")?"chess.com · online":"Presencial"}</span><span className="font-medium tabular-nums">{entry.minutes} min</span></div>)}
         </div>}
-        {recording?<div className="flex flex-wrap items-end gap-2 rounded-xl border border-border/60 bg-background/60 p-2">
-          {(isChess||isGame)&&<label className="min-w-[130px] flex-1 text-[11px] text-muted-foreground">Fecha de juego
-            <Input className="mt-1 h-9" type="date" max={todayISO()} value={sessionDate} onChange={event=>setSessionDate(event.target.value)}/>
+        {recording?<div className="w-full space-y-2 rounded-xl border border-border/60 bg-background/60 p-2">
+          {(isChess||isGame)&&<label className="block text-[11px] text-muted-foreground">Fecha de juego<Input className="mt-1 h-9" type="date" max={todayISO()} value={sessionDate} onChange={event=>setSessionDate(event.target.value)}/></label>}
+          {isGame&&<label className="block text-[11px] text-muted-foreground">Método de registro
+            <select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionMethod} onChange={event=>setSessionMethod(event.target.value)}>
+              <option value="steam">Steam · contador acumulado</option><option value="mobile">Móvil · hora de inicio y fin</option><option value="manual">Duración manual</option>
+            </select>
           </label>}
-          {(isChess||isGame)?<div className="min-w-[150px] flex-1 text-[11px] text-muted-foreground">Duración
-            <div className="mt-1 grid grid-cols-2 gap-1"><label>Horas<Input className="h-9" type="number" min="0" max="24" value={sessionHours} onChange={event=>setSessionHours(event.target.value)}/></label><label>Minutos<Input className="h-9" type="number" min="0" max="59" value={sessionMinutePart} onChange={event=>setSessionMinutePart(event.target.value)}/></label></div>
-          </div>:<label className="min-w-[110px] flex-1 text-[11px] text-muted-foreground">Duración
-            <select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionMinutePart} onChange={event=>setSessionMinutePart(event.target.value)}><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option><option value="90">1 h 30 min</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="240">4 horas</option></select>
-          </label>}
-          {isGame&&<label className="min-w-[120px] flex-1 text-[11px] text-muted-foreground">Avance actual (%)
+          {isGame&&sessionMethod==="steam"&&<div className="space-y-1">
+            <p className="text-[11px] text-muted-foreground">Tiempo total que muestra Steam ahora</p>
+            <div className="grid grid-cols-2 gap-2"><label className="text-[11px] text-muted-foreground">Horas<Input className="mt-1 h-9" type="number" min="0" value={steamHours} onChange={event=>setSteamHours(event.target.value)}/></label><label className="text-[11px] text-muted-foreground">Minutos<Input className="mt-1 h-9" type="number" min="0" max="59" value={steamMinutes} onChange={event=>setSteamMinutes(event.target.value)}/></label></div>
+            <p className="text-[10px] text-muted-foreground">Último contador guardado: {item.steam_playtime_minutes==null?"aún no configurado":Math.floor(Number(item.steam_playtime_minutes)/60)+" h "+(Number(item.steam_playtime_minutes)%60)+" min"}. Si el contador anterior quedó mal, corrige la referencia antes de registrar otra sesión.</p><Button type="button" size="sm" variant="outline" className="w-full" onClick={async()=>{const h=Number(steamHours),m=Number(steamMinutes),total=h*60+m;if(!Number.isInteger(h)||!Number.isInteger(m)||h<0||m<0||m>59){toast.error("Contador inválido.");return;}try{await onUpdateSteamBaseline(total);toast.success("Referencia de Steam corregida. No se registró tiempo de juego.");}catch(error){toast.error(error instanceof Error?error.message:"No se pudo corregir la referencia.");}}}>Corregir referencia de Steam</Button>
+          </div>}
+          {isGame&&sessionMethod==="mobile"&&<div className="grid grid-cols-2 gap-2"><label className="text-[11px] text-muted-foreground">Hora de inicio<Input className="mt-1 h-9" type="time" value={mobileStart} onChange={event=>setMobileStart(event.target.value)}/></label><label className="text-[11px] text-muted-foreground">Hora de finalización<Input className="mt-1 h-9" type="time" value={mobileEnd} onChange={event=>setMobileEnd(event.target.value)}/></label><p className="col-span-2 text-[10px] text-muted-foreground">Si termina después de medianoche, POS calcula la duración cruzando al día siguiente.</p></div>}
+          {(!isGame||sessionMethod==="manual")&&<div className="grid grid-cols-2 gap-2"><label className="text-[11px] text-muted-foreground">Horas<Input className="mt-1 h-9" type="number" min="0" max="24" value={sessionHours} onChange={event=>setSessionHours(event.target.value)}/></label><label className="text-[11px] text-muted-foreground">Minutos<Input className="mt-1 h-9" type="number" min="0" max="59" value={sessionMinutePart} onChange={event=>setSessionMinutePart(event.target.value)}/></label></div>}
+          {isGame&&<label className="block text-[11px] text-muted-foreground">Avance de la historia (%) · opcional
             <Input className="mt-1 h-9" type="number" min="0" max="100" step="1" value={sessionProgress} onChange={event=>setSessionProgress(event.target.value)}/>
           </label>}
-          {isChess&&<label className="min-w-[120px] flex-1 text-[11px] text-muted-foreground">Modalidad
-            <select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionSource} onChange={event=>setSessionSource(event.target.value)}><option value="chess.com">chess.com · online</option><option value="duolingo">Duolingo · práctica</option><option value="presencial">Presencial</option></select>
-          </label>}
-          <Button size="sm" disabled={savingSession} onClick={()=>void saveRecordedSession()}>{savingSession?"Guardando…":"Guardar"}</Button>
-          <Button size="sm" variant="ghost" disabled={savingSession} onClick={()=>setRecording(false)}>Cancelar</Button>
+          {isChess&&<label className="block text-[11px] text-muted-foreground">Modalidad<select className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" value={sessionSource} onChange={event=>setSessionSource(event.target.value)}><option value="chess.com">chess.com · online</option><option value="duolingo">Duolingo · práctica</option><option value="presencial">Presencial</option></select></label>}
+          <div className="flex flex-wrap gap-2"><Button size="sm" disabled={savingSession} onClick={()=>void saveRecordedSession()}>{savingSession?"Guardando…":"Guardar"}</Button><Button size="sm" variant="ghost" disabled={savingSession} onClick={()=>setRecording(false)}>Cancelar</Button></div>
         </div>:<Button size="sm" variant="outline" className="w-full" onClick={()=>{setSessionDate(todayISO());setSessionSource("chess.com");setSessionProgress(String(item.progress??0));setRecording(true)}}><Clock className="mr-1 h-3.5 w-3.5"/>{isChess?"Registrar tiempo de ajedrez":isGame?"Registrar sesión y avance":"Registrar tiempo jugado"}</Button>}
       </div>}{isGame&&<div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           {hasCompletionReward?<span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">🏆 Juego terminado · +20 XP registrados</span>:<Button size="sm" variant="outline" disabled={savingGameCompletion} onClick={async()=>{if(!window.confirm("¿Confirmas que terminaste \""+item.title+"\"?"))return;setSavingGameCompletion(true);try{await onCompleteGame();toast.success("¡Videojuego terminado! +20 XP y trofeo desbloqueado.");}catch(error){toast.error(error instanceof Error?error.message:"No se pudo registrar el final del juego.");}finally{setSavingGameCompletion(false);}}}>{savingGameCompletion?"Guardando…":"🏆 Terminé este videojuego · +20 XP"}</Button>}
@@ -813,8 +844,46 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
   const m=useLGMutations("learning_items");
   const sessionMutation=useLGMutations("learning_sessions");
   const[sort,setSort]=useState<LearningSort>("used_desc");
-  const{user}=useAuth();
+  const{user,session}=useAuth();
   const isGames=mode==="games";
+  const[steamInput,setSteamInput]=useState("");
+  const[steamConnection,setSteamConnection]=useState<any>(null);
+  const[steamExpanded,setSteamExpanded]=useState(false);
+  const[steamBusy,setSteamBusy]=useState(false);
+  const[steamMessage,setSteamMessage]=useState("");
+  useEffect(()=>{if(!isGames||!session?.access_token)return;let active=true;fetch("/api/steam/connect",{headers:{Authorization:"Bearer "+session.access_token,Accept:"application/json"},cache:"no-store"}).then(r=>r.json()).then(data=>{if(active)setSteamConnection(data.connection??null)}).catch(()=>{});return()=>{active=false}},[isGames,session?.access_token]);
+  const connectSteam=async()=>{
+    if(!session?.access_token){toast.error("Inicia sesión para conectar Steam.");return;}
+    if(!steamInput.trim()){toast.error("Escribe tu Steam ID o pega el enlace de tu perfil.");return;}
+    setSteamBusy(true);setSteamMessage("");
+    try{
+      const response=await fetch("/api/steam/connect",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({steamId:steamInput.trim()})});
+      const payload=await response.json();if(!response.ok)throw new Error(payload.error||"No se pudo conectar Steam.");
+      setSteamConnection({steam_id64:payload.profile.steamid,personaname:payload.profile.personaname,avatar_url:payload.profile.avatar,last_synced_at:new Date().toISOString()});
+      let imported=0,updated=0,newMinutes=0;
+      for(const game of payload.games||[]){
+        const existing=(q.data||[]).find((item:any)=>Number(item.steam_appid)===Number(game.appid));
+        if(!existing){
+          await m.create.mutateAsync({user_id:user?.id,title:game.name,kind:"video_game",status:"active",minutes_total:game.playtime_forever,steam_appid:game.appid,steam_playtime_minutes:game.playtime_forever,platform:"Steam (PC)",progress:0,cover_path:"https://cdn.cloudflare.steamstatic.com/steam/apps/"+game.appid+"/header.jpg"});
+          imported++;
+        }else{
+          const before=existing.steam_playtime_minutes==null?null:Math.max(0,Number(existing.steam_playtime_minutes)||0);
+          const after=Math.max(0,Number(game.playtime_forever)||0);
+          if(before!==null&&after>before){
+            const delta=after-before;
+            await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:existing.id,session_date:todayISO(),minutes:delta,activity_type:"game",notes:"Steam · sincronización automática",steam_playtime_before_minutes:before,steam_playtime_after_minutes:after});
+            await m.update.mutateAsync({id:existing.id,patch:{steam_playtime_minutes:after,minutes_total:Math.max(0,Number(existing.minutes_total)||0)+delta}});
+            newMinutes+=delta;
+          }else if(before===null){await m.update.mutateAsync({id:existing.id,patch:{steam_appid:game.appid,steam_playtime_minutes:after,minutes_total:Math.max(0,Number(existing.minutes_total)||0,after)}});}
+          else if(after<before){await m.update.mutateAsync({id:existing.id,patch:{steam_playtime_minutes:after}});}
+          updated++;
+        }
+      }
+      setSteamMessage("Biblioteca sincronizada: "+imported+" juegos nuevos, "+updated+" actualizados"+(newMinutes?" y "+Math.floor(newMinutes/60)+" h "+(newMinutes%60)+" min nuevos registrados.":"."));
+      setSteamInput("");toast.success("Steam conectado y biblioteca sincronizada.");
+    }catch(error){toast.error(error instanceof Error?error.message:"No se pudo sincronizar Steam.");}
+    finally{setSteamBusy(false);}
+  };
   const[adding,setAdding]=useState(false);
   const[editingId,setEditingId]=useState<string|null>(null);
   const[title,setTitle]=useState("");
@@ -854,7 +923,20 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
     resetForm();
   };
   return <section className="space-y-3">
+    {isGames&&<div className="glass space-y-3 rounded-2xl p-3">
+      <div className="flex items-center gap-3">
+        {steamConnection?.avatar_url&&<img src={steamConnection.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover"/>}
+        <div className="min-w-0 flex-1"><p className="font-semibold">🎮 Steam</p><p className="text-xs text-muted-foreground">{steamConnection?"Conectado como "+steamConnection.personaname:"Conecta tu cuenta para sincronizar tus juegos y tiempo jugado."}</p></div>
+        {steamConnection?<><span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300">Conectado</span><Button size="sm" variant="outline" onClick={()=>setSteamExpanded(value=>!value)}>{steamExpanded?"Cerrar":"Administrar"}</Button></>:null}
+      </div>
+      {(!steamConnection||steamExpanded)&&<div className="space-y-2">
+        <div className="flex flex-col gap-2 sm:flex-row"><Input value={steamInput} onChange={e=>setSteamInput(e.target.value)} placeholder="Steam ID o enlace de tu perfil"/><Button size="sm" disabled={steamBusy||!steamInput.trim()} onClick={()=>void connectSteam()}>{steamBusy?"Sincronizando…":steamConnection?"Cambiar cuenta / sincronizar":"Conectar y sincronizar"}</Button></div>
+        <p className="text-[11px] text-muted-foreground">Tu clave está protegida en el servidor. Los detalles de juegos deben ser públicos. Las cuentas prestadas y los juegos móviles pueden seguir registrándose manualmente.</p>
+      </div>}
+      {steamMessage&&<p className="text-xs text-emerald-700 dark:text-emerald-300">{steamMessage}</p>}
+    </div>}
     <div className="flex flex-wrap items-center justify-between gap-2">
+
       <div><h2 className="font-semibold">{isGames?"Mi biblioteca de videojuegos":"Otros aprendizajes"}</h2><p className="text-xs text-muted-foreground">{isGames?"Tus juegos activos, tiempo jugado y progreso de cada historia.":"Cursos, podcasts, videos y certificaciones."}</p></div><div className="flex flex-wrap items-center gap-2">
       <LearningSortControl value={sort} onChange={setSort} includeGenre={isGames}/>
       <Button size="sm" onClick={()=>{if(adding)resetForm();else{setEditingId(null);setTitle("");setKind(isGames?"video_game":"course");setNotes("");setGoalDescription("");setGoalDate("");setGameProgress("0");setGameMinutes("0");setPlatform("");setGenre("");setAdding(true)}}}>{adding?"Cerrar":"Agregar"} {adding?<X className="ml-1 h-4 w-4"/>:<Plus className="ml-1 h-4 w-4"/>}</Button>
@@ -912,25 +994,27 @@ function OtherLearning({mode="resources"}:{mode?:"resources"|"games"}){
             const oldEntry=playedSessions.find((entry:any)=>entry.id===id);
             const oldSum=playedSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);
             const nextSum=Math.max(0,oldSum+(Number(patch.minutes??oldEntry?.minutes??0)-Number(oldEntry?.minutes??0)));
-            const currentTotal=Math.max(oldSum,Math.max(0,Number(item.minutes_total)||0));
             await sessionMutation.update.mutateAsync({id,patch});
-            await m.update.mutateAsync({id:item.id,patch:{minutes_total:Math.max(0,currentTotal+(nextSum-oldSum))}});
+            const legacy=Math.max(0,Math.max(0,Number(item.minutes_total)||0)-oldSum);
+            await m.update.mutateAsync({id:item.id,patch:{minutes_total:legacy+nextSum}});
           }}
           onUpdateLegacyTotal={(minutes:number)=>m.update.mutateAsync({id:item.id,patch:{minutes_total:minutes}})}
+          onUpdateSteamBaseline={(minutes:number)=>m.update.mutateAsync({id:item.id,patch:{steam_playtime_minutes:minutes}})}
+          onDeleteSession={async(id:string)=>{const oldSum=playedSessions.reduce((sum:number,entry:any)=>sum+Math.max(0,Number(entry.minutes)||0),0);const target=playedSessions.find((entry:any)=>entry.id===id);if(!target)return;const legacy=Math.max(0,Math.max(0,Number(item.minutes_total)||0)-oldSum);await sessionMutation.remove.mutateAsync(id);await m.update.mutateAsync({id:item.id,patch:{minutes_total:legacy+oldSum-Math.max(0,Number(target.minutes)||0)}});if(target.steam_playtime_after_minutes!=null&&Number(item.steam_playtime_minutes)===Number(target.steam_playtime_after_minutes)&&target.steam_playtime_before_minutes!=null)await m.update.mutateAsync({id:item.id,patch:{steam_playtime_minutes:Number(target.steam_playtime_before_minutes)}});}}
           onEdit={()=>startEdit(item)}
-          onRecordSession={async(minutes:number,sessionDate?:string,source?:string,progress?:number)=>{
+          onRecordSession={async(minutes:number,sessionDate?:string,source?:string,progress?:number,metadata:Record<string,unknown>={})=>{
             const currentTotal=Math.max(previousSessionSum,Math.max(0,Number(item.minutes_total)||0));
             await sessionMutation.create.mutateAsync({
               user_id:user?.id,learning_item_id:item.id,
               session_date:(item.kind==="chess"||isGameItem(item))&&sessionDate?sessionDate:todayISO(),minutes,
               activity_type:item.kind==="chess"?"chess":isGameItem(item)?"game":"study",
-              notes:item.kind==="chess"?"Ajedrez · "+(source==="chess.com"?"chess.com (online)":source==="duolingo"?"Duolingo (práctica)":"Presencial"):"Videojuego: "+item.title
+              notes:item.kind==="chess"?"Ajedrez · "+(source==="chess.com"?"chess.com (online)":source==="duolingo"?"Duolingo (práctica)":"Presencial"):"Videojuego: "+item.title,...metadata
             });
             if(isGameItem(item))await m.update.mutateAsync({id:item.id,patch:{minutes_total:currentTotal+minutes}});
             if(isGameItem(item)&&typeof progress==="number"&&progress!==Number(item.progress??0))await m.update.mutateAsync({id:item.id,patch:{progress}});
           }}
           onCompleteGame={async()=>{
-            await m.update.mutateAsync({id:item.id,patch:{progress:100,status:"completed",completed_on:todayISO()}});
+            await m.update.mutateAsync({id:item.id,patch:{status:"completed",completed_on:todayISO()}});
             await sessionMutation.create.mutateAsync({user_id:user?.id,learning_item_id:item.id,session_date:todayISO(),minutes:0,activity_type:"game_completion",notes:"Videojuego terminado: "+item.title});
           }}
           onDelete={async()=>{if(item.cover_path&&!/^https?:\/\//i.test(String(item.cover_path)))await privateMediaService.removePhoto(String(item.cover_path)).catch(()=>undefined);await m.remove.mutateAsync(item.id);}}
