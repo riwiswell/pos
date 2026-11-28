@@ -80,7 +80,6 @@ export function SpiritualityHubPage() {
   };
 
   const currentCount = (kind: string) => rows.filter((row) => row.kind === kind).length;
-  const legacyRows = rows.filter((row) => Boolean(row.legacy_source_log_id));
 
   return (
     <main className="mx-auto w-full max-w-[1500px] space-y-5 pb-24">
