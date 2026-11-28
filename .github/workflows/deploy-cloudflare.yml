@@ -1,23 +1,46 @@
-name: Verify Personal OS build (production deploy handled by Cloudflare Builds)
+name: Build and deploy POS to Cloudflare Workers
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: pos-production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
-  build:
+  deploy:
+    name: Build and deploy production Worker
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2.15
+
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
-      - name: Verify build
+
+      - name: Build and type-check
         run: bun run build
+
+      - name: Check Cloudflare credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing repository secret CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Deploy POS Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bunx wrangler deploy
