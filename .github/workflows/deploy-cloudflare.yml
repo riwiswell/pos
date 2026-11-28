@@ -1,8 +1,8 @@
 name: Build and deploy POS to Cloudflare Workers
 
 on:
-  push:
-    branches: [main]
+  # Production deploys are handled by Cloudflare Builds on pushes to main.
+  # Keep manual dispatch as an emergency fallback only.
   workflow_dispatch:
 
 concurrency:
